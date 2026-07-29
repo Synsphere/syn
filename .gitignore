@@ -1,0 +1,10 @@
+database/seeds/populateThings.sql
+config.toml
+.venv/
+.uv-cache/
+dist/
+.coverage
+.hypothesis/
+.pytest_cache/
+__pycache__/
+*.py[cod]

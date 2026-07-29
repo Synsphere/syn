@@ -1,0 +1,4 @@
+[database]
+url = "postgresql+psycopg://syn:change-me@localhost:5432/syn"
+echo = false
+autoMigrate = true
