@@ -17,6 +17,16 @@ from .feeds import (
     importFeedPlan,
     validateFeedOntology,
 )
+from .feed_jobs import (
+    FEED_WITNESS_HANDLER,
+    FeedCandidate,
+    HttpWitness,
+    defaultJobHandlers,
+    evaluateStaleFeeds,
+    feedActivityScore,
+    parseFeedEntryTimestamps,
+    timedHttpGet,
+)
 from .models import (
     Base,
     ChronicleKind,
@@ -68,6 +78,9 @@ __all__ = [
     "FeedImportPlan",
     "FeedImportResult",
     "FeedRecord",
+    "FEED_WITNESS_HANDLER",
+    "FeedCandidate",
+    "HttpWitness",
     "LOCAL_KINDS",
     "MASTER_COLUMNS",
     "MASTER_DATASET",
@@ -94,6 +107,9 @@ __all__ = [
     "buildFeedImportPlan",
     "canonicalFeedUrl",
     "classifyFeed",
+    "defaultJobHandlers",
+    "evaluateStaleFeeds",
+    "feedActivityScore",
     "feedTypeSqlStatements",
     "importFeedBundle",
     "importFeedPlan",
@@ -101,8 +117,10 @@ __all__ = [
     "loadConfig",
     "normalizeSlug",
     "ontologySqlStatements",
+    "parseFeedEntryTimestamps",
     "sessionScope",
     "upgradeDatabase",
+    "timedHttpGet",
     "validateFeedOntology",
     "validateOntology",
 ]

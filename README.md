@@ -126,3 +126,25 @@ Run that module with Uvicorn, then use `POST /scheduler/start`, `POST /jobs`,
 `GET /jobs/{jobId}`, `DELETE /jobs/{jobId}`, and
 `GET /jobs/{jobId}/result`. A job submission body has the form
 `{"handler": "build-report", "arguments": {"reportId": "example"}}`.
+
+Syn also supplies `defaultJobHandlers`, including `witness-stale-feeds`. This
+job selects the 100 feed Things least recently witnessed, scores their stored
+activity, and witnesses the most active 50 in descending score order:
+
+```python
+from syn import defaultJobHandlers
+
+app = createApp(sessions, defaultJobHandlers(config.database.url))
+```
+
+Submit it with `{"handler":"witness-stale-feeds","arguments":{}}`. The database
+URL is bound when the application is created and is not persisted in job arguments.
+Each successful request creates a `feedWitness` Event containing the feed and
+URL references, response bytes, parsed entry timestamps, HTTP headers, answering
+IP address, and DNS/TCP/TLS/HTTP/data-transfer/connection-close timings. Only
+publicly routed destination addresses are allowed, and responses default to a
+10 MB limit. HTTP 301 and 302 redirects are followed for up to ten hops, with
+destination safety checks repeated for every hop. The job prints timestamped
+actions while it runs and includes those logs and per-hop timings in its result.
+TLS verification uses the checksum-pinned Mozilla CA bundle packaged at
+`src/syn/cacert.pem`; its upstream checksum is retained alongside it.
