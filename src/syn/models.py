@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import (
     BigInteger,
@@ -18,6 +19,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
+from sqlalchemy.dialects.postgresql import UUID as SAUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
 from .refs import ObjectRef
@@ -179,6 +181,33 @@ class ObjectRelationship(Base):
 class ChronicleKind(StrEnum):
     ledger = "ledger"
     provenance = "provenance"
+
+
+class JobStatus(StrEnum):
+    queued = "queued"
+    running = "running"
+    succeeded = "succeeded"
+    failed = "failed"
+    canceled = "canceled"
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+    __table_args__ = (Index("jobsStatusCreatedIdx", "status", "createdAt"),)
+
+    id: Mapped[UUID] = mapped_column(SAUUID(as_uuid=True), primary_key=True)
+    handler: Mapped[str] = mapped_column(Text, nullable=False)
+    arguments: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    status: Mapped[JobStatus] = mapped_column(
+        ENUM(JobStatus, name="jobStatus", create_type=False), nullable=False
+    )
+    result: Mapped[Any | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)
+    createdAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    startedAt: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finishedAt: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ObjectChronicle(Base):
