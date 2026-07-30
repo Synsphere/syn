@@ -9,6 +9,12 @@ The application packages this schema as the baseline Alembic migration and norma
 - `objectReferenceSchema.sql` creates the domains, tables, functions, triggers, constraints, and indexes.
 - `seeds/populateThings.sql.gz` contains 820,433 batched, re-runnable Thing upserts.
 
+`objectReferenceSchema.sql` is the baseline schema. Alembic migrations add the
+polyhierarchical `typeParents` graph, inherited-type views and functions, and
+the curated Syn ontology. The feed migration adds the polyhierarchical feed-type
+ontology; feed data itself is loaded with `scripts/importFeeds.py` so the source
+bundle remains external to the repository.
+
 The seed maps each JSONL entity as follows:
 
 - `id`: `syn://thing/{normalized-title-slug}`
@@ -24,6 +30,7 @@ Create the schema first:
 
 ```sh
 psql --set ON_ERROR_STOP=1 --dbname "$DATABASE_URL" --file database/objectReferenceSchema.sql
+uv run alembic upgrade head
 ```
 
 Then stream the compressed seed into PostgreSQL:

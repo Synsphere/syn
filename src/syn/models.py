@@ -138,6 +138,17 @@ class ObjectType(Base):
     typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
 
 
+class TypeParent(Base):
+    __tablename__ = "typeParents"
+    __table_args__ = (
+        CheckConstraint('"childRef" <> "parentRef"', name="typeParentsDifferentCheck"),
+        Index("typeParentsParentIdx", "parentRef", "childRef"),
+    )
+
+    childRef: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
+    parentRef: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
+
+
 class EventTarget(Base):
     __tablename__ = "eventTargets"
     __table_args__ = (

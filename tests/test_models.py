@@ -25,6 +25,7 @@ from syn import (
     Snug,
     Thing,
     Type,
+    TypeParent,
     modelByObjectTable,
 )
 
@@ -45,6 +46,7 @@ def test_every_schema_table_has_exactly_one_model() -> None:
         "snugs",
         "oms",
         "objectTypes",
+        "typeParents",
         "eventTargets",
         "objectRelationships",
         "objectChronicle",
@@ -118,6 +120,10 @@ def test_linking_table_primary_keys_match_schema() -> None:
     assert [column.name for column in EventTarget.__table__.primary_key] == [
         "eventRef",
         "targetRef",
+    ]
+    assert [column.name for column in TypeParent.__table__.primary_key] == [
+        "childRef",
+        "parentRef",
     ]
     assert [column.name for column in ObjectRelationship.__table__.primary_key] == [
         "sourceRef",

@@ -130,6 +130,11 @@ def test_current_revision_reads_migration_context() -> None:
     context.get_current_revision.return_value = BASE_REVISION
     with (
         patch("syn.migrations._hasVersionTable", return_value=True),
-        patch("syn.migrations.MigrationContext.configure", return_value=context),
+        patch("syn.migrations.MigrationContext.configure", return_value=context) as configure,
     ):
         assert currentRevision(engine) == BASE_REVISION
+    context.get_current_revision.assert_called_once_with()
+    configure.assert_called_once_with(
+        connection,
+        opts={"version_table": "alembicVersion"},
+    )

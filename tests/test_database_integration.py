@@ -9,6 +9,8 @@ from sqlalchemy import Connection, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from syn import LOCAL_KINDS
+from syn import buildFeedImportPlan, importFeedPlan
+from test_feeds import feedRow, writeBundle
 
 from conftest import MODEL_TABLES
 
@@ -828,6 +830,7 @@ def test_assert_object_has_type_rejects_unclassified_object(db: Connection) -> N
 def test_all_expected_indexes_are_installed(db: Connection) -> None:
     expected = {
         "objectTypesTypeIdx",
+        "typeParentsParentIdx",
         "eventTargetsTargetIdx",
         "objectRelationshipsTargetIdx",
         "objectChronicleTimelineIdx",
@@ -839,3 +842,240 @@ def test_all_expected_indexes_are_installed(db: Connection) -> None:
         )
     )
     assert expected <= installed
+
+
+def test_curated_type_ontology_is_seeded(db: Connection) -> None:
+    assert db.scalar(text("SELECT count(*) FROM types")) >= 350
+    assert db.scalar(text('SELECT count(*) FROM "typeParents"')) >= 400
+
+
+def test_feed_type_ontology_is_seeded(db: Connection) -> None:
+    assert db.scalar(
+        text("SELECT count(*) FROM types WHERE knowledge ->> 'ontology' = 'syn-feeds'")
+    ) >= 75
+    parents = set(
+        db.scalars(
+            text(
+                'SELECT "parentRef"::text FROM "typeParents" '
+                "WHERE \"childRef\" = 'syn://type/podcast-feed'"
+            )
+        )
+    )
+    assert parents == {"syn://type/rss-feed", "syn://type/media-feed"}
+
+
+def test_feed_import_upserts_thing_knowledge_and_inherited_types(
+    db: Connection, tmp_path
+) -> None:
+    bundle = writeBundle(tmp_path / "feeds.zip", [feedRow()])
+    plan = buildFeedImportPlan(bundle)
+    first = importFeedPlan(db, plan)
+    second = importFeedPlan(db, plan)
+    record = plan.records[0]
+
+    assert first.insertedCount == 1
+    assert first.updatedCount == 0
+    assert second.insertedCount == 0
+    assert second.updatedCount == 1
+    row = db.execute(
+        text("SELECT name, knowledge FROM things WHERE id = :id"),
+        {"id": record.objectRef},
+    ).one()
+    assert row.name == "Example Channel"
+    assert row.knowledge["description"]
+    assert row.knowledge["sourceDataset"] == "global_data_sources_master_2326.csv"
+    assert db.scalar(
+        text(
+            'SELECT "objectHasType"('
+            'CAST(:object AS "objectRef"), '
+            "CAST('syn://type/rss-feed' AS \"typeRef\"))"
+        ),
+        {"object": record.objectRef},
+    ) is True
+    assert db.scalar(
+        text(
+            'SELECT "objectHasType"('
+            'CAST(:object AS "objectRef"), '
+            "CAST('syn://type/information-object' AS \"typeRef\"))"
+        ),
+        {"object": record.objectRef},
+    ) is True
+
+
+def test_question_seed_keeps_original_definition(db: Connection) -> None:
+    row = db.execute(
+        text(
+            "SELECT name, knowledge ->> 'definition' AS definition "
+            "FROM types WHERE id = 'syn://type/question'"
+        )
+    ).one()
+    assert row.name == "question"
+    assert row.definition == (
+        "A proposition which can be answered, either yes or no, or with any other "
+        "kind of response."
+    )
+    assert db.scalar(
+        text(
+            'SELECT count(*) FROM "typeParents" '
+            "WHERE \"childRef\" = 'syn://type/question' "
+            "AND \"parentRef\" = 'syn://type/proposition'"
+        )
+    ) == 1
+
+
+def test_seeded_type_can_have_multiple_parents(db: Connection) -> None:
+    parents = set(
+        db.scalars(
+            text(
+                'SELECT "parentRef"::text FROM "typeParents" '
+                "WHERE \"childRef\" = 'syn://type/company'"
+            )
+        )
+    )
+    assert parents == {
+        "syn://type/organization",
+        "syn://type/legal-entity",
+        "syn://type/economic-agent",
+    }
+
+
+def test_type_parent_materializes_missing_type_placeholders(db: Connection) -> None:
+    child = localRef("type", token("child-placeholder"))
+    parent = localRef("type", token("parent-placeholder"))
+    db.execute(
+        text(
+            'INSERT INTO "typeParents" ("childRef", "parentRef") '
+            "VALUES (:child, :parent)"
+        ),
+        {"child": child, "parent": parent},
+    )
+    assert db.scalar(text("SELECT count(*) FROM types WHERE id IN (:child, :parent)"), {"child": child, "parent": parent}) == 2
+
+
+def test_type_parent_rejects_self_parent(db: Connection) -> None:
+    typeRef = localRef("type", token("self-parent"))
+    expectDatabaseError(
+        db,
+        lambda: db.execute(
+            text(
+                'INSERT INTO "typeParents" ("childRef", "parentRef") '
+                "VALUES (:type, :type)"
+            ),
+            {"type": typeRef},
+        ),
+    )
+
+
+def test_type_parent_rejects_cycle(db: Connection) -> None:
+    first = localRef("type", token("cycle-first"))
+    second = localRef("type", token("cycle-second"))
+    db.execute(
+        text(
+            'INSERT INTO "typeParents" ("childRef", "parentRef") '
+            "VALUES (:first, 'syn://type/thing'), (:second, :first)"
+        ),
+        {"first": first, "second": second},
+    )
+    error = expectDatabaseError(
+        db,
+        lambda: db.execute(
+            text(
+                'INSERT INTO "typeParents" ("childRef", "parentRef") '
+                "VALUES (:first, :second)"
+            ),
+            {"first": first, "second": second},
+        ),
+    )
+    assert "cycle" in str(error).lower()
+
+
+def test_type_parent_endpoints_are_immutable(db: Connection) -> None:
+    child = localRef("type", token("immutable-child"))
+    parent = localRef("type", token("immutable-parent"))
+    db.execute(
+        text(
+            'INSERT INTO "typeParents" ("childRef", "parentRef") '
+            "VALUES (:child, :parent)"
+        ),
+        {"child": child, "parent": parent},
+    )
+    error = expectDatabaseError(
+        db,
+        lambda: db.execute(
+            text(
+                'UPDATE "typeParents" SET "parentRef" = \'syn://type/thing\' '
+                'WHERE "childRef" = :child AND "parentRef" = :parent'
+            ),
+            {"child": child, "parent": parent},
+        ),
+    )
+    assert "immutable" in str(error).lower()
+
+
+def test_inherited_type_membership_crosses_multiple_parents(db: Connection) -> None:
+    objectRef = localRef("thing", token("inherited-type"))
+    db.execute(
+        text(
+            'INSERT INTO "objectTypes" ("objectRef", "typeRef") '
+            "VALUES (:object, 'syn://type/company')"
+        ),
+        {"object": objectRef},
+    )
+    assert db.scalar(
+        text(
+            'SELECT "objectHasType"('
+            'CAST(:object AS "objectRef"), '
+            "CAST('syn://type/organization' AS \"typeRef\"))"
+        ),
+        {"object": objectRef},
+    ) is True
+    assert db.scalar(
+        text(
+            'SELECT "objectHasType"('
+            'CAST(:object AS "objectRef"), '
+            "CAST('syn://type/legal-entity' AS \"typeRef\"))"
+        ),
+        {"object": objectRef},
+    ) is True
+    assert db.scalar(
+        text(
+            'SELECT "objectHasType"('
+            'CAST(:object AS "objectRef"), '
+            "CAST('syn://type/animal-organism' AS \"typeRef\"))"
+        ),
+        {"object": objectRef},
+    ) is False
+
+
+def test_assert_object_has_type_accepts_inherited_type(db: Connection) -> None:
+    objectRef = localRef("thing", token("assert-inherited"))
+    db.execute(
+        text(
+            'INSERT INTO "objectTypes" ("objectRef", "typeRef") '
+            "VALUES (:object, 'syn://type/question')"
+        ),
+        {"object": objectRef},
+    )
+    db.execute(
+        text(
+            'SELECT "assertObjectHasType"('
+            'CAST(:object AS "objectRef"), CAST(\'proposition\' AS slug))'
+        ),
+        {"object": objectRef},
+    )
+
+
+def test_delete_guard_covers_type_parent_edges(db: Connection) -> None:
+    child = localRef("type", token("delete-parent-child"))
+    parent = localRef("type", token("delete-parent-parent"))
+    db.execute(
+        text(
+            'INSERT INTO "typeParents" ("childRef", "parentRef") '
+            "VALUES (:child, :parent)"
+        ),
+        {"child": child, "parent": parent},
+    )
+    expectDatabaseError(
+        db,
+        lambda: db.execute(text("DELETE FROM types WHERE id = :parent"), {"parent": parent}),
+    )
