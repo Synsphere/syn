@@ -1,5 +1,22 @@
 from .config import DatabaseConfig, SynConfig, loadConfig
 from .database import createEngine, createSessionFactory, sessionScope
+from .feeds import (
+    FEED_ONTOLOGY_VERSION,
+    FEED_TYPE_BY_SLUG,
+    FEED_TYPE_DEFINITIONS,
+    MASTER_COLUMNS,
+    MASTER_DATASET,
+    FeedImportPlan,
+    FeedImportResult,
+    FeedRecord,
+    buildFeedImportPlan,
+    canonicalFeedUrl,
+    classifyFeed,
+    feedTypeSqlStatements,
+    importFeedBundle,
+    importFeedPlan,
+    validateFeedOntology,
+)
 from .models import (
     Base,
     ChronicleKind,
@@ -17,9 +34,19 @@ from .models import (
     Snug,
     Thing,
     Type,
+    TypeParent,
     modelByObjectTable,
 )
 from .migrations import currentRevision, upgradeDatabase
+from .ontology import (
+    ONTOLOGY_VERSION,
+    QUESTION_DEFINITION,
+    TYPE_BY_SLUG,
+    TYPE_DEFINITIONS,
+    TypeDefinition,
+    ontologySqlStatements,
+    validateOntology,
+)
 from .refs import LOCAL_KINDS, ObjectRef, normalizeSlug
 
 __all__ = [
@@ -31,7 +58,15 @@ __all__ = [
     "Enigma",
     "Event",
     "EventTarget",
+    "FEED_ONTOLOGY_VERSION",
+    "FEED_TYPE_BY_SLUG",
+    "FEED_TYPE_DEFINITIONS",
+    "FeedImportPlan",
+    "FeedImportResult",
+    "FeedRecord",
     "LOCAL_KINDS",
+    "MASTER_COLUMNS",
+    "MASTER_DATASET",
     "ObjectChronicle",
     "ObjectRef",
     "ObjectRegistry",
@@ -43,12 +78,27 @@ __all__ = [
     "SynConfig",
     "Thing",
     "Type",
+    "TypeDefinition",
+    "TypeParent",
+    "TYPE_BY_SLUG",
+    "TYPE_DEFINITIONS",
+    "ONTOLOGY_VERSION",
+    "QUESTION_DEFINITION",
     "createEngine",
     "createSessionFactory",
     "currentRevision",
+    "buildFeedImportPlan",
+    "canonicalFeedUrl",
+    "classifyFeed",
+    "feedTypeSqlStatements",
+    "importFeedBundle",
+    "importFeedPlan",
     "modelByObjectTable",
     "loadConfig",
     "normalizeSlug",
+    "ontologySqlStatements",
     "sessionScope",
     "upgradeDatabase",
+    "validateFeedOntology",
+    "validateOntology",
 ]

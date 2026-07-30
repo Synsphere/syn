@@ -103,4 +103,7 @@ def currentRevision(engine: Engine) -> str | None:
     with engine.connect() as connection:
         if not _hasVersionTable(connection):
             return None
-        return MigrationContext.configure(connection).get_current_revision()
+        return MigrationContext.configure(
+            connection,
+            opts={"version_table": "alembicVersion"},
+        ).get_current_revision()
