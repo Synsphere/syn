@@ -112,7 +112,7 @@ class ProcessScheduler:
             job.status = JobStatus.running
             job.startedAt = datetime.now(UTC)
 
-        scheduler = Scheduler(raise_exceptions=True, dynamic=False)
+        scheduler = Scheduler(raise_exceptions=True, dynamic=False, capture_stdout=True)
         self._schedulers[jobId] = scheduler
         scheduler.add(target=_invokeHandler, args=(handler, arguments))
         try:
