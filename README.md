@@ -107,3 +107,22 @@ Run only the PostgreSQL domain, constraint, trigger, and index tests:
 ```sh
 uv run pytest -m database
 ```
+
+## Process scheduler API
+
+Create an application with an explicit allow-list of process-safe handlers. Handler
+functions must be module-level callables so Python can pickle them for a child process.
+
+```python
+from syn.api import createApp
+
+def buildReport(reportId: str) -> dict:
+    return {"reportId": reportId, "complete": True}
+
+app = createApp(sessions, {"build-report": buildReport})
+```
+
+Run that module with Uvicorn, then use `POST /scheduler/start`, `POST /jobs`,
+`GET /jobs/{jobId}`, `DELETE /jobs/{jobId}`, and
+`GET /jobs/{jobId}/result`. A job submission body has the form
+`{"handler": "build-report", "arguments": {"reportId": "example"}}`.

@@ -15,6 +15,8 @@ from syn import (
     Enigma,
     Event,
     EventTarget,
+    Job,
+    JobStatus,
     ObjectChronicle,
     ObjectRef,
     ObjectRegistry,
@@ -50,6 +52,7 @@ def test_every_schema_table_has_exactly_one_model() -> None:
         "eventTargets",
         "objectRelationships",
         "objectChronicle",
+        "jobs",
     }
 
 
@@ -161,3 +164,15 @@ def test_models_can_be_constructed_with_python_object_refs() -> None:
 def test_registry_model_uses_general_object_ref_domain() -> None:
     sql = str(CreateTable(ObjectRegistry.__table__).compile(dialect=postgresql.dialect()))
     assert '"objectRef"' in sql
+
+
+def test_job_model_matches_scheduler_persistence_contract() -> None:
+    assert [column.name for column in Job.__table__.primary_key] == ["id"]
+    assert Job.__table__.c.arguments.nullable is False
+    assert str(Job.__table__.c.arguments.server_default.arg) == "'{}'::jsonb"
+    assert {value.value for value in JobStatus} == {
+        "queued", "running", "succeeded", "failed", "canceled"
+    }
+    sql = str(CreateTable(Job.__table__).compile(dialect=postgresql.dialect()))
+    assert '"jobStatus"' in sql
+    assert "UUID" in sql
