@@ -56,6 +56,7 @@ def createApp(
 
     app = FastAPI(title="Syn API", lifespan=lifespan)
     app.state.processScheduler = scheduler
+    app.state.sessions = sessions
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def index(request: Request) -> HTMLResponse:

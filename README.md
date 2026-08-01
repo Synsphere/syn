@@ -144,6 +144,12 @@ database primitive while their persistence behavior is developed:
 Each currently returns the primitive name, a `placeholder` status, and a
 temporary response message. They are included in the generated OpenAPI schema.
 
+Types additionally expose database-backed read endpoints:
+
+- `GET /api/type/{id}` retrieves `syn://type/{id}`.
+- `GET /api/type?query={search}` searches type names and IDs and returns up to
+  ten relevance-ranked results.
+
 ### Process scheduler
 
 Create an application with an explicit allow-list of process-safe handlers. Handler
