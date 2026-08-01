@@ -1,1 +1,2 @@
 *.gz binary
+*.pem text eol=lf
