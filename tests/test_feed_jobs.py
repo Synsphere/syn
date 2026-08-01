@@ -16,7 +16,7 @@ from syn.feed_jobs import (
     _buildWitnessObjects,
     _storeWitness,
 )
-from syn import Ember, Event, EventTarget, ObjectRelationship, ObjectType
+from syn import Ember, Event, EventTarget, ObjectRelationship
 
 
 def test_activity_score_combines_weekly_updates_and_request_lag() -> None:
@@ -137,7 +137,6 @@ def test_witness_builds_observation_result_and_separate_network_stats_with_redac
     objects, eventRef, entryCount = _buildWitnessObjects(candidate, witness)
     event = next(item for item in objects if isinstance(item, Event))
     embers = [item for item in objects if isinstance(item, Ember)]
-    types = [item for item in objects if isinstance(item, ObjectType)]
     targets = [item for item in objects if isinstance(item, EventTarget)]
     relationships = [item for item in objects if isinstance(item, ObjectRelationship)]
     observation = next(item for item in embers if item.name == "httpObservationResult")
@@ -146,18 +145,17 @@ def test_witness_builds_observation_result_and_separate_network_stats_with_redac
     assert event.id == eventRef
     assert event.knowledge["observationRef"] == observation.id
     assert event.knowledge["networkStatsRef"] == network.id
+    assert event.typeRef == "syn://type/observation"
     assert str(observation.id).startswith("syn://ember/")
     assert str(network.id).startswith("syn://ember/")
+    assert observation.typeRef == "syn://type/observation-result"
+    assert network.typeRef == "syn://type/network-measurement"
     assert observation.knowledge["request"]["headersSent"]["Authorization"] == "[REDACTED]"
     assert observation.knowledge["request"]["headersReceived"]["set-cookie"] == "[REDACTED]"
     assert observation.knowledge["request"]["headersSent"]["Accept"] == "application/json"
     assert network.stats["serverIp"] == "93.184.216.34"
     assert network.stats["requestCount"] == 1
     assert entryCount == 1
-    assert {item.typeRef for item in types} == {
-        "syn://type/observation", "syn://type/observation-result",
-        "syn://type/network-measurement"
-    }
     assert {item.role for item in targets} == {
         "feed", "feed-url", "observation-result", "network-stats"
     }

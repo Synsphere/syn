@@ -32,6 +32,9 @@ def test_edit_types_view_has_accessible_autocomplete_controls() -> None:
     assert 'id="parentSearch"' in html
     assert 'aria-controls="parentResults"' in html
     assert 'id="parentResults" role="listbox"' in html
+    assert 'id="propertyTypeSearch"' in html
+    assert 'aria-controls="propertyTypeResults"' in html
+    assert 'id="propertyTypeResults" role="listbox"' in html
 
 
 def test_edit_types_view_uses_type_read_and_update_api_calls() -> None:
@@ -111,6 +114,53 @@ def test_edit_types_view_can_add_and_remove_direct_parents() -> None:
     assert 'remove.textContent = "Remove"' in html
     assert "directParents = directParents.filter" in html
     assert "parents: directParents.map(parent => parent.id)" in html
+
+
+def test_edit_types_view_lists_and_loads_type_properties() -> None:
+    _, html = editTypesPage()
+
+    assert 'id="propertyList"' in html
+    assert 'aria-label="Current type properties"' in html
+    assert 'id="propertyEmpty"' in html
+    assert "await loadTypeProperties(slug)" in html
+    assert "typeProperties = await response.json()" in html
+    assert "detail.textContent = `${record.propertyTypeRef}" in html
+
+
+def test_edit_types_view_has_property_create_and_edit_dialog() -> None:
+    _, html = editTypesPage()
+
+    assert '<button id="createProperty" type="button">Create property</button>' in html
+    assert 'id="propertyDialog"' in html
+    assert 'id="propertyForm"' in html
+    assert 'name="propertyName" maxlength="1024" required' in html
+    assert 'name="propertyTypeRef" readonly required' in html
+    assert 'name="min" type="number" min="0" step="1" required value="1"' in html
+    assert 'name="max" type="number" min="0" step="1" required value="1"' in html
+    assert "openPropertyDialog(record)" in html
+    assert 'edit.className = "secondary modify-property"' in html
+
+
+def test_edit_types_view_uses_property_crud_api_calls() -> None:
+    _, html = editTypesPage()
+
+    assert "`/api/type/${encodeURIComponent(slug)}/properties`" in html
+    assert "`/api/type/${encodeURIComponent(slug)}/property/${encodeURIComponent(originalName)}`" in html
+    assert "method: editing ? \"PUT\" : \"POST\"" in html
+    assert '{ method: "DELETE", signal: propertyRequest.signal }' in html
+    assert "body: JSON.stringify(body)" in html
+    assert "typeProperties.map(item => item.name === originalName ? saved : item)" in html
+    assert "typeProperties.filter(item => item.name !== record.name)" in html
+
+
+def test_edit_types_view_validates_property_cardinality_and_type_selection() -> None:
+    _, html = editTypesPage()
+
+    assert "setTimeout(() => searchPropertyTypes(query), 220)" in html
+    assert "selectPropertyType(propertyTypeResults[propertyTypeSelectedIndex])" in html
+    assert "propertyTypeRef.value = record.id" in html
+    assert "Number.isSafeInteger(minimum)" in html
+    assert "Maximum must be a whole number greater than or equal to minimum." in html
 
 
 def test_edit_types_view_prevents_redundant_parent_selections() -> None:

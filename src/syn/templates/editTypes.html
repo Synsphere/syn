@@ -80,7 +80,8 @@
       textarea { min-height: 8rem; resize: vertical; font-family: ui-monospace, monospace; }
 
       #typeResults,
-      #parentResults {
+      #parentResults,
+      #propertyTypeResults {
         position: absolute;
         z-index: 2;
         top: calc(100% + .35rem);
@@ -98,7 +99,9 @@
 
       #typeResults[hidden],
       #parentResults[hidden],
+      #propertyTypeResults[hidden],
       #parentEmpty[hidden],
+      #propertyEmpty[hidden],
       #typeEditor[hidden] { display: none; }
 
       [role="option"] {
@@ -167,6 +170,63 @@
       }
 
       .remove-parent:hover { background: #f0cccc; }
+
+      .property-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .property-toolbar .field-help { margin: 0; }
+
+      .property-list {
+        display: grid;
+        gap: .65rem;
+        margin: 0 0 1rem;
+        padding: 0;
+        list-style: none;
+      }
+
+      .property-record {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .8rem;
+        border: 1px solid #d6dfd8;
+        border-radius: .6rem;
+        background: #f7faf7;
+      }
+
+      .property-summary { min-width: 0; }
+      .property-name { display: block; font-weight: 700; overflow-wrap: anywhere; }
+      .property-detail { color: #657168; font-size: .84rem; overflow-wrap: anywhere; }
+      .property-actions { display: flex; flex: 0 0 auto; gap: .5rem; }
+
+      button.secondary { color: #285f39; background: #e3efe5; }
+      button.secondary:hover { background: #cee3d2; }
+      button.danger { color: #7d2525; background: #f8e5e5; }
+      button.danger:hover { background: #f0cccc; }
+
+      dialog {
+        width: min(38rem, calc(100% - 2rem));
+        max-height: calc(100vh - 2rem);
+        padding: 0;
+        overflow: visible;
+        border: 1px solid #abb9ae;
+        border-radius: 1rem;
+        color: #18201b;
+        background: #fff;
+        box-shadow: 0 1.5rem 4rem rgba(21, 42, 28, .24);
+      }
+
+      dialog::backdrop { background: rgba(19, 31, 23, .52); }
+
+      .dialog-body { padding: 1.5rem; }
+      .dialog-grid { display: grid; gap: 1rem; }
+      .dialog-actions { justify-content: flex-end; }
 
       .notice {
         margin: 1.25rem 0 0;
@@ -260,6 +320,16 @@
               </div>
               <p id="parentStatus" class="status" role="status" aria-live="polite"></p>
             </fieldset>
+            <fieldset class="full">
+              <legend>Type properties</legend>
+              <div class="property-toolbar">
+                <p class="field-help">Properties declare a named value Type and its allowed cardinality.</p>
+                <button id="createProperty" type="button">Create property</button>
+              </div>
+              <ul id="propertyList" class="property-list" aria-label="Current type properties"></ul>
+              <p id="propertyEmpty" class="field-help">This type has no declared properties.</p>
+              <p id="propertyStatus" class="status" role="status" aria-live="polite"></p>
+            </fieldset>
             <div>
               <label for="typeName">Name</label>
               <input id="typeName" name="name" required>
@@ -306,6 +376,52 @@
       </section>
     </main>
 
+    <dialog id="propertyDialog" aria-labelledby="propertyDialogTitle">
+      <form id="propertyForm" class="dialog-body">
+        <h2 id="propertyDialogTitle">Create type property</h2>
+        <input id="propertyOriginalName" type="hidden">
+        <div class="dialog-grid">
+          <div>
+            <label for="propertyName">Name</label>
+            <input id="propertyName" name="propertyName" maxlength="1024" required>
+          </div>
+          <div class="search">
+            <label for="propertyTypeSearch">Property type</label>
+            <input
+              id="propertyTypeSearch"
+              type="search"
+              role="combobox"
+              autocomplete="off"
+              aria-autocomplete="list"
+              aria-controls="propertyTypeResults"
+              aria-expanded="false"
+              placeholder="Search for a value type"
+            >
+            <ul id="propertyTypeResults" role="listbox" hidden></ul>
+          </div>
+          <div>
+            <label for="propertyTypeRef">Selected property TypeRef</label>
+            <input id="propertyTypeRef" name="propertyTypeRef" readonly required>
+          </div>
+          <div class="grid">
+            <div>
+              <label for="propertyMin">Minimum</label>
+              <input id="propertyMin" name="min" type="number" min="0" step="1" required value="1">
+            </div>
+            <div>
+              <label for="propertyMax">Maximum</label>
+              <input id="propertyMax" name="max" type="number" min="0" step="1" required value="1">
+            </div>
+          </div>
+          <p id="propertyDialogStatus" class="status" role="status" aria-live="polite"></p>
+          <div class="actions dialog-actions">
+            <button id="cancelProperty" class="secondary" type="button">Cancel</button>
+            <button id="saveProperty" type="submit">Create property</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
     <script>
       (() => {
         const input = document.querySelector("#typeSearch");
@@ -320,6 +436,23 @@
         const parentList = document.querySelector("#parentList");
         const parentEmpty = document.querySelector("#parentEmpty");
         const parentStatus = document.querySelector("#parentStatus");
+        const propertyList = document.querySelector("#propertyList");
+        const propertyEmpty = document.querySelector("#propertyEmpty");
+        const propertyStatus = document.querySelector("#propertyStatus");
+        const createPropertyButton = document.querySelector("#createProperty");
+        const propertyDialog = document.querySelector("#propertyDialog");
+        const propertyDialogTitle = document.querySelector("#propertyDialogTitle");
+        const propertyForm = document.querySelector("#propertyForm");
+        const propertyOriginalName = document.querySelector("#propertyOriginalName");
+        const propertyName = document.querySelector("#propertyName");
+        const propertyTypeSearch = document.querySelector("#propertyTypeSearch");
+        const propertyTypeResultsList = document.querySelector("#propertyTypeResults");
+        const propertyTypeRef = document.querySelector("#propertyTypeRef");
+        const propertyMin = document.querySelector("#propertyMin");
+        const propertyMax = document.querySelector("#propertyMax");
+        const propertyDialogStatus = document.querySelector("#propertyDialogStatus");
+        const cancelPropertyButton = document.querySelector("#cancelProperty");
+        const savePropertyButton = document.querySelector("#saveProperty");
         const fields = {
           id: document.querySelector("#typeId"),
           name: document.querySelector("#typeName"),
@@ -345,6 +478,12 @@
         let parentDebounceTimer;
         let parentSearchRequest;
         let parentDetailRequest;
+        let typeProperties = [];
+        let propertyRequest;
+        let propertyTypeResults = [];
+        let propertyTypeSelectedIndex = -1;
+        let propertyTypeDebounceTimer;
+        let propertyTypeSearchRequest;
 
         const jsonValue = value => value == null ? "" : JSON.stringify(value, null, 2);
         const localTypePrefix = "syn://type/";
@@ -582,6 +721,217 @@
           }
         }
 
+        function selectedTypeSlug() {
+          return fields.id.value.startsWith(localTypePrefix)
+            ? fields.id.value.slice(localTypePrefix.length)
+            : null;
+        }
+
+        function closePropertyTypeResults() {
+          propertyTypeResultsList.hidden = true;
+          propertyTypeSearch.setAttribute("aria-expanded", "false");
+          propertyTypeSearch.removeAttribute("aria-activedescendant");
+          propertyTypeSelectedIndex = -1;
+        }
+
+        function setActivePropertyTypeResult(index) {
+          if (!propertyTypeResults.length) return;
+          propertyTypeSelectedIndex = (index + propertyTypeResults.length) % propertyTypeResults.length;
+          const options = propertyTypeResultsList.querySelectorAll('[role="option"]');
+          options.forEach((option, optionIndex) => {
+            option.setAttribute("aria-selected", String(optionIndex === propertyTypeSelectedIndex));
+          });
+          const active = options[propertyTypeSelectedIndex];
+          propertyTypeSearch.setAttribute("aria-activedescendant", active.id);
+          active.scrollIntoView({ block: "nearest" });
+        }
+
+        function selectPropertyType(record) {
+          propertyTypeRef.value = record.id;
+          propertyTypeSearch.value = record.name;
+          propertyDialogStatus.textContent = `${record.name} selected.`;
+          closePropertyTypeResults();
+        }
+
+        function renderPropertyTypeResults(records) {
+          propertyTypeResults = records;
+          propertyTypeResultsList.replaceChildren();
+          if (!records.length) {
+            closePropertyTypeResults();
+            propertyDialogStatus.textContent = "No matching property types found.";
+            return;
+          }
+
+          records.forEach((record, index) => {
+            const option = document.createElement("li");
+            option.id = `property-type-option-${index}`;
+            option.setAttribute("role", "option");
+            option.setAttribute("aria-selected", "false");
+
+            const name = document.createElement("span");
+            name.className = "result-name";
+            name.textContent = record.name;
+            const id = document.createElement("span");
+            id.className = "result-id";
+            id.textContent = record.id;
+            option.append(name, id);
+            option.addEventListener("mousedown", event => {
+              event.preventDefault();
+              selectPropertyType(record);
+            });
+            propertyTypeResultsList.append(option);
+          });
+
+          propertyTypeResultsList.hidden = false;
+          propertyTypeSearch.setAttribute("aria-expanded", "true");
+          propertyDialogStatus.textContent = `${records.length} matching type${records.length === 1 ? "" : "s"}.`;
+        }
+
+        async function searchPropertyTypes(query) {
+          propertyTypeSearchRequest?.abort();
+          propertyTypeSearchRequest = new AbortController();
+          propertyDialogStatus.textContent = "Searchingâ€¦";
+          try {
+            const response = await fetch(`/api/type?query=${encodeURIComponent(query)}`, {
+              headers: { Accept: "application/json" },
+              signal: propertyTypeSearchRequest.signal
+            });
+            if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+            renderPropertyTypeResults(await response.json());
+          } catch (error) {
+            if (error.name !== "AbortError") {
+              closePropertyTypeResults();
+              propertyDialogStatus.textContent = "Unable to search property types. Please try again.";
+            }
+          }
+        }
+
+        function openPropertyDialog(record = null) {
+          propertyOriginalName.value = record?.name ?? "";
+          propertyName.value = record?.name ?? "";
+          propertyTypeRef.value = record?.propertyTypeRef ?? "";
+          propertyTypeSearch.value = record?.propertyTypeRef ?? "";
+          propertyMin.value = record?.min ?? 1;
+          propertyMax.value = record?.max ?? 1;
+          propertyDialogTitle.textContent = record ? "Edit type property" : "Create type property";
+          savePropertyButton.textContent = record ? "Save property" : "Create property";
+          propertyDialogStatus.textContent = "";
+          closePropertyTypeResults();
+          propertyDialog.showModal();
+          propertyName.focus();
+        }
+
+        function closePropertyDialog() {
+          propertyTypeSearchRequest?.abort();
+          closePropertyTypeResults();
+          propertyDialog.close();
+        }
+
+        function renderTypeProperties() {
+          propertyList.replaceChildren();
+          propertyEmpty.hidden = typeProperties.length > 0;
+          typeProperties.forEach(record => {
+            const item = document.createElement("li");
+            item.className = "property-record";
+
+            const summary = document.createElement("div");
+            summary.className = "property-summary";
+            const name = document.createElement("span");
+            name.className = "property-name";
+            name.textContent = record.name;
+            const detail = document.createElement("span");
+            detail.className = "property-detail";
+            detail.textContent = `${record.propertyTypeRef} Â· ${record.min}â€¦${record.max}`;
+            summary.append(name, detail);
+
+            const actions = document.createElement("div");
+            actions.className = "property-actions";
+            const edit = document.createElement("button");
+            edit.type = "button";
+            edit.className = "secondary modify-property";
+            edit.textContent = "Edit";
+            edit.setAttribute("aria-label", `Edit property ${record.name}`);
+            edit.addEventListener("click", () => openPropertyDialog(record));
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "danger delete-property";
+            remove.textContent = "Delete";
+            remove.setAttribute("aria-label", `Delete property ${record.name}`);
+            remove.addEventListener("click", () => deleteTypeProperty(record));
+            actions.append(edit, remove);
+
+            item.append(summary, actions);
+            propertyList.append(item);
+          });
+        }
+
+        async function loadTypeProperties(slug) {
+          propertyRequest?.abort();
+          propertyRequest = new AbortController();
+          propertyStatus.textContent = "Loading propertiesâ€¦";
+          try {
+            const response = await fetch(`/api/type/${encodeURIComponent(slug)}/properties`, {
+              headers: { Accept: "application/json" },
+              signal: propertyRequest.signal
+            });
+            if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+            typeProperties = await response.json();
+            renderTypeProperties();
+            propertyStatus.textContent = `${typeProperties.length} declared propert${typeProperties.length === 1 ? "y" : "ies"}.`;
+          } catch (error) {
+            if (error.name !== "AbortError") {
+              typeProperties = [];
+              renderTypeProperties();
+              propertyStatus.textContent = "Unable to load type properties. Please try again.";
+            }
+          }
+        }
+
+        async function deleteTypeProperty(record) {
+          const slug = selectedTypeSlug();
+          if (!slug || !window.confirm(`Delete property ${record.name}?`)) return;
+          propertyRequest?.abort();
+          propertyRequest = new AbortController();
+          propertyStatus.textContent = `Deleting ${record.name}â€¦`;
+          try {
+            const response = await fetch(
+              `/api/type/${encodeURIComponent(slug)}/property/${encodeURIComponent(record.name)}`,
+              { method: "DELETE", signal: propertyRequest.signal }
+            );
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(typeof error.detail === "string" ? error.detail : "Unable to delete property.");
+            }
+            typeProperties = typeProperties.filter(item => item.name !== record.name);
+            renderTypeProperties();
+            propertyStatus.textContent = `${record.name} deleted.`;
+          } catch (error) {
+            if (error.name !== "AbortError") propertyStatus.textContent = error.message;
+          }
+        }
+
+        function propertyPayload() {
+          const name = propertyName.value.trim();
+          const minimum = Number(propertyMin.value);
+          const maximum = Number(propertyMax.value);
+          if (!name) throw new Error("Property name is required.");
+          if (!propertyTypeRef.value.startsWith(localTypePrefix)) {
+            throw new Error("Select a property type from the search results.");
+          }
+          if (!Number.isSafeInteger(minimum) || minimum < 0) {
+            throw new Error("Minimum must be a non-negative whole number.");
+          }
+          if (!Number.isSafeInteger(maximum) || maximum < minimum) {
+            throw new Error("Maximum must be a whole number greater than or equal to minimum.");
+          }
+          return {
+            name,
+            propertyTypeRef: propertyTypeRef.value,
+            min: minimum,
+            max: maximum
+          };
+        }
+
         function populateForm(record) {
           fields.id.value = record.id;
           fields.name.value = record.name;
@@ -643,9 +993,14 @@
           saveRequest?.abort();
           parentSearchRequest?.abort();
           parentDetailRequest?.abort();
+          propertyRequest?.abort();
+          propertyTypeSearchRequest?.abort();
+          if (propertyDialog.open) closePropertyDialog();
           input.value = record.name;
           status.textContent = `Loading ${record.name}…`;
           editor.hidden = true;
+          typeProperties = [];
+          renderTypeProperties();
 
           if (!record.id.startsWith(localTypePrefix)) {
             status.textContent = "The selected result does not have a valid local type ID.";
@@ -663,6 +1018,7 @@
             const detail = await response.json();
             populateForm(detail);
             status.textContent = `${detail.name} is ready to edit.`;
+            await loadTypeProperties(slug);
             fields.name.focus();
           } catch (error) {
             if (error.name !== "AbortError") {
@@ -695,7 +1051,9 @@
           searchRequest?.abort();
           detailRequest?.abort();
           saveRequest?.abort();
+          propertyRequest?.abort();
           editor.hidden = true;
+          if (propertyDialog.open) closePropertyDialog();
           closeResults();
           const query = input.value.trim();
           if (!query) {
@@ -753,6 +1111,95 @@
         });
 
         parentInput.addEventListener("blur", () => setTimeout(closeParentResults, 100));
+
+        createPropertyButton.addEventListener("click", () => openPropertyDialog());
+        cancelPropertyButton.addEventListener("click", closePropertyDialog);
+
+        propertyTypeSearch.addEventListener("input", () => {
+          clearTimeout(propertyTypeDebounceTimer);
+          propertyTypeSearchRequest?.abort();
+          propertyTypeRef.value = "";
+          closePropertyTypeResults();
+          const query = propertyTypeSearch.value.trim();
+          if (!query) {
+            propertyDialogStatus.textContent = "";
+            return;
+          }
+          propertyTypeDebounceTimer = setTimeout(() => searchPropertyTypes(query), 220);
+        });
+
+        propertyTypeSearch.addEventListener("keydown", event => {
+          if (propertyTypeResultsList.hidden) return;
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setActivePropertyTypeResult(propertyTypeSelectedIndex + 1);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setActivePropertyTypeResult(propertyTypeSelectedIndex - 1);
+          } else if (event.key === "Enter" && propertyTypeSelectedIndex >= 0) {
+            event.preventDefault();
+            selectPropertyType(propertyTypeResults[propertyTypeSelectedIndex]);
+          } else if (event.key === "Escape") {
+            closePropertyTypeResults();
+          }
+        });
+
+        propertyTypeSearch.addEventListener("blur", () => setTimeout(closePropertyTypeResults, 100));
+        propertyDialog.addEventListener("close", () => propertyTypeSearchRequest?.abort());
+
+        propertyForm.addEventListener("submit", async event => {
+          event.preventDefault();
+          const slug = selectedTypeSlug();
+          if (!slug) {
+            propertyDialogStatus.textContent = "Select a Type before editing properties.";
+            return;
+          }
+
+          let body;
+          try {
+            body = propertyPayload();
+          } catch (error) {
+            propertyDialogStatus.textContent = error.message;
+            return;
+          }
+
+          const originalName = propertyOriginalName.value;
+          const editing = Boolean(originalName);
+          const endpoint = editing
+            ? `/api/type/${encodeURIComponent(slug)}/property/${encodeURIComponent(originalName)}`
+            : `/api/type/${encodeURIComponent(slug)}/properties`;
+          propertyRequest?.abort();
+          propertyRequest = new AbortController();
+          savePropertyButton.disabled = true;
+          propertyDialogStatus.textContent = editing ? "Saving property…" : "Creating property…";
+          try {
+            const response = await fetch(endpoint, {
+              method: editing ? "PUT" : "POST",
+              headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(body),
+              signal: propertyRequest.signal
+            });
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(typeof error.detail === "string" ? error.detail : "Unable to save property.");
+            }
+            const saved = await response.json();
+            typeProperties = editing
+              ? typeProperties.map(item => item.name === originalName ? saved : item)
+              : [...typeProperties, saved];
+            typeProperties.sort((left, right) => left.name.localeCompare(right.name));
+            renderTypeProperties();
+            closePropertyDialog();
+            propertyStatus.textContent = `${saved.name} saved.`;
+          } catch (error) {
+            if (error.name !== "AbortError") propertyDialogStatus.textContent = error.message;
+          } finally {
+            savePropertyButton.disabled = false;
+          }
+        });
 
         form.addEventListener("input", event => {
           if (!event.target.readOnly && event.target !== parentInput) markUnsaved();

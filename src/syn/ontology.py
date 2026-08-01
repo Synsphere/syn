@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 
-ONTOLOGY_VERSION = 2
+ONTOLOGY_VERSION = 3
 QUESTION_DEFINITION = (
     "A proposition which can be answered, either yes or no, or with any other "
     "kind of response."
@@ -367,7 +367,7 @@ TYPE_DEFINITIONS: tuple[TypeDefinition, ...] = (
     _type("sensor", "instrument", module="epistemic"),
     _type("sampler", "instrument", module="epistemic"),
     _type("sample", "material-thing", module="epistemic"),
-    _type("observation-result", "information-object", module="epistemic"),
+    _type("observation-result", "ember", module="epistemic"),
     _type("measurement-result", "observation-result", module="epistemic"),
     _type("data-point", "observation-result", module="epistemic"),
     _type(
@@ -432,6 +432,42 @@ TYPE_DEFINITIONS: tuple[TypeDefinition, ...] = (
     _type("evaluation-record", "record", module="syn"),
     _type("attachment-record", "record", module="syn"),
     _type("karma-unit", "unit", module="syn"),
+    _type(
+        "cog",
+        "computational-process",
+        module="syn",
+        definition="The root type for computational processes represented as Cogs.",
+    ),
+    _type(
+        "ember",
+        "knowledge-record",
+        module="syn",
+        definition="The root type for known pieces of information represented as Embers.",
+    ),
+    _type(
+        "enigma",
+        "question",
+        module="syn",
+        definition="The root type for propositions represented as Enigmas that can receive a response.",
+    ),
+    _type(
+        "pondle",
+        "evaluation-record",
+        module="syn",
+        definition="The root type for objective evaluations represented as Pondles.",
+    ),
+    _type(
+        "snug",
+        "attachment-record",
+        module="syn",
+        definition="The root type for investments and emotional attachments represented as Snugs.",
+    ),
+    _type(
+        "om",
+        "karma-unit",
+        module="syn",
+        definition="The root type for units of Karma represented as Om.",
+    ),
 )
 
 

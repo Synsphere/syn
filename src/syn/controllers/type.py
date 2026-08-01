@@ -4,13 +4,13 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import Text, case, cast, or_, select
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from sqlalchemy import Integer, Text, case, cast, literal, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, aliased
 
-from ..models import InvalidTypeParentsError, Type, TypeParent
+from ..models import InvalidTypeParentsError, Type, TypeParent, TypeProperty
 from ..refs import ObjectRef
 from .common import databaseSession
 
@@ -27,6 +27,15 @@ TypeId = Annotated[
     ),
 ]
 TypeQuery = Annotated[str, Query(min_length=1, max_length=255)]
+PropertyName = Annotated[str, Path(min_length=1, max_length=1024)]
+TreeDepth = Annotated[
+    int,
+    Query(
+        ge=0,
+        le=100,
+        description="Maximum number of child edges to include below the starting Type.",
+    ),
+]
 
 
 class TypeResponse(BaseModel):
@@ -46,6 +55,12 @@ class TypeResponse(BaseModel):
 
 class TypeTreeResponse(TypeResponse):
     parents: list[TypeTreeResponse] = Field(default_factory=list)
+
+
+class TypeDescendantTreeResponse(BaseModel):
+    typeRef: str
+    name: str
+    children: list[TypeDescendantTreeResponse] = Field(default_factory=list)
 
 
 class TypeUpdateRequest(BaseModel):
@@ -80,6 +95,50 @@ class TypeUpdateRequest(BaseModel):
             if not reference.isLocal or reference.objectTable != "type":
                 raise ValueError("parents must contain only syn://type/ references")
         return values
+
+
+class TypePropertyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    type: str
+    name: str
+    propertyTypeRef: str
+    min: int
+    max: int
+
+
+class TypePropertyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=1024)
+    propertyTypeRef: str
+    min: int = Field(default=1, ge=0)
+    max: int = Field(default=1, ge=0)
+
+    @field_validator("name")
+    @classmethod
+    def nameMustNotBeBlank(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError("name must not be blank")
+        return name
+
+    @field_validator("propertyTypeRef")
+    @classmethod
+    def propertyTypeMustBeLocalTypeRef(cls, value: str) -> str:
+        try:
+            reference = ObjectRef(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(str(error)) from error
+        if not reference.isLocal or reference.objectTable != "type":
+            raise ValueError("propertyTypeRef must be a syn://type/ reference")
+        return str(reference)
+
+    @model_validator(mode="after")
+    def maximumMustNotBeBelowMinimum(self) -> TypePropertyRequest:
+        if self.max < self.min:
+            raise ValueError("max must be greater than or equal to min")
+        return self
 
 
 def escapedLike(value: str) -> str:
@@ -121,6 +180,68 @@ def typeParentTree(record: Type, session: Session) -> TypeTreeResponse:
     return build(record, frozenset({str(record.id)}))
 
 
+def typeChildTree(
+    record: Type,
+    session: Session,
+    depth: int,
+) -> TypeDescendantTreeResponse:
+    childrenByParent: dict[str, dict[str, Type]] = {}
+    if depth > 0:
+        childEdge = aliased(TypeParent)
+        descendantEdges = (
+            select(
+                TypeParent.parentRef.label("parentRef"),
+                TypeParent.childRef.label("childRef"),
+                literal(1, Integer).label("depth"),
+            )
+            .where(TypeParent.parentRef == record.id)
+            .cte("descendantEdges", recursive=True)
+        )
+        descendantEdges = descendantEdges.union(
+            select(
+                childEdge.parentRef,
+                childEdge.childRef,
+                (descendantEdges.c.depth + 1).label("depth"),
+            ).where(
+                childEdge.parentRef == descendantEdges.c.childRef,
+                descendantEdges.c.depth < depth,
+            )
+        )
+        statement = (
+            select(Type, descendantEdges.c.parentRef)
+            .join(descendantEdges, Type.id == descendantEdges.c.childRef)
+            .order_by(descendantEdges.c.depth, Type.name, Type.id)
+        )
+        for child, parentRef in session.execute(statement).all():
+            childrenByParent.setdefault(str(parentRef), {})[str(child.id)] = child
+
+    def build(
+        node: Type,
+        remainingDepth: int,
+        path: frozenset[str],
+    ) -> TypeDescendantTreeResponse:
+        childRecords = sorted(
+            childrenByParent.get(str(node.id), {}).values(),
+            key=lambda child: (child.name.casefold(), str(child.id)),
+        )
+        children = (
+            [
+                build(child, remainingDepth - 1, path | {str(child.id)})
+                for child in childRecords
+                if str(child.id) not in path
+            ]
+            if remainingDepth > 0
+            else []
+        )
+        return TypeDescendantTreeResponse(
+            typeRef=str(node.id),
+            name=node.name,
+            children=children,
+        )
+
+    return build(record, depth, frozenset({str(record.id)}))
+
+
 @router.get("/{id}", response_model=TypeTreeResponse)
 async def getType(
     id: TypeId, session: Session = Depends(databaseSession)
@@ -130,6 +251,19 @@ async def getType(
     if record is None:
         raise HTTPException(status_code=404, detail="Type not found")
     return typeParentTree(record, session)
+
+
+@router.get("/{id}/tree", response_model=TypeDescendantTreeResponse)
+async def getTypeTree(
+    id: TypeId,
+    depth: TreeDepth = 10,
+    session: Session = Depends(databaseSession),
+) -> TypeDescendantTreeResponse:
+    reference = ObjectRef.local("type", id)
+    record = session.get(Type, reference)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Type not found")
+    return typeChildTree(record, session, depth)
 
 
 @router.put("/{id}", response_model=TypeResponse)
@@ -169,6 +303,104 @@ async def updateType(
         session.rollback()
         raise HTTPException(status_code=409, detail="Unable to save type") from error
     return record
+
+
+def requireType(id: str, session: Session) -> tuple[ObjectRef, Type]:
+    reference = ObjectRef.local("type", id)
+    record = session.get(Type, reference)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Type not found")
+    return reference, record
+
+
+@router.get("/{id}/properties", response_model=list[TypePropertyResponse])
+async def getTypeProperties(
+    id: TypeId,
+    session: Session = Depends(databaseSession),
+) -> list[TypeProperty]:
+    reference, _record = requireType(id, session)
+    statement = (
+        select(TypeProperty)
+        .where(TypeProperty.type == reference)
+        .order_by(TypeProperty.name, TypeProperty.propertyTypeRef)
+    )
+    return list(session.scalars(statement).all())
+
+
+@router.post(
+    "/{id}/properties",
+    response_model=TypePropertyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def createTypeProperty(
+    id: TypeId,
+    body: TypePropertyRequest,
+    session: Session = Depends(databaseSession),
+) -> TypeProperty:
+    reference, _record = requireType(id, session)
+    if session.get(TypeProperty, (reference, body.name)) is not None:
+        raise HTTPException(status_code=409, detail="Type property already exists")
+
+    propertyRecord = TypeProperty(
+        type=reference,
+        name=body.name,
+        propertyTypeRef=ObjectRef(body.propertyTypeRef),
+        min=body.min,
+        max=body.max,
+    )
+    session.add(propertyRecord)
+    try:
+        session.commit()
+    except SQLAlchemyError as error:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Unable to create type property") from error
+    return propertyRecord
+
+
+@router.put("/{id}/property/{name:path}", response_model=TypePropertyResponse)
+async def updateTypeProperty(
+    id: TypeId,
+    name: PropertyName,
+    body: TypePropertyRequest,
+    session: Session = Depends(databaseSession),
+) -> TypeProperty:
+    reference, _record = requireType(id, session)
+    propertyRecord = session.get(TypeProperty, (reference, name))
+    if propertyRecord is None:
+        raise HTTPException(status_code=404, detail="Type property not found")
+    if body.name != name and session.get(TypeProperty, (reference, body.name)) is not None:
+        raise HTTPException(status_code=409, detail="Type property already exists")
+
+    propertyRecord.name = body.name
+    propertyRecord.propertyTypeRef = ObjectRef(body.propertyTypeRef)
+    propertyRecord.min = body.min
+    propertyRecord.max = body.max
+    try:
+        session.commit()
+    except SQLAlchemyError as error:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Unable to update type property") from error
+    return propertyRecord
+
+
+@router.delete("/{id}/property/{name:path}", status_code=status.HTTP_204_NO_CONTENT)
+async def deleteTypeProperty(
+    id: TypeId,
+    name: PropertyName,
+    session: Session = Depends(databaseSession),
+) -> Response:
+    reference, _record = requireType(id, session)
+    propertyRecord = session.get(TypeProperty, (reference, name))
+    if propertyRecord is None:
+        raise HTTPException(status_code=404, detail="Type property not found")
+
+    session.delete(propertyRecord)
+    try:
+        session.commit()
+    except SQLAlchemyError as error:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Unable to delete type property") from error
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("", response_model=list[TypeResponse])

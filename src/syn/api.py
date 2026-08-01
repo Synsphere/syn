@@ -66,6 +66,10 @@ def createApp(
     async def editTypes(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(request=request, name="editTypes.html")
 
+    @app.get("/exploreTypes", response_class=HTMLResponse, include_in_schema=False)
+    async def exploreTypes(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(request=request, name="exploreTypes.html")
+
     for router in primitiveRouters:
         app.include_router(router, prefix="/api")
 
