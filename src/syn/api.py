@@ -52,7 +52,7 @@ def createApp(
     app.state.processScheduler = scheduler
 
     for router in primitiveRouters:
-        app.include_router(router)
+        app.include_router(router, prefix="/api")
 
     def service(request: Request) -> ProcessScheduler:
         return request.app.state.processScheduler

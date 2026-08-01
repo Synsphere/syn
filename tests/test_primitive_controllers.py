@@ -16,14 +16,14 @@ def apiClient() -> TestClient:
 @pytest.mark.parametrize(
     ("path", "primitive"),
     [
-        ("/cogs", "cog"),
-        ("/embers", "ember"),
-        ("/enigmas", "enigma"),
-        ("/events", "event"),
-        ("/oms", "om"),
-        ("/pondles", "pondle"),
-        ("/snugs", "snug"),
-        ("/things", "thing"),
+        ("/api/cog", "cog"),
+        ("/api/ember", "ember"),
+        ("/api/enigma", "enigma"),
+        ("/api/event", "event"),
+        ("/api/om", "om"),
+        ("/api/pondle", "pondle"),
+        ("/api/snug", "snug"),
+        ("/api/thing", "thing"),
     ],
 )
 def test_primitive_get_returns_temporary_placeholder(
@@ -42,6 +42,24 @@ def test_primitive_get_returns_temporary_placeholder(
 def test_every_primitive_controller_is_published_in_openapi(apiClient: TestClient) -> None:
     schema = apiClient.get("/openapi.json").json()
     expectedPaths = {
+        "/api/cog",
+        "/api/ember",
+        "/api/enigma",
+        "/api/event",
+        "/api/om",
+        "/api/pondle",
+        "/api/snug",
+        "/api/thing",
+    }
+
+    assert expectedPaths <= schema["paths"].keys()
+    for path in expectedPaths:
+        assert set(schema["paths"][path]) == {"get"}
+
+
+@pytest.mark.parametrize(
+    "oldPath",
+    [
         "/cogs",
         "/embers",
         "/enigmas",
@@ -50,8 +68,9 @@ def test_every_primitive_controller_is_published_in_openapi(apiClient: TestClien
         "/pondles",
         "/snugs",
         "/things",
-    }
-
-    assert expectedPaths <= schema["paths"].keys()
-    for path in expectedPaths:
-        assert set(schema["paths"][path]) == {"get"}
+    ],
+)
+def test_unprefixed_plural_primitive_routes_are_not_exposed(
+    apiClient: TestClient, oldPath: str
+) -> None:
+    assert apiClient.get(oldPath).status_code == 404
