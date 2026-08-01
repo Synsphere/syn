@@ -129,8 +129,7 @@ uv run syn-server --host 0.0.0.0 --port 8080 --log-level debug
 
 Open `http://127.0.0.1:8000/` to view the Jinja-rendered Syn welcome page.
 Open `http://127.0.0.1:8000/editTypes` to search for a type and load its
-database-backed details into an editable form. Saving is intentionally deferred
-until the type API exposes a write endpoint.
+database-backed details into an editable form and save changes.
 
 The FastAPI application exposes placeholder `GET` controllers for each core
 database primitive while their persistence behavior is developed:
@@ -150,6 +149,7 @@ temporary response message. They are included in the generated OpenAPI schema.
 Types additionally expose database-backed read endpoints:
 
 - `GET /api/type/{id}` retrieves `syn://type/{id}`.
+- `PUT /api/type/{id}` updates the existing `syn://type/{id}` record.
 - `GET /api/type?query={search}` searches type names and IDs and returns up to
   ten relevance-ranked results.
 

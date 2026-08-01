@@ -31,11 +31,14 @@ def test_edit_types_view_has_accessible_autocomplete_controls() -> None:
     assert 'id="typeResults" role="listbox"' in html
 
 
-def test_edit_types_view_uses_both_type_api_calls() -> None:
+def test_edit_types_view_uses_type_read_and_update_api_calls() -> None:
     _, html = editTypesPage()
 
     assert "`/api/type?query=${encodeURIComponent(query)}`" in html
     assert "`/api/type/${encodeURIComponent(slug)}`" in html
+    assert 'method: "PUT"' in html
+    assert '"Content-Type": "application/json"' in html
+    assert "body: JSON.stringify(body)" in html
     assert "await response.json()" in html
 
 
@@ -60,6 +63,18 @@ def test_edit_types_view_contains_editable_type_fields() -> None:
     assert 'name="name" required' in html
     assert 'id="typeEditor"' in html
     assert 'id="typeEditor" class="panel" aria-labelledby="editorHeading" hidden' in html
+
+
+def test_edit_types_view_has_save_controls_and_client_validation() -> None:
+    _, html = editTypesPage()
+
+    assert '<button id="saveType" type="submit">Save changes</button>' in html
+    assert 'id="saveStatus"' in html
+    assert "JSON.parse(value)" in html
+    assert "Number.isFinite(Number(confidence))" in html
+    assert "Locality must be a whole number." in html
+    assert "Confidence must be between 0 and 1." in html
+    assert 'saveStatus.textContent = "Changes saved."' in html
 
 
 def test_edit_types_view_uses_safe_text_rendering_for_search_results() -> None:
