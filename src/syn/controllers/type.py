@@ -4,13 +4,13 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import Text, case, cast, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, aliased
 
-from ..models import InvalidTypeParentsError, Type, TypeParent
+from ..models import InvalidTypeParentsError, Type, TypeParent, TypeProperty
 from ..refs import ObjectRef
 from .common import databaseSession
 
@@ -27,6 +27,7 @@ TypeId = Annotated[
     ),
 ]
 TypeQuery = Annotated[str, Query(min_length=1, max_length=255)]
+PropertyName = Annotated[str, Path(min_length=1, max_length=1024)]
 
 
 class TypeResponse(BaseModel):
@@ -80,6 +81,50 @@ class TypeUpdateRequest(BaseModel):
             if not reference.isLocal or reference.objectTable != "type":
                 raise ValueError("parents must contain only syn://type/ references")
         return values
+
+
+class TypePropertyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    type: str
+    name: str
+    propertyTypeRef: str
+    min: int
+    max: int
+
+
+class TypePropertyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=1024)
+    propertyTypeRef: str
+    min: int = Field(default=1, ge=0)
+    max: int = Field(default=1, ge=0)
+
+    @field_validator("name")
+    @classmethod
+    def nameMustNotBeBlank(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError("name must not be blank")
+        return name
+
+    @field_validator("propertyTypeRef")
+    @classmethod
+    def propertyTypeMustBeLocalTypeRef(cls, value: str) -> str:
+        try:
+            reference = ObjectRef(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(str(error)) from error
+        if not reference.isLocal or reference.objectTable != "type":
+            raise ValueError("propertyTypeRef must be a syn://type/ reference")
+        return str(reference)
+
+    @model_validator(mode="after")
+    def maximumMustNotBeBelowMinimum(self) -> TypePropertyRequest:
+        if self.max < self.min:
+            raise ValueError("max must be greater than or equal to min")
+        return self
 
 
 def escapedLike(value: str) -> str:
@@ -169,6 +214,104 @@ async def updateType(
         session.rollback()
         raise HTTPException(status_code=409, detail="Unable to save type") from error
     return record
+
+
+def requireType(id: str, session: Session) -> tuple[ObjectRef, Type]:
+    reference = ObjectRef.local("type", id)
+    record = session.get(Type, reference)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Type not found")
+    return reference, record
+
+
+@router.get("/{id}/properties", response_model=list[TypePropertyResponse])
+async def getTypeProperties(
+    id: TypeId,
+    session: Session = Depends(databaseSession),
+) -> list[TypeProperty]:
+    reference, _record = requireType(id, session)
+    statement = (
+        select(TypeProperty)
+        .where(TypeProperty.type == reference)
+        .order_by(TypeProperty.name, TypeProperty.propertyTypeRef)
+    )
+    return list(session.scalars(statement).all())
+
+
+@router.post(
+    "/{id}/properties",
+    response_model=TypePropertyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def createTypeProperty(
+    id: TypeId,
+    body: TypePropertyRequest,
+    session: Session = Depends(databaseSession),
+) -> TypeProperty:
+    reference, _record = requireType(id, session)
+    if session.get(TypeProperty, (reference, body.name)) is not None:
+        raise HTTPException(status_code=409, detail="Type property already exists")
+
+    propertyRecord = TypeProperty(
+        type=reference,
+        name=body.name,
+        propertyTypeRef=ObjectRef(body.propertyTypeRef),
+        min=body.min,
+        max=body.max,
+    )
+    session.add(propertyRecord)
+    try:
+        session.commit()
+    except SQLAlchemyError as error:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Unable to create type property") from error
+    return propertyRecord
+
+
+@router.put("/{id}/property/{name:path}", response_model=TypePropertyResponse)
+async def updateTypeProperty(
+    id: TypeId,
+    name: PropertyName,
+    body: TypePropertyRequest,
+    session: Session = Depends(databaseSession),
+) -> TypeProperty:
+    reference, _record = requireType(id, session)
+    propertyRecord = session.get(TypeProperty, (reference, name))
+    if propertyRecord is None:
+        raise HTTPException(status_code=404, detail="Type property not found")
+    if body.name != name and session.get(TypeProperty, (reference, body.name)) is not None:
+        raise HTTPException(status_code=409, detail="Type property already exists")
+
+    propertyRecord.name = body.name
+    propertyRecord.propertyTypeRef = ObjectRef(body.propertyTypeRef)
+    propertyRecord.min = body.min
+    propertyRecord.max = body.max
+    try:
+        session.commit()
+    except SQLAlchemyError as error:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Unable to update type property") from error
+    return propertyRecord
+
+
+@router.delete("/{id}/property/{name:path}", status_code=status.HTTP_204_NO_CONTENT)
+async def deleteTypeProperty(
+    id: TypeId,
+    name: PropertyName,
+    session: Session = Depends(databaseSession),
+) -> Response:
+    reference, _record = requireType(id, session)
+    propertyRecord = session.get(TypeProperty, (reference, name))
+    if propertyRecord is None:
+        raise HTTPException(status_code=404, detail="Type property not found")
+
+    session.delete(propertyRecord)
+    try:
+        session.commit()
+    except SQLAlchemyError as error:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Unable to delete type property") from error
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("", response_model=list[TypeResponse])

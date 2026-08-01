@@ -26,7 +26,7 @@ from service_identity.pyopenssl import verify_hostname
 from sqlalchemy import text
 
 from .database import createEngine, createSessionFactory
-from .models import Ember, Event, EventTarget, ObjectRelationship, ObjectType
+from .models import Ember, Event, EventTarget, ObjectRelationship
 from .refs import ObjectRef
 
 FEED_WITNESS_HANDLER = "witness-stale-feeds"
@@ -154,7 +154,7 @@ def _oldestFeedCandidates(databaseUrl: str, limit: int) -> list[FeedCandidate]:
                         LIMIT 1
                     ) witness ON true
                     WHERE EXISTS (
-                              SELECT 1 FROM "objectTypesInherited" inherited
+                              SELECT 1 FROM "objectTypeAncestry" inherited
                               WHERE inherited."objectRef" = thing.id::"objectRef"
                                 AND inherited."typeRef" = 'syn://type/feed'::"typeRef"
                           )
@@ -375,12 +375,26 @@ def _buildWitnessObjects(
         "transferredBytes": len(witness.body),
     }
     objects: list[Any] = [
-        Event(id=eventRef, name="feedWitness", occurredAt=occurredAt, knowledge=eventKnowledge),
-        Ember(id=observationRef, name="httpObservationResult", knowledge=observationKnowledge),
-        Ember(id=networkStatsRef, name="networkStats", stats=networkStats, statsUpdated=occurredAt),
-        ObjectType(objectRef=eventRef, typeRef="syn://type/observation"),
-        ObjectType(objectRef=observationRef, typeRef="syn://type/observation-result"),
-        ObjectType(objectRef=networkStatsRef, typeRef="syn://type/network-measurement"),
+        Event(
+            id=eventRef,
+            typeRef="syn://type/observation",
+            name="feedWitness",
+            occurredAt=occurredAt,
+            knowledge=eventKnowledge,
+        ),
+        Ember(
+            id=observationRef,
+            typeRef="syn://type/observation-result",
+            name="httpObservationResult",
+            knowledge=observationKnowledge,
+        ),
+        Ember(
+            id=networkStatsRef,
+            typeRef="syn://type/network-measurement",
+            name="networkStats",
+            stats=networkStats,
+            statsUpdated=occurredAt,
+        ),
         EventTarget(eventRef=eventRef, targetRef=candidate.feedRef, role="feed", position=0),
         EventTarget(eventRef=eventRef, targetRef=candidate.url, role="feed-url", position=1),
         EventTarget(eventRef=eventRef, targetRef=observationRef, role="observation-result", position=2),

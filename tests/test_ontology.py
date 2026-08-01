@@ -16,7 +16,7 @@ from syn import (
 
 
 def test_curated_ontology_is_large_and_versioned() -> None:
-    assert ONTOLOGY_VERSION == 2
+    assert ONTOLOGY_VERSION == 3
     assert len(TYPE_DEFINITIONS) >= 350
     assert len(TYPE_BY_SLUG) == len(TYPE_DEFINITIONS)
 
@@ -29,6 +29,22 @@ def test_question_keeps_the_original_definition() -> None:
         "A proposition which can be answered, either yes or no, or with any other "
         "kind of response."
     )
+
+
+def test_every_primitive_root_has_the_expected_semantic_parent() -> None:
+    expected = {
+        "cog": "computational-process",
+        "ember": "knowledge-record",
+        "enigma": "question",
+        "event": "occurrent-thing",
+        "om": "karma-unit",
+        "pondle": "evaluation-record",
+        "snug": "attachment-record",
+    }
+    for primitive, parent in expected.items():
+        assert TYPE_BY_SLUG[primitive].parents == (parent,)
+
+    assert TYPE_BY_SLUG["observation-result"].parents == ("ember",)
 
 
 def test_polyhierarchy_contains_representative_multiple_parent_types() -> None:
