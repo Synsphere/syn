@@ -125,6 +125,28 @@
         color: #645022;
       }
 
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1.25rem;
+      }
+
+      button {
+        border: 0;
+        border-radius: .55rem;
+        padding: .72rem 1.1rem;
+        color: #fff;
+        background: #285f39;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover { background: #1f4d2e; }
+      button:focus { outline: 3px solid rgba(57, 117, 74, .22); }
+      button:disabled { cursor: wait; opacity: .6; }
+
       @media (max-width: 42rem) {
         main { padding: 2rem 0; }
         .grid { grid-template-columns: 1fr; }
@@ -203,7 +225,11 @@
               <input id="typeConfidenceUpdated" name="confidenceUpdated" readonly>
             </div>
           </div>
-          <p class="notice">Edits remain in this browser for now. The type API is read-only, so saving will be enabled when a write endpoint is available.</p>
+          <p class="notice">The ObjectRef identifies this record and cannot be changed. Audit timestamps update when their corresponding values change.</p>
+          <div class="actions">
+            <button id="saveType" type="submit">Save changes</button>
+            <span id="saveStatus" class="status" role="status" aria-live="polite"></span>
+          </div>
         </form>
       </section>
     </main>
@@ -214,6 +240,9 @@
         const resultsList = document.querySelector("#typeResults");
         const status = document.querySelector("#searchStatus");
         const editor = document.querySelector("#typeEditor");
+        const form = document.querySelector("#typeForm");
+        const saveButton = document.querySelector("#saveType");
+        const saveStatus = document.querySelector("#saveStatus");
         const fields = {
           id: document.querySelector("#typeId"),
           name: document.querySelector("#typeName"),
@@ -232,6 +261,7 @@
         let debounceTimer;
         let searchRequest;
         let detailRequest;
+        let saveRequest;
 
         const jsonValue = value => value == null ? "" : JSON.stringify(value, null, 2);
 
@@ -302,10 +332,43 @@
           editor.hidden = false;
         }
 
+        function parseJsonObject(field, label) {
+          const value = field.value.trim();
+          if (!value) return null;
+          const parsed = JSON.parse(value);
+          if (parsed == null || Array.isArray(parsed) || typeof parsed !== "object") {
+            throw new Error(`${label} must be a JSON object.`);
+          }
+          return parsed;
+        }
+
+        function updatePayload() {
+          const locality = fields.locality.value.trim();
+          const confidence = fields.confidence.value.trim();
+          if (locality && !Number.isInteger(Number(locality))) {
+            throw new Error("Locality must be a whole number.");
+          }
+          if (
+            confidence &&
+            (!Number.isFinite(Number(confidence)) || Number(confidence) < 0 || Number(confidence) > 1)
+          ) {
+            throw new Error("Confidence must be between 0 and 1.");
+          }
+          return {
+            name: fields.name.value,
+            wikipediaRef: fields.wikipediaRef.value.trim() || null,
+            locality: locality ? Number(locality) : null,
+            stats: parseJsonObject(fields.stats, "Stats"),
+            knowledge: parseJsonObject(fields.knowledge, "Knowledge"),
+            confidence: confidence ? Number(confidence) : null
+          };
+        }
+
         async function selectType(record) {
           closeResults();
           searchRequest?.abort();
           detailRequest?.abort();
+          saveRequest?.abort();
           input.value = record.name;
           status.textContent = `Loading ${record.name}…`;
           editor.hidden = true;
@@ -358,6 +421,7 @@
           clearTimeout(debounceTimer);
           searchRequest?.abort();
           detailRequest?.abort();
+          saveRequest?.abort();
           editor.hidden = true;
           closeResults();
           const query = input.value.trim();
@@ -385,6 +449,58 @@
         });
 
         input.addEventListener("blur", () => setTimeout(closeResults, 100));
+
+        form.addEventListener("input", event => {
+          if (!event.target.readOnly) saveStatus.textContent = "Unsaved changes.";
+        });
+
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          saveRequest?.abort();
+          let body;
+          try {
+            body = updatePayload();
+          } catch (error) {
+            saveStatus.textContent = error.message;
+            return;
+          }
+
+          const prefix = "syn://type/";
+          if (!fields.id.value.startsWith(prefix)) {
+            saveStatus.textContent = "This record does not have a valid local type ID.";
+            return;
+          }
+
+          saveRequest = new AbortController();
+          saveButton.disabled = true;
+          saveStatus.textContent = "Saving…";
+          try {
+            const slug = fields.id.value.slice(prefix.length);
+            const response = await fetch(`/api/type/${encodeURIComponent(slug)}`, {
+              method: "PUT",
+              headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(body),
+              signal: saveRequest.signal
+            });
+            if (!response.ok) {
+              const error = await response.json();
+              const detail = typeof error.detail === "string" ? error.detail : "Unable to save this type.";
+              throw new Error(detail);
+            }
+            const saved = await response.json();
+            populateForm(saved);
+            input.value = saved.name;
+            status.textContent = `${saved.name} is ready to edit.`;
+            saveStatus.textContent = "Changes saved.";
+          } catch (error) {
+            if (error.name !== "AbortError") saveStatus.textContent = error.message;
+          } finally {
+            saveButton.disabled = false;
+          }
+        });
       })();
     </script>
   </body>

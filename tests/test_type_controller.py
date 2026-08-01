@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from syn.api import createApp
@@ -73,6 +75,91 @@ def test_get_type_returns_not_found(apiClient: TestClient, databaseSession: Mock
     assert response.json() == {"detail": "Type not found"}
 
 
+def test_update_type_saves_existing_record_and_updates_changed_timestamps(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    previousUpdate = datetime(2025, 1, 1, tzinfo=UTC)
+    record = typeRecord("person", "Person")
+    record.stats = {"count": 1}
+    record.statsUpdated = previousUpdate
+    record.knowledgeUpdated = previousUpdate
+    record.confidenceUpdated = previousUpdate
+    databaseSession.get.return_value = record
+
+    response = apiClient.put(
+        "/api/type/person",
+        json={
+            "name": "  Human person  ",
+            "wikipediaRef": None,
+            "locality": 2,
+            "stats": {"count": 2},
+            "knowledge": record.knowledge,
+            "confidence": "0.5",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == "syn://type/person"
+    assert response.json()["name"] == "Human person"
+    assert record.wikipediaRef is None
+    assert record.locality == 2
+    assert record.stats == {"count": 2}
+    assert record.statsUpdated > previousUpdate
+    assert record.knowledgeUpdated == previousUpdate
+    assert record.confidence == Decimal("0.5")
+    assert record.confidenceUpdated > previousUpdate
+    databaseSession.get.assert_called_once_with(Type, ObjectRef("syn://type/person"))
+    databaseSession.commit.assert_called_once_with()
+    databaseSession.rollback.assert_not_called()
+
+
+def test_update_type_returns_not_found_without_committing(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    databaseSession.get.return_value = None
+
+    response = apiClient.put("/api/type/missing", json={"name": "Missing"})
+
+    assert response.status_code == 404
+    databaseSession.commit.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"name": ""},
+        {"name": "   "},
+        {"name": "Person", "confidence": -0.01},
+        {"name": "Person", "confidence": 1.01},
+        {"name": "Person", "id": "syn://type/other"},
+        {"name": "Person", "stats": []},
+        {"name": "Person", "knowledge": "not-json"},
+    ],
+)
+def test_update_type_rejects_invalid_bodies(
+    apiClient: TestClient, databaseSession: Mock, body: dict
+) -> None:
+    response = apiClient.put("/api/type/person", json=body)
+
+    assert response.status_code == 422
+    databaseSession.get.assert_not_called()
+    databaseSession.commit.assert_not_called()
+
+
+def test_update_type_rolls_back_database_errors(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    databaseSession.get.return_value = typeRecord("person", "Person")
+    databaseSession.commit.side_effect = SQLAlchemyError("database rejected update")
+
+    response = apiClient.put("/api/type/person", json={"name": "Updated"})
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Unable to save type"}
+    databaseSession.rollback.assert_called_once_with()
+
+
 def test_type_controller_closes_its_database_session() -> None:
     session = Mock(spec=Session)
     session.get.return_value = None
@@ -89,6 +176,11 @@ def test_type_controller_closes_its_database_session() -> None:
 @pytest.mark.parametrize("typeId", ["Person", "bad.slug", "-leading", "trailing-"])
 def test_get_type_rejects_invalid_slugs(apiClient: TestClient, typeId: str) -> None:
     assert apiClient.get(f"/api/type/{typeId}").status_code == 422
+
+
+@pytest.mark.parametrize("typeId", ["Person", "bad.slug", "-leading", "trailing-"])
+def test_update_type_rejects_invalid_slugs(apiClient: TestClient, typeId: str) -> None:
+    assert apiClient.put(f"/api/type/{typeId}", json={"name": "Person"}).status_code == 422
 
 
 def test_search_types_returns_serialized_records(
@@ -161,4 +253,4 @@ def test_type_routes_are_published_in_openapi(apiClient: TestClient) -> None:
     paths = apiClient.get("/openapi.json").json()["paths"]
 
     assert set(paths["/api/type"]) == {"get"}
-    assert set(paths["/api/type/{id}"]) == {"get"}
+    assert set(paths["/api/type/{id}"]) == {"get", "put"}
