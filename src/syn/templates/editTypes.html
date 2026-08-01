@@ -79,7 +79,8 @@
       input[readonly] { color: #59665d; background: #f0f3f0; }
       textarea { min-height: 8rem; resize: vertical; font-family: ui-monospace, monospace; }
 
-      #typeResults {
+      #typeResults,
+      #parentResults {
         position: absolute;
         z-index: 2;
         top: calc(100% + .35rem);
@@ -95,7 +96,10 @@
         list-style: none;
       }
 
-      #typeResults[hidden], #typeEditor[hidden] { display: none; }
+      #typeResults[hidden],
+      #parentResults[hidden],
+      #parentEmpty[hidden],
+      #typeEditor[hidden] { display: none; }
 
       [role="option"] {
         padding: .65rem .7rem;
@@ -116,6 +120,53 @@
       }
 
       .full { grid-column: 1 / -1; }
+
+      fieldset.full {
+        min-width: 0;
+        margin: 0;
+        padding: 1rem;
+        border: 1px solid #cad5cc;
+        border-radius: .7rem;
+      }
+
+      legend {
+        padding: 0 .35rem;
+        color: #35443a;
+        font-weight: 700;
+      }
+
+      .field-help { margin: 0 0 .9rem; font-size: .9rem; }
+
+      .parent-list {
+        display: grid;
+        gap: .65rem;
+        margin: 0 0 1rem;
+        padding: 0;
+        list-style: none;
+      }
+
+      .parent-record {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .8rem;
+        border: 1px solid #d6dfd8;
+        border-radius: .6rem;
+        background: #f7faf7;
+      }
+
+      .parent-paths { display: grid; gap: .25rem; min-width: 0; }
+      .parent-path { color: #27362c; overflow-wrap: anywhere; }
+
+      .remove-parent {
+        flex: 0 0 auto;
+        padding: .5rem .7rem;
+        color: #7d2525;
+        background: #f8e5e5;
+      }
+
+      .remove-parent:hover { background: #f0cccc; }
 
       .notice {
         margin: 1.25rem 0 0;
@@ -224,6 +275,27 @@
               <label for="typeConfidenceUpdated">Confidence updated</label>
               <input id="typeConfidenceUpdated" name="confidenceUpdated" readonly>
             </div>
+            <fieldset class="full">
+              <legend>Parent types</legend>
+              <p class="field-help">Direct parents are shown with their ancestry. Additions and removals are applied when you save the type.</p>
+              <ul id="parentList" class="parent-list" aria-label="Current direct parents"></ul>
+              <p id="parentEmpty" class="field-help">This type has no direct parents.</p>
+              <div class="search">
+                <label for="parentSearch">Add a parent type</label>
+                <input
+                  id="parentSearch"
+                  type="search"
+                  role="combobox"
+                  autocomplete="off"
+                  aria-autocomplete="list"
+                  aria-controls="parentResults"
+                  aria-expanded="false"
+                  placeholder="Search for a parent by name or ID"
+                >
+                <ul id="parentResults" role="listbox" hidden></ul>
+              </div>
+              <p id="parentStatus" class="status" role="status" aria-live="polite"></p>
+            </fieldset>
           </div>
           <p class="notice">The ObjectRef identifies this record and cannot be changed. Audit timestamps update when their corresponding values change.</p>
           <div class="actions">
@@ -243,6 +315,11 @@
         const form = document.querySelector("#typeForm");
         const saveButton = document.querySelector("#saveType");
         const saveStatus = document.querySelector("#saveStatus");
+        const parentInput = document.querySelector("#parentSearch");
+        const parentResultsList = document.querySelector("#parentResults");
+        const parentList = document.querySelector("#parentList");
+        const parentEmpty = document.querySelector("#parentEmpty");
+        const parentStatus = document.querySelector("#parentStatus");
         const fields = {
           id: document.querySelector("#typeId"),
           name: document.querySelector("#typeName"),
@@ -262,8 +339,19 @@
         let searchRequest;
         let detailRequest;
         let saveRequest;
+        let directParents = [];
+        let parentResults = [];
+        let parentSelectedIndex = -1;
+        let parentDebounceTimer;
+        let parentSearchRequest;
+        let parentDetailRequest;
 
         const jsonValue = value => value == null ? "" : JSON.stringify(value, null, 2);
+        const localTypePrefix = "syn://type/";
+
+        function markUnsaved() {
+          saveStatus.textContent = "Unsaved changes.";
+        }
 
         function closeResults() {
           resultsList.hidden = true;
@@ -318,6 +406,182 @@
           status.textContent = `${records.length} matching type${records.length === 1 ? "" : "s"}.`;
         }
 
+        function closeParentResults() {
+          parentResultsList.hidden = true;
+          parentInput.setAttribute("aria-expanded", "false");
+          parentInput.removeAttribute("aria-activedescendant");
+          parentSelectedIndex = -1;
+        }
+
+        function setActiveParentResult(index) {
+          if (!parentResults.length) return;
+          parentSelectedIndex = (index + parentResults.length) % parentResults.length;
+          const options = parentResultsList.querySelectorAll('[role="option"]');
+          options.forEach((option, optionIndex) => {
+            option.setAttribute("aria-selected", String(optionIndex === parentSelectedIndex));
+          });
+          const active = options[parentSelectedIndex];
+          parentInput.setAttribute("aria-activedescendant", active.id);
+          active.scrollIntoView({ block: "nearest" });
+        }
+
+        function parentPaths(record, visited = new Set()) {
+          const label = record.name || record.id;
+          if (visited.has(record.id)) return [[label]];
+          const nextVisited = new Set(visited);
+          nextVisited.add(record.id);
+          const ancestors = Array.isArray(record.parents) ? record.parents : [];
+          if (!ancestors.length) return [[label]];
+          return ancestors.flatMap(ancestor =>
+            parentPaths(ancestor, nextVisited).map(path => [label, ...path])
+          );
+        }
+
+        function hasAncestor(record, ancestorId) {
+          const ancestors = Array.isArray(record.parents) ? record.parents : [];
+          return ancestors.some(ancestor =>
+            ancestor.id === ancestorId || hasAncestor(ancestor, ancestorId)
+          );
+        }
+
+        function renderParents() {
+          parentList.replaceChildren();
+          parentEmpty.hidden = directParents.length > 0;
+          directParents.forEach(parent => {
+            const item = document.createElement("li");
+            item.className = "parent-record";
+
+            const paths = document.createElement("div");
+            paths.className = "parent-paths";
+            parentPaths(parent).forEach(labels => {
+              const summary = document.createElement("span");
+              summary.className = "parent-path";
+              summary.textContent = labels.join(" → ");
+              paths.append(summary);
+            });
+
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "remove-parent";
+            remove.textContent = "Remove";
+            remove.setAttribute("aria-label", `Remove ${parent.name} as a direct parent`);
+            remove.addEventListener("click", () => {
+              directParents = directParents.filter(record => record.id !== parent.id);
+              renderParents();
+              parentStatus.textContent = `${parent.name} will be removed when you save.`;
+              markUnsaved();
+              parentInput.focus();
+            });
+
+            item.append(paths, remove);
+            parentList.append(item);
+          });
+        }
+
+        function renderParentResults(records) {
+          const unavailable = new Set([fields.id.value, ...directParents.map(parent => parent.id)]);
+          parentResults = records.filter(record => !unavailable.has(record.id));
+          parentResultsList.replaceChildren();
+          if (!parentResults.length) {
+            closeParentResults();
+            parentStatus.textContent = "No eligible parent types found.";
+            return;
+          }
+
+          parentResults.forEach((record, index) => {
+            const option = document.createElement("li");
+            option.id = `parent-option-${index}`;
+            option.setAttribute("role", "option");
+            option.setAttribute("aria-selected", "false");
+
+            const name = document.createElement("span");
+            name.className = "result-name";
+            name.textContent = record.name;
+            const id = document.createElement("span");
+            id.className = "result-id";
+            id.textContent = record.id;
+            option.append(name, id);
+            option.addEventListener("mousedown", event => {
+              event.preventDefault();
+              addParent(record);
+            });
+            parentResultsList.append(option);
+          });
+
+          parentResultsList.hidden = false;
+          parentInput.setAttribute("aria-expanded", "true");
+          parentStatus.textContent = `${parentResults.length} eligible parent type${parentResults.length === 1 ? "" : "s"}.`;
+        }
+
+        async function addParent(record) {
+          closeParentResults();
+          parentSearchRequest?.abort();
+          parentDetailRequest?.abort();
+          if (!record.id.startsWith(localTypePrefix)) {
+            parentStatus.textContent = "The selected result does not have a valid local type ID.";
+            return;
+          }
+          if (record.id === fields.id.value) {
+            parentStatus.textContent = "A type cannot be its own parent.";
+            return;
+          }
+          if (directParents.some(parent => parent.id === record.id)) {
+            parentStatus.textContent = `${record.name} is already a direct parent.`;
+            return;
+          }
+
+          parentStatus.textContent = `Loading ${record.name}…`;
+          parentDetailRequest = new AbortController();
+          try {
+            const slug = record.id.slice(localTypePrefix.length);
+            const response = await fetch(`/api/type/${encodeURIComponent(slug)}`, {
+              headers: { Accept: "application/json" },
+              signal: parentDetailRequest.signal
+            });
+            if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+            const parent = await response.json();
+            if (hasAncestor(parent, fields.id.value)) {
+              parentStatus.textContent = `${parent.name} is a descendant of this type and cannot be its parent.`;
+              return;
+            }
+            const redundant = directParents.find(existing =>
+              hasAncestor(parent, existing.id) || hasAncestor(existing, parent.id)
+            );
+            if (redundant) {
+              parentStatus.textContent = `${parent.name} and ${redundant.name} have an ancestor relationship; choose only the more specific parent.`;
+              return;
+            }
+            directParents.push(parent);
+            renderParents();
+            parentInput.value = "";
+            parentStatus.textContent = `${parent.name} will be added when you save.`;
+            markUnsaved();
+          } catch (error) {
+            if (error.name !== "AbortError") {
+              parentStatus.textContent = "Unable to load that parent type. Please try again.";
+            }
+          }
+        }
+
+        async function searchParentTypes(query) {
+          parentSearchRequest?.abort();
+          parentSearchRequest = new AbortController();
+          parentStatus.textContent = "Searching…";
+          try {
+            const response = await fetch(`/api/type?query=${encodeURIComponent(query)}`, {
+              headers: { Accept: "application/json" },
+              signal: parentSearchRequest.signal
+            });
+            if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+            renderParentResults(await response.json());
+          } catch (error) {
+            if (error.name !== "AbortError") {
+              closeParentResults();
+              parentStatus.textContent = "Unable to search parent types. Please try again.";
+            }
+          }
+        }
+
         function populateForm(record) {
           fields.id.value = record.id;
           fields.name.value = record.name;
@@ -329,6 +593,13 @@
           fields.statsUpdated.value = record.statsUpdated ?? "";
           fields.knowledgeUpdated.value = record.knowledgeUpdated ?? "";
           fields.confidenceUpdated.value = record.confidenceUpdated ?? "";
+          if (Array.isArray(record.parents)) {
+            directParents = record.parents;
+            renderParents();
+            parentInput.value = "";
+            parentStatus.textContent = "";
+            closeParentResults();
+          }
           editor.hidden = false;
         }
 
@@ -360,7 +631,8 @@
             locality: locality ? Number(locality) : null,
             stats: parseJsonObject(fields.stats, "Stats"),
             knowledge: parseJsonObject(fields.knowledge, "Knowledge"),
-            confidence: confidence ? Number(confidence) : null
+            confidence: confidence ? Number(confidence) : null,
+            parents: directParents.map(parent => parent.id)
           };
         }
 
@@ -369,19 +641,20 @@
           searchRequest?.abort();
           detailRequest?.abort();
           saveRequest?.abort();
+          parentSearchRequest?.abort();
+          parentDetailRequest?.abort();
           input.value = record.name;
           status.textContent = `Loading ${record.name}…`;
           editor.hidden = true;
 
-          const prefix = "syn://type/";
-          if (!record.id.startsWith(prefix)) {
+          if (!record.id.startsWith(localTypePrefix)) {
             status.textContent = "The selected result does not have a valid local type ID.";
             return;
           }
 
           detailRequest = new AbortController();
           try {
-            const slug = record.id.slice(prefix.length);
+            const slug = record.id.slice(localTypePrefix.length);
             const response = await fetch(`/api/type/${encodeURIComponent(slug)}`, {
               headers: { Accept: "application/json" },
               signal: detailRequest.signal
@@ -450,8 +723,39 @@
 
         input.addEventListener("blur", () => setTimeout(closeResults, 100));
 
+        parentInput.addEventListener("input", () => {
+          clearTimeout(parentDebounceTimer);
+          parentSearchRequest?.abort();
+          parentDetailRequest?.abort();
+          closeParentResults();
+          const query = parentInput.value.trim();
+          if (!query) {
+            parentStatus.textContent = "";
+            return;
+          }
+          parentDebounceTimer = setTimeout(() => searchParentTypes(query), 220);
+        });
+
+        parentInput.addEventListener("keydown", event => {
+          if (parentResultsList.hidden) return;
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setActiveParentResult(parentSelectedIndex + 1);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setActiveParentResult(parentSelectedIndex - 1);
+          } else if (event.key === "Enter" && parentSelectedIndex >= 0) {
+            event.preventDefault();
+            addParent(parentResults[parentSelectedIndex]);
+          } else if (event.key === "Escape") {
+            closeParentResults();
+          }
+        });
+
+        parentInput.addEventListener("blur", () => setTimeout(closeParentResults, 100));
+
         form.addEventListener("input", event => {
-          if (!event.target.readOnly) saveStatus.textContent = "Unsaved changes.";
+          if (!event.target.readOnly && event.target !== parentInput) markUnsaved();
         });
 
         form.addEventListener("submit", async event => {
@@ -465,8 +769,7 @@
             return;
           }
 
-          const prefix = "syn://type/";
-          if (!fields.id.value.startsWith(prefix)) {
+          if (!fields.id.value.startsWith(localTypePrefix)) {
             saveStatus.textContent = "This record does not have a valid local type ID.";
             return;
           }
@@ -475,7 +778,7 @@
           saveButton.disabled = true;
           saveStatus.textContent = "Saving…";
           try {
-            const slug = fields.id.value.slice(prefix.length);
+            const slug = fields.id.value.slice(localTypePrefix.length);
             const response = await fetch(`/api/type/${encodeURIComponent(slug)}`, {
               method: "PUT",
               headers: {
