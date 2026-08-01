@@ -11,10 +11,10 @@ from pathlib import Path
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 from zipfile import ZipFile
 
-from sqlalchemy import Connection, delete, func, literal_column, select
+from sqlalchemy import Connection, func, literal_column, select, text
 from sqlalchemy.dialects.postgresql import insert as postgresqlInsert
 
-from .models import ObjectType, Thing
+from .models import Thing
 from .ontology import TYPE_DEFINITIONS, TypeDefinition, validateOntology
 from .refs import ObjectRef, normalizeSlug
 
@@ -633,10 +633,23 @@ def importFeedPlan(connection: Connection, plan: FeedImportPlan) -> FeedImportRe
             connection.scalars(select(Thing.id).where(Thing.id.in_(chunk)))
         )
 
+    typeRefsByCombination: dict[tuple[str, ...], str] = {}
+    for typeSlugs in sorted({record.typeSlugs for record in plan.records}):
+        typeRefsByCombination[typeSlugs] = str(
+            connection.scalar(
+                text(
+                    'SELECT "resolveTypeIntersection"('
+                    'CAST(:parents AS "typeRef"[]))'
+                ),
+                {"parents": [f"syn://type/{slug}" for slug in typeSlugs]},
+            )
+        )
+
     for chunk in _chunks(plan.records, 250):
         rows = [
             {
                 "id": str(record.objectRef),
+                "typeRef": typeRefsByCombination[record.typeSlugs],
                 "name": record.name,
                 "knowledge": record.knowledge,
             }
@@ -647,6 +660,7 @@ def importFeedPlan(connection: Connection, plan: FeedImportPlan) -> FeedImportRe
             statement.on_conflict_do_update(
                 index_elements=[Thing.id],
                 set_={
+                    "typeRef": statement.excluded.typeRef,
                     "name": statement.excluded.name,
                     "knowledge": func.coalesce(
                         Thing.knowledge, literal_column("'{}'::jsonb")
@@ -657,30 +671,6 @@ def importFeedPlan(connection: Connection, plan: FeedImportPlan) -> FeedImportRe
             )
         )
 
-    for chunk in _chunks(objectRefs, 500):
-        connection.execute(
-            delete(ObjectType).where(
-                ObjectType.objectRef.in_(chunk),
-                ObjectType.typeRef.in_(FEED_TYPE_REFS),
-            )
-        )
-
-    classifications = tuple(
-        {
-            "objectRef": str(record.objectRef),
-            "typeRef": f"syn://type/{typeSlug}",
-        }
-        for record in plan.records
-        for typeSlug in record.typeSlugs
-    )
-    for chunk in _chunks(classifications, 1000):
-        statement = postgresqlInsert(ObjectType.__table__).values(chunk)
-        connection.execute(
-            statement.on_conflict_do_nothing(
-                index_elements=[ObjectType.objectRef, ObjectType.typeRef]
-            )
-        )
-
     insertedCount = len(objectRefs) - len(existing)
     return FeedImportResult(
         sourceCount=plan.sourceCount,
@@ -688,7 +678,7 @@ def importFeedPlan(connection: Connection, plan: FeedImportPlan) -> FeedImportRe
         duplicateCount=plan.duplicateCount,
         insertedCount=insertedCount,
         updatedCount=len(existing),
-        classificationCount=len(classifications),
+        classificationCount=len(plan.records),
     )
 
 

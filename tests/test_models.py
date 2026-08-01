@@ -91,6 +91,14 @@ def test_wikipedia_models_have_wikipedia_ref(model: type[Base]) -> None:
     assert "wikipediaRef" in model.__table__.columns
 
 
+def test_thing_has_one_required_type_reference() -> None:
+    typeRef = Thing.__table__.c.typeRef
+
+    assert typeRef.nullable is False
+    assert str(typeRef.type.compile(dialect=postgresql.dialect())) == '"typeRef"'
+    assert "thingsTypeRefIdx" in {index.name for index in Thing.__table__.indexes}
+
+
 @pytest.mark.parametrize("model", [Event, Ember, Cog, Enigma, Pondle, Snug, Om])
 def test_non_wikipedia_models_do_not_gain_wikipedia_ref(model: type[Base]) -> None:
     assert "wikipediaRef" not in model.__table__.columns
@@ -133,6 +141,10 @@ def test_linking_table_primary_keys_match_schema() -> None:
         "targetRef",
         "relationshipType",
     ]
+    assert any(
+        constraint.name == "objectTypesNoThingCheck"
+        for constraint in ObjectType.__table__.constraints
+    )
 
 
 def test_json_defaults_match_database_contract() -> None:
@@ -151,12 +163,14 @@ def test_chronicle_identity_and_enum_match_database_contract() -> None:
 def test_models_can_be_constructed_with_python_object_refs() -> None:
     thing = Thing(
         id=ObjectRef.local("thing", "example"),
+        typeRef=ObjectRef.local("type", "thing"),
         name="Example",
         confidence=Decimal("0.5"),
         stats={"count": 1},
         statsUpdated=datetime.now(UTC),
     )
     assert thing.id == "syn://thing/example"
+    assert thing.typeRef == "syn://type/thing"
     assert thing.name == "Example"
     assert thing.stats == {"count": 1}
 

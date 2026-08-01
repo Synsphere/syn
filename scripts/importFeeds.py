@@ -39,7 +39,7 @@ def main() -> None:
     print(f"Duplicate rows merged: {result.duplicateCount}")
     print(f"Things inserted: {result.insertedCount}")
     print(f"Things updated: {result.updatedCount}")
-    print(f"Direct type classifications: {result.classificationCount}")
+    print(f"Thing type assignments: {result.classificationCount}")
 
 
 if __name__ == "__main__":
