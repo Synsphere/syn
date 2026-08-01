@@ -6,6 +6,7 @@ from .om import router as omRouter
 from .pondle import router as pondleRouter
 from .snug import router as snugRouter
 from .thing import router as thingRouter
+from .type import router as typeRouter
 
 
 primitiveRouters = (
@@ -17,6 +18,7 @@ primitiveRouters = (
     pondleRouter,
     snugRouter,
     thingRouter,
+    typeRouter,
 )
 
 __all__ = [
@@ -29,4 +31,5 @@ __all__ = [
     "primitiveRouters",
     "snugRouter",
     "thingRouter",
+    "typeRouter",
 ]
