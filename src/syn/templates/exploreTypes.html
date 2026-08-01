@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Explore types · Syn</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #18201b;
+        background: #eef3ef;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(104, 154, 113, .18), transparent 34rem),
+          #eef3ef;
+      }
+
+      button,
+      input { font: inherit; }
+
+      button {
+        min-height: 2.55rem;
+        padding: .65rem 1rem;
+        border: 0;
+        border-radius: .55rem;
+        color: #fff;
+        background: #25683b;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      button:hover { background: #1c542f; }
+      button:focus-visible,
+      input:focus-visible { outline: 3px solid rgba(55, 127, 77, .3); outline-offset: 2px; }
+      button.secondary { color: #285f39; background: #e3efe5; }
+      button.secondary:hover { background: #cee3d2; }
+
+      main {
+        width: min(96rem, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: 2rem 0;
+      }
+
+      .heading-row,
+      .toolbar,
+      .legend {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .75rem;
+      }
+
+      .heading-row { justify-content: space-between; margin-bottom: 1rem; }
+      h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: -.04em; }
+      .lede { max-width: 60rem; margin: .45rem 0 0; color: #5b6860; }
+
+      .panel {
+        border: 1px solid #cbd6ce;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, .94);
+        box-shadow: 0 .8rem 2.5rem rgba(31, 62, 40, .08);
+      }
+
+      .controls { padding: 1rem 1.2rem; margin-bottom: 1rem; }
+      .toolbar { justify-content: space-between; }
+      .control-group { display: flex; align-items: end; flex-wrap: wrap; gap: .65rem; }
+      label { display: grid; gap: .3rem; color: #435047; font-size: .82rem; font-weight: 700; }
+      input[type="number"] {
+        width: 7rem;
+        min-height: 2.55rem;
+        padding: .55rem .7rem;
+        border: 1px solid #afbeb3;
+        border-radius: .5rem;
+        color: #18201b;
+        background: #fff;
+      }
+
+      .status { min-height: 1.3rem; margin: .75rem 0 0; color: #5b6860; }
+      .status.error { color: #982f2f; }
+
+      .tree-panel { position: relative; min-height: 42rem; overflow: hidden; }
+      #typeTree { display: block; width: 100%; min-height: 42rem; touch-action: none; }
+      .empty-state {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+        color: #5b6860;
+        text-align: center;
+        pointer-events: none;
+      }
+      .empty-state[hidden] { display: none; }
+
+      .link {
+        fill: none;
+        stroke: #bdc9c0;
+        stroke-width: 1.5px;
+      }
+
+      .node { cursor: pointer; }
+      .node circle { fill: #fff; stroke: #35774a; stroke-width: 2px; }
+      .node.branch circle { fill: #dcecdf; }
+      .node.primitive circle { fill: #25683b; stroke: #174727; stroke-width: 3px; }
+      .node text { fill: #253029; font-size: 13px; paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
+      .node.primitive text { fill: #174727; font-size: 15px; font-weight: 800; }
+      .node:focus-visible circle { stroke: #d17d19; stroke-width: 4px; }
+
+      .legend { margin-top: .85rem; color: #5b6860; font-size: .82rem; }
+      .legend-item { display: inline-flex; align-items: center; gap: .4rem; }
+      .swatch { width: .8rem; height: .8rem; border: 2px solid #35774a; border-radius: 50%; background: #fff; }
+      .swatch.branch { background: #dcecdf; }
+      .swatch.primitive { background: #25683b; border-color: #174727; }
+
+      @media (max-width: 48rem) {
+        main { width: min(100% - 1rem, 96rem); padding: .75rem 0; }
+        .tree-panel, #typeTree { min-height: 34rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="heading-row">
+        <div>
+          <h1>Explore types</h1>
+          <p class="lede">Browse the descendant trees rooted at Syn's eight object primitives. Click a node to collapse or reveal its children; drag to pan and scroll to zoom.</p>
+        </div>
+        <a href="/editTypes">Edit types</a>
+      </div>
+
+      <section class="panel controls" aria-label="Tree controls">
+        <div class="toolbar">
+          <div class="control-group">
+            <label for="treeDepth">
+              API depth
+              <input id="treeDepth" type="number" min="0" max="100" step="1" value="10">
+            </label>
+            <button id="reloadTree" type="button">Reload trees</button>
+          </div>
+          <div class="control-group">
+            <button id="expandAll" class="secondary" type="button" disabled>Expand all</button>
+            <button id="collapseAll" class="secondary" type="button" disabled>Collapse all</button>
+            <button id="resetView" class="secondary" type="button" disabled>Reset view</button>
+          </div>
+        </div>
+        <p id="treeStatus" class="status" role="status" aria-live="polite">Loading primitive Type trees…</p>
+        <div class="legend" aria-label="Diagram legend">
+          <span class="legend-item"><span class="swatch primitive"></span>Primitive root</span>
+          <span class="legend-item"><span class="swatch branch"></span>Collapsed children</span>
+          <span class="legend-item"><span class="swatch"></span>Expanded or leaf Type</span>
+        </div>
+      </section>
+
+      <section class="panel tree-panel" aria-label="Type hierarchy diagram">
+        <svg id="typeTree" role="img" aria-labelledby="treeTitle treeDescription">
+          <title id="treeTitle">Syn primitive Type descendant trees</title>
+          <desc id="treeDescription">A collapsible diagram of Type relationships. Each primitive Type is a separate root node.</desc>
+        </svg>
+        <p id="treeEmpty" class="empty-state">Loading the Type hierarchy…</p>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script>
+      (() => {
+        const primitiveTypes = ["cog", "ember", "enigma", "event", "om", "pondle", "snug", "thing"];
+        const depthInput = document.querySelector("#treeDepth");
+        const reloadButton = document.querySelector("#reloadTree");
+        const expandButton = document.querySelector("#expandAll");
+        const collapseButton = document.querySelector("#collapseAll");
+        const resetButton = document.querySelector("#resetView");
+        const status = document.querySelector("#treeStatus");
+        const empty = document.querySelector("#treeEmpty");
+        const svgElement = document.querySelector("#typeTree");
+
+        if (!window.d3) {
+          status.textContent = "D3 could not be loaded. Check the network connection and reload the page.";
+          status.classList.add("error");
+          empty.textContent = "The diagram library is unavailable.";
+          return;
+        }
+
+        const svg = d3.select(svgElement);
+        const viewport = svg.append("g").attr("class", "viewport");
+        const linksLayer = viewport.append("g").attr("class", "links");
+        const nodesLayer = viewport.append("g").attr("class", "nodes");
+        const layout = d3.tree().nodeSize([38, 250]);
+        const diagonal = d3.linkHorizontal().x(node => node.y).y(node => node.x);
+        const zoom = d3.zoom().scaleExtent([.25, 3]).on("zoom", event => {
+          viewport.attr("transform", event.transform);
+        });
+        svg.call(zoom);
+
+        let root = null;
+        let request = null;
+        let nodeSequence = 0;
+
+        function treeEndpoint(slug, depth) {
+          return `/api/type/${encodeURIComponent(slug)}/tree?depth=${depth}`;
+        }
+
+        async function fetchTree(slug, depth, signal) {
+          const response = await fetch(treeEndpoint(slug, depth), {
+            headers: { Accept: "application/json" },
+            signal,
+          });
+          if (!response.ok) {
+            const problem = await response.json().catch(() => ({}));
+            throw new Error(problem.detail || `Unable to load syn://type/${slug}.`);
+          }
+          return response.json();
+        }
+
+        function collapse(node) {
+          if (!node.children) return;
+          node._children = node.children;
+          node._children.forEach(collapse);
+          node.children = null;
+        }
+
+        function expand(node) {
+          if (node._children) {
+            node.children = node._children;
+            node._children = null;
+          }
+          (node.children || []).forEach(expand);
+        }
+
+        function resetZoom(animated = true) {
+          const transform = d3.zoomIdentity.translate(56, 36).scale(1);
+          const target = animated ? svg.transition().duration(350) : svg;
+          target.call(zoom.transform, transform);
+        }
+
+        function toggleNode(event, node) {
+          if (node.children) {
+            node._children = node.children;
+            node.children = null;
+          } else if (node._children) {
+            node.children = node._children;
+            node._children = null;
+          }
+          update(node);
+        }
+
+        function update(source) {
+          if (!root) return;
+          layout(root);
+          root.eachBefore(node => {
+            node.y = Math.max(0, node.depth - 1) * 250;
+          });
+
+          const nodes = root.descendants().filter(node => node.depth > 0);
+          const links = root.links().filter(link => link.source.depth > 0);
+          const minX = d3.min(nodes, node => node.x) ?? 0;
+          const maxX = d3.max(nodes, node => node.x) ?? 0;
+          const maxY = d3.max(nodes, node => node.y) ?? 0;
+          const diagramHeight = Math.max(620, maxX - minX + 120);
+          svg.attr("viewBox", `-70 ${minX - 60} ${Math.max(900, maxY + 430)} ${diagramHeight}`);
+
+          const transition = svg.transition().duration(450);
+          const nodeSelection = nodesLayer.selectAll("g.node").data(nodes, node => node.uid);
+          const nodeEnter = nodeSelection.enter()
+            .append("g")
+            .attr("class", node => `node${node.depth === 1 ? " primitive" : ""}${node._children ? " branch" : ""}`)
+            .attr("role", "button")
+            .attr("tabindex", 0)
+            .attr("aria-label", node => `${node.data.name}, ${node.data.typeRef}`)
+            .attr("transform", `translate(${source.y0 ?? 0},${source.x0 ?? 0})`)
+            .on("click", toggleNode)
+            .on("keydown", (event, node) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                toggleNode(event, node);
+              }
+            });
+
+          nodeEnter.append("circle").attr("r", 0);
+          nodeEnter.append("text")
+            .attr("dy", ".35em")
+            .attr("x", 12)
+            .text(node => node.data.name);
+          nodeEnter.append("title").text(node => node.data.typeRef);
+
+          nodeEnter.merge(nodeSelection)
+            .attr("class", node => `node${node.depth === 1 ? " primitive" : ""}${node._children ? " branch" : ""}`)
+            .attr("aria-expanded", node => node.children ? "true" : node._children ? "false" : null)
+            .transition(transition)
+            .attr("transform", node => `translate(${node.y},${node.x})`);
+
+          nodeEnter.merge(nodeSelection).select("circle")
+            .transition(transition)
+            .attr("r", node => node.depth === 1 ? 8 : 6);
+
+          nodeSelection.exit()
+            .transition(transition)
+            .attr("transform", `translate(${source.y},${source.x})`)
+            .remove()
+            .select("circle")
+            .attr("r", 0);
+
+          const linkSelection = linksLayer.selectAll("path.link").data(links, link => link.target.uid);
+          const origin = { x: source.x0 ?? source.x, y: source.y0 ?? source.y };
+          linkSelection.enter()
+            .append("path")
+            .attr("class", "link")
+            .attr("d", diagonal({ source: origin, target: origin }))
+            .merge(linkSelection)
+            .transition(transition)
+            .attr("d", diagonal);
+          linkSelection.exit()
+            .transition(transition)
+            .attr("d", diagonal({ source, target: source }))
+            .remove();
+
+          root.eachBefore(node => {
+            node.x0 = node.x;
+            node.y0 = node.y;
+          });
+          status.textContent = `${nodes.length} visible Types across ${primitiveTypes.length} primitive roots.`;
+        }
+
+        async function loadTrees() {
+          const depth = Number(depthInput.value);
+          if (!Number.isSafeInteger(depth) || depth < 0 || depth > 100) {
+            status.textContent = "Depth must be a whole number between 0 and 100.";
+            status.classList.add("error");
+            return;
+          }
+
+          request?.abort();
+          request = new AbortController();
+          reloadButton.disabled = true;
+          expandButton.disabled = true;
+          collapseButton.disabled = true;
+          resetButton.disabled = true;
+          status.classList.remove("error");
+          status.textContent = `Loading ${primitiveTypes.length} primitive trees to depth ${depth}…`;
+          empty.hidden = false;
+          empty.textContent = "Loading the Type hierarchy…";
+
+          try {
+            const trees = await Promise.all(
+              primitiveTypes.map(slug => fetchTree(slug, depth, request.signal))
+            );
+            root = d3.hierarchy({
+              typeRef: "syn://type-primitives",
+              name: "Syn primitive Types",
+              children: trees,
+            });
+            root.eachBefore(node => { node.uid = ++nodeSequence; });
+            root.children.forEach(primitive => {
+              (primitive.children || []).forEach(collapse);
+            });
+            root.x0 = 0;
+            root.y0 = 0;
+            empty.hidden = true;
+            expandButton.disabled = false;
+            collapseButton.disabled = false;
+            resetButton.disabled = false;
+            update(root);
+            resetZoom(false);
+          } catch (error) {
+            if (error.name === "AbortError") return;
+            root = null;
+            nodesLayer.selectAll("*").remove();
+            linksLayer.selectAll("*").remove();
+            status.textContent = error.message;
+            status.classList.add("error");
+            empty.hidden = false;
+            empty.textContent = "The Type hierarchy could not be loaded.";
+          } finally {
+            reloadButton.disabled = false;
+          }
+        }
+
+        reloadButton.addEventListener("click", loadTrees);
+        depthInput.addEventListener("keydown", event => {
+          if (event.key === "Enter") loadTrees();
+        });
+        expandButton.addEventListener("click", () => {
+          root.children.forEach(expand);
+          update(root);
+        });
+        collapseButton.addEventListener("click", () => {
+          root.children.forEach(collapse);
+          update(root);
+        });
+        resetButton.addEventListener("click", () => resetZoom(true));
+
+        loadTrees();
+      })();
+    </script>
+  </body>
+</html>

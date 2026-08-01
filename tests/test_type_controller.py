@@ -552,6 +552,134 @@ def test_property_routes_require_existing_type(
     assert response.json() == {"detail": "Type not found"}
 
 
+@pytest.mark.parametrize(
+    "primitive",
+    ["cog", "ember", "enigma", "event", "om", "pondle", "snug", "thing"],
+)
+def test_get_type_tree_can_start_at_every_primitive(
+    apiClient: TestClient,
+    databaseSession: Mock,
+    primitive: str,
+) -> None:
+    databaseSession.get.return_value = typeRecord(primitive, primitive.title())
+
+    response = apiClient.get(f"/api/type/{primitive}/tree")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "typeRef": f"syn://type/{primitive}",
+        "name": primitive.title(),
+        "children": [],
+    }
+    databaseSession.get.assert_called_once_with(
+        Type,
+        ObjectRef(f"syn://type/{primitive}"),
+    )
+
+
+def test_get_type_tree_returns_recursive_sorted_children(
+    apiClient: TestClient,
+    databaseSession: Mock,
+) -> None:
+    thing = typeRecord("thing", "Thing")
+    agent = typeRecord("agent", "Agent")
+    objectType = typeRecord("object", "Object")
+    person = typeRecord("person", "Person")
+    databaseSession.get.return_value = thing
+    databaseSession.execute.return_value.all.return_value = [
+        (objectType, thing.id),
+        (person, agent.id),
+        (agent, thing.id),
+    ]
+
+    response = apiClient.get("/api/type/thing/tree", params={"depth": 2})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "typeRef": "syn://type/thing",
+        "name": "Thing",
+        "children": [
+            {
+                "typeRef": "syn://type/agent",
+                "name": "Agent",
+                "children": [
+                    {
+                        "typeRef": "syn://type/person",
+                        "name": "Person",
+                        "children": [],
+                    }
+                ],
+            },
+            {
+                "typeRef": "syn://type/object",
+                "name": "Object",
+                "children": [],
+            },
+        ],
+    }
+    statement = databaseSession.execute.call_args.args[0]
+    compiled = str(statement.compile(dialect=postgresql.dialect()))
+    assert 'WITH RECURSIVE "descendantEdges"' in compiled
+    assert 'FROM "typeParents"' in compiled
+    assert '"typeParents"."parentRef"' in compiled
+
+
+def test_get_type_tree_depth_zero_returns_only_the_root(
+    apiClient: TestClient,
+    databaseSession: Mock,
+) -> None:
+    databaseSession.get.return_value = typeRecord("thing", "Thing")
+
+    response = apiClient.get("/api/type/thing/tree", params={"depth": 0})
+
+    assert response.status_code == 200
+    assert response.json()["children"] == []
+    databaseSession.execute.assert_not_called()
+
+
+@pytest.mark.parametrize("depth", [-1, 101, 1.5, "many"])
+def test_get_type_tree_rejects_invalid_depth(
+    apiClient: TestClient,
+    databaseSession: Mock,
+    depth: object,
+) -> None:
+    response = apiClient.get("/api/type/thing/tree", params={"depth": depth})
+
+    assert response.status_code == 422
+    databaseSession.get.assert_not_called()
+
+
+def test_get_type_tree_returns_not_found(
+    apiClient: TestClient,
+    databaseSession: Mock,
+) -> None:
+    databaseSession.get.return_value = None
+
+    response = apiClient.get("/api/type/missing/tree")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Type not found"}
+
+
+def test_get_type_tree_defensively_stops_corrupt_child_cycles(
+    apiClient: TestClient,
+    databaseSession: Mock,
+) -> None:
+    child = typeRecord("child", "Child")
+    parent = typeRecord("parent", "Parent")
+    databaseSession.get.return_value = parent
+    databaseSession.execute.return_value.all.return_value = [
+        (child, parent.id),
+        (parent, child.id),
+    ]
+
+    response = apiClient.get("/api/type/parent/tree", params={"depth": 100})
+
+    assert response.status_code == 200
+    assert response.json()["children"][0]["typeRef"] == "syn://type/child"
+    assert response.json()["children"][0]["children"] == []
+
+
 def test_property_routes_report_missing_property(
     apiClient: TestClient, databaseSession: Mock
 ) -> None:
@@ -584,5 +712,14 @@ def test_type_routes_are_published_in_openapi(apiClient: TestClient) -> None:
 
     assert set(paths["/api/type"]) == {"get"}
     assert set(paths["/api/type/{id}"]) == {"get", "put"}
+    assert set(paths["/api/type/{id}/tree"]) == {"get"}
     assert set(paths["/api/type/{id}/properties"]) == {"get", "post"}
     assert set(paths["/api/type/{id}/property/{name}"]) == {"put", "delete"}
+    depthParameter = next(
+        parameter
+        for parameter in paths["/api/type/{id}/tree"]["get"]["parameters"]
+        if parameter["name"] == "depth"
+    )
+    assert depthParameter["schema"]["default"] == 10
+    assert depthParameter["schema"]["minimum"] == 0
+    assert depthParameter["schema"]["maximum"] == 100
