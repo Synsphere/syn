@@ -239,6 +239,27 @@
               <label for="typeId">ObjectRef</label>
               <input id="typeId" name="id" readonly>
             </div>
+            <fieldset class="full">
+              <legend>Parent types</legend>
+              <p class="field-help">Direct parents are shown with their ancestry. Additions and removals are applied when you save the type.</p>
+              <ul id="parentList" class="parent-list" aria-label="Current direct parents"></ul>
+              <p id="parentEmpty" class="field-help">This type has no direct parents.</p>
+              <div class="search">
+                <label for="parentSearch">Add a parent type</label>
+                <input
+                  id="parentSearch"
+                  type="search"
+                  role="combobox"
+                  autocomplete="off"
+                  aria-autocomplete="list"
+                  aria-controls="parentResults"
+                  aria-expanded="false"
+                  placeholder="Search for a parent by name or ID"
+                >
+                <ul id="parentResults" role="listbox" hidden></ul>
+              </div>
+              <p id="parentStatus" class="status" role="status" aria-live="polite"></p>
+            </fieldset>
             <div>
               <label for="typeName">Name</label>
               <input id="typeName" name="name" required>
@@ -275,27 +296,6 @@
               <label for="typeConfidenceUpdated">Confidence updated</label>
               <input id="typeConfidenceUpdated" name="confidenceUpdated" readonly>
             </div>
-            <fieldset class="full">
-              <legend>Parent types</legend>
-              <p class="field-help">Direct parents are shown with their ancestry. Additions and removals are applied when you save the type.</p>
-              <ul id="parentList" class="parent-list" aria-label="Current direct parents"></ul>
-              <p id="parentEmpty" class="field-help">This type has no direct parents.</p>
-              <div class="search">
-                <label for="parentSearch">Add a parent type</label>
-                <input
-                  id="parentSearch"
-                  type="search"
-                  role="combobox"
-                  autocomplete="off"
-                  aria-autocomplete="list"
-                  aria-controls="parentResults"
-                  aria-expanded="false"
-                  placeholder="Search for a parent by name or ID"
-                >
-                <ul id="parentResults" role="listbox" hidden></ul>
-              </div>
-              <p id="parentStatus" class="status" role="status" aria-live="polite"></p>
-            </fieldset>
           </div>
           <p class="notice">The ObjectRef identifies this record and cannot be changed. Audit timestamps update when their corresponding values change.</p>
           <div class="actions">

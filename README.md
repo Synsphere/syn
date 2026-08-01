@@ -27,6 +27,7 @@ with sessionScope(sessions) as session:
     session.add(
         Thing(
             id=ObjectRef.local("thing", "example"),
+            typeRef=ObjectRef.local("type", "thing"),
             name="Example",
         )
     )
@@ -43,7 +44,9 @@ The initial migration packages the full domain/function/trigger schema. A comple
 The next migration installs Syn's polyhierarchical core ontology. Types may have
 multiple parents through `typeParents`, but `subTypeOf` cycles are rejected. The
 `typeAncestry` and `objectTypesInherited` views expose transitive inheritance,
-and `objectHasType()` checks both direct and inherited membership.
+and `objectHasType()` checks both direct and inherited membership. Every Thing
+has exactly one required `typeRef` on the `things` table; `objectTypes` remains
+available for the other object primitives and rejects local Thing references.
 
 The curated ontology is defined in `syn.ontology` and seeded idempotently during
 migration. Its `question` type retains the project definition: “A proposition
@@ -51,8 +54,9 @@ which can be answered, either yes or no, or with any other kind of response.”
 
 The feed ontology is defined in `syn.feeds`. It supports overlapping subject,
 delivery, representation, catalogue, media, statistical, geospatial, and market
-feed types; imported Things receive direct types through `objectTypes` and gain
-their parent types through the normal inheritance graph.
+feed types. Imported Things receive one direct `typeRef`; when several
+independent classifications apply, Syn reuses or creates a validated
+intersection type and gains the parent classifications through inheritance.
 
 Create and review a future ORM migration:
 
