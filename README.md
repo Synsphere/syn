@@ -90,7 +90,9 @@ uv run python scripts/verifyFeeds.py
 
 ## Test
 
-Run the complete suite. PostgreSQL integration tests skip until `config.toml` has a usable URL or `SYN_TEST_DATABASE_URL` is set:
+Run the complete suite. PostgreSQL integration tests read their connection URL
+from `config.toml` and skip until it contains a usable URL. Set `SYN_CONFIG` to
+select a different configuration file when needed:
 
 ```sh
 uv run pytest
@@ -167,8 +169,8 @@ TLS verification uses the checksum-pinned Mozilla CA bundle packaged at
 `src/syn/cacert.pem`; its upstream checksum is retained alongside it.
 
 In persistence-enabled environments, a successful witness creates an Event
-classified as `observation`, a Thing classified as `observation-result` holding
-the redacted HTTP result, and a separate `network-measurement` Thing holding network
+classified as `observation`, an Ember classified as `observation-result` holding
+the redacted HTTP result, and a separate `network-measurement` Ember holding network
 timings and transfer statistics. Event targets and object relationships connect
 all three objects. Authorization, cookie, proxy-authorization, and API-key
 headers are replaced with `[REDACTED]` before objects are constructed.

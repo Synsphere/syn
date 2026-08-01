@@ -6,5 +6,7 @@ dist/
 .coverage
 .hypothesis/
 .pytest_cache/
+.tmp-pytest/
+.codex-pytest-temp*/
 __pycache__/
 *.py[cod]
