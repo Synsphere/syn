@@ -26,7 +26,7 @@ from service_identity.pyopenssl import verify_hostname
 from sqlalchemy import text
 
 from .database import createEngine, createSessionFactory
-from .models import Event, EventTarget, ObjectRelationship, ObjectType, Thing
+from .models import Ember, Event, EventTarget, ObjectRelationship, ObjectType
 from .refs import ObjectRef
 
 FEED_WITNESS_HANDLER = "witness-stale-feeds"
@@ -315,7 +315,11 @@ def _storeWitness(
     sessions = createSessionFactory(engine)
     try:
         with sessions.begin() as session:
-            session.add_all(objects)
+            principals = [item for item in objects if isinstance(item, (Event, Ember))]
+            links = [item for item in objects if not isinstance(item, (Event, Ember))]
+            session.add_all(principals)
+            session.flush()
+            session.add_all(links)
     finally:
         engine.dispose()
     return eventRef, entryCount
@@ -329,8 +333,8 @@ def _buildWitnessObjects(
     entryTimestamps = parseFeedEntryTimestamps(decodedBody, contentType)
     identity = uuid4()
     eventRef = str(ObjectRef.local("event", f"feed-witness-{identity}"))
-    observationRef = str(ObjectRef.local("thing", f"http-observation-{identity}"))
-    networkStatsRef = str(ObjectRef.local("thing", f"network-stats-{identity}"))
+    observationRef = str(ObjectRef.local("ember", f"http-observation-{identity}"))
+    networkStatsRef = str(ObjectRef.local("ember", f"network-stats-{identity}"))
     occurredAt = datetime.now(UTC)
     eventKnowledge = {
         "witnessKind": "feed",
@@ -372,8 +376,8 @@ def _buildWitnessObjects(
     }
     objects: list[Any] = [
         Event(id=eventRef, name="feedWitness", occurredAt=occurredAt, knowledge=eventKnowledge),
-        Thing(id=observationRef, name="httpObservationResult", knowledge=observationKnowledge),
-        Thing(id=networkStatsRef, name="networkStats", stats=networkStats, statsUpdated=occurredAt),
+        Ember(id=observationRef, name="httpObservationResult", knowledge=observationKnowledge),
+        Ember(id=networkStatsRef, name="networkStats", stats=networkStats, statsUpdated=occurredAt),
         ObjectType(objectRef=eventRef, typeRef="syn://type/observation"),
         ObjectType(objectRef=observationRef, typeRef="syn://type/observation-result"),
         ObjectType(objectRef=networkStatsRef, typeRef="syn://type/network-measurement"),
