@@ -189,6 +189,10 @@ class Thing(WikipediaMixin, NamedLocalMixin, Base):
     __tablename__ = "things"
 
     id: Mapped[ObjectRef] = mapped_column(thingRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
+
+
+Index("thingsTypeRefIdx", Thing.typeRef, Thing.id)
 
 
 class Event(NamedLocalMixin, Base):
@@ -236,7 +240,13 @@ class Om(NamedLocalMixin, Base):
 
 class ObjectType(Base):
     __tablename__ = "objectTypes"
-    __table_args__ = (Index("objectTypesTypeIdx", "typeRef", "objectRef"),)
+    __table_args__ = (
+        CheckConstraint(
+            '"objectRef"::text !~ \'^syn://thing/\'',
+            name="objectTypesNoThingCheck",
+        ),
+        Index("objectTypesTypeIdx", "typeRef", "objectRef"),
+    )
 
     objectRef: Mapped[ObjectRef] = mapped_column(objectRefType, primary_key=True)
     typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
