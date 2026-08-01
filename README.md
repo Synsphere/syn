@@ -43,10 +43,13 @@ The initial migration packages the full domain/function/trigger schema. A comple
 
 The next migration installs Syn's polyhierarchical core ontology. Types may have
 multiple parents through `typeParents`, but `subTypeOf` cycles are rejected. The
-`typeAncestry` and `objectTypesInherited` views expose transitive inheritance,
-and `objectHasType()` checks both direct and inherited membership. Every Thing
-has exactly one required `typeRef` on the `things` table; `objectTypes` remains
-available for the other object primitives and rejects local Thing references.
+`typeAncestry` and `objectTypeAncestry` views expose transitive inheritance,
+and `objectHasType()` checks both direct and inherited membership. Every Thing,
+Event, Ember, Cog, Enigma, Pondle, Snug, and Om has exactly one required
+`typeRef` directly on its table. The former `objectTypes` linking table has been
+removed. Each primitive has a root Type such as `syn://type/enigma`; missing
+classifications fall back to the appropriate primitive root during migration
+or placeholder materialization.
 
 The curated ontology is defined in `syn.ontology` and seeded idempotently during
 migration. Its `question` type retains the project definition: “A proposition
