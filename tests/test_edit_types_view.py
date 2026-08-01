@@ -29,6 +29,9 @@ def test_edit_types_view_has_accessible_autocomplete_controls() -> None:
     assert 'aria-autocomplete="list"' in html
     assert 'aria-controls="typeResults"' in html
     assert 'id="typeResults" role="listbox"' in html
+    assert 'id="parentSearch"' in html
+    assert 'aria-controls="parentResults"' in html
+    assert 'id="parentResults" role="listbox"' in html
 
 
 def test_edit_types_view_uses_type_read_and_update_api_calls() -> None:
@@ -75,6 +78,40 @@ def test_edit_types_view_has_save_controls_and_client_validation() -> None:
     assert "Locality must be a whole number." in html
     assert "Confidence must be between 0 and 1." in html
     assert 'saveStatus.textContent = "Changes saved."' in html
+
+
+def test_edit_types_view_lists_direct_parent_ancestry_paths() -> None:
+    _, html = editTypesPage()
+
+    assert 'id="parentList"' in html
+    assert 'aria-label="Current direct parents"' in html
+    assert 'id="parentEmpty"' in html
+    assert "directParents = record.parents" in html
+    assert 'summary.textContent = labels.join(" → ")' in html
+    assert "parentPaths(ancestor, nextVisited)" in html
+
+
+def test_edit_types_view_can_add_and_remove_direct_parents() -> None:
+    _, html = editTypesPage()
+
+    assert "setTimeout(() => searchParentTypes(query), 220)" in html
+    assert "addParent(parentResults[parentSelectedIndex])" in html
+    assert "directParents.push(parent)" in html
+    assert 'remove.className = "remove-parent"' in html
+    assert 'remove.textContent = "Remove"' in html
+    assert "directParents = directParents.filter" in html
+    assert "parents: directParents.map(parent => parent.id)" in html
+
+
+def test_edit_types_view_prevents_redundant_parent_selections() -> None:
+    _, html = editTypesPage()
+
+    assert "record.id === fields.id.value" in html
+    assert "directParents.some(parent => parent.id === record.id)" in html
+    assert "hasAncestor(parent, fields.id.value)" in html
+    assert "is a descendant of this type" in html
+    assert "hasAncestor(parent, existing.id) || hasAncestor(existing, parent.id)" in html
+    assert "choose only the more specific parent" in html
 
 
 def test_edit_types_view_uses_safe_text_rendering_for_search_results() -> None:
