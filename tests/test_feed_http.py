@@ -1,12 +1,22 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
 
-from OpenSSL import SSL
+from OpenSSL import SSL, crypto
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 
-from syn.feed_jobs import HttpWitness, _RetryingTlsConnection, timedHttpGet
+from syn.feed_jobs import (
+    HttpWitness,
+    _RetryingTlsConnection,
+    _certificateDetails,
+    timedHttpGet,
+)
 
 
 def test_tls_cleanup_does_not_mask_the_original_handshake_error() -> None:
@@ -57,3 +67,27 @@ def test_tls_connection_retries_want_read_instead_of_failing() -> None:
     with patch("syn.feed_jobs.socketSelect.select", return_value=([rawSocket], [], [])):
         wrapped.do_handshake()
     assert connection.do_handshake.call_count == 2
+
+
+def test_certificate_details_include_type_fingerprint_and_public_key() -> None:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "feed.example")])
+    now = datetime.now(UTC)
+    certificate = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(42)
+        .not_valid_before(now - timedelta(minutes=1))
+        .not_valid_after(now + timedelta(days=1))
+        .sign(key, hashes.SHA256())
+    )
+    details = _certificateDetails(crypto.X509.from_cryptography(certificate), 0)
+    assert details["certificateType"] == "X.509"
+    assert details["chainPosition"] == 0
+    assert details["serialNumber"] == "42"
+    assert details["publicKeyType"] == "RSAPublicKey"
+    assert details["publicKeySizeBits"] == 2048
+    assert details["publicKeyPem"].startswith("-----BEGIN PUBLIC KEY-----")
+    assert details["sha256Fingerprint"] == certificate.fingerprint(hashes.SHA256()).hex()

@@ -21,11 +21,12 @@ from urllib.parse import urljoin, urlsplit
 from uuid import uuid4
 
 from OpenSSL import SSL
+from cryptography.hazmat.primitives import hashes, serialization
 from service_identity.pyopenssl import verify_hostname
 from sqlalchemy import text
 
 from .database import createEngine, createSessionFactory
-from .models import Event, EventTarget
+from .models import Event, EventTarget, ObjectRelationship, ObjectType, Thing
 from .refs import ObjectRef
 
 FEED_WITNESS_HANDLER = "witness-stale-feeds"
@@ -33,6 +34,12 @@ _TIMESTAMP_NAMES = frozenset(
     {
         "date", "date_modified", "date_published", "issued", "modified",
         "pubdate", "published", "updated",
+    }
+)
+_SENSITIVE_HEADERS = frozenset(
+    {
+        "authorization", "cookie", "proxy-authorization", "proxy-authenticate",
+        "set-cookie", "x-api-key",
     }
 )
 
@@ -59,6 +66,7 @@ class HttpWitness:
     responseHeaders: dict[str, list[str]]
     body: bytes
     timings: dict[str, Any]
+    tlsCertificates: tuple[dict[str, Any], ...] = ()
     redirects: tuple[dict[str, Any], ...] = ()
 
 
@@ -302,28 +310,50 @@ def _jsonSafe(value: Any) -> Any:
 def _storeWitness(
     databaseUrl: str, candidate: FeedCandidate, witness: HttpWitness
 ) -> tuple[str, int]:
+    objects, eventRef, entryCount = _buildWitnessObjects(candidate, witness)
+    engine = createEngine(databaseUrl, migrate=False)
+    sessions = createSessionFactory(engine)
+    try:
+        with sessions.begin() as session:
+            session.add_all(objects)
+    finally:
+        engine.dispose()
+    return eventRef, entryCount
+
+
+def _buildWitnessObjects(
+    candidate: FeedCandidate, witness: HttpWitness
+) -> tuple[list[Any], str, int]:
     contentType = next(iter(witness.responseHeaders.get("content-type", [])), None)
     decodedBody = _decodeBody(witness.body, witness.responseHeaders)
     entryTimestamps = parseFeedEntryTimestamps(decodedBody, contentType)
-    eventRef = str(ObjectRef.local("event", f"feed-witness-{uuid4()}"))
+    identity = uuid4()
+    eventRef = str(ObjectRef.local("event", f"feed-witness-{identity}"))
+    observationRef = str(ObjectRef.local("thing", f"http-observation-{identity}"))
+    networkStatsRef = str(ObjectRef.local("thing", f"network-stats-{identity}"))
     occurredAt = datetime.now(UTC)
-    knowledge = {
+    eventKnowledge = {
         "witnessKind": "feed",
         "feedRef": candidate.feedRef,
         "feedUrl": candidate.url,
         "activityScore": candidate.activityScore,
+        "observationRef": observationRef,
+        "networkStatsRef": networkStatsRef,
+    }
+    observationKnowledge = {
+        "observedAt": occurredAt.isoformat(),
+        "feedRef": candidate.feedRef,
+        "feedUrl": candidate.url,
         "request": {
             "startedAt": witness.timings["startedAt"],
             "finishedAt": witness.timings["finishedAt"],
-            "serverIp": witness.serverIp,
-            "headersSent": witness.requestHeaders,
-            "headersReceived": witness.responseHeaders,
-            "httpStatus": witness.status,
-            "httpReason": witness.reason,
+            "headersSent": _redactHeaders(witness.requestHeaders),
+            "headersReceived": _redactHeaders(witness.responseHeaders),
             "effectiveUrl": witness.url,
             "redirects": list(witness.redirects),
-            "timings": witness.timings,
         },
+        "httpStatus": witness.status,
+        "httpReason": witness.reason,
         "response": {
             "rawBase64": base64.b64encode(witness.body).decode("ascii"),
             "byteLength": len(witness.body),
@@ -333,20 +363,45 @@ def _storeWitness(
             "entryTimestampCount": len(entryTimestamps),
         },
     }
-    engine = createEngine(databaseUrl, migrate=False)
-    sessions = createSessionFactory(engine)
-    try:
-        with sessions.begin() as session:
-            session.add(Event(id=eventRef, name="feedWitness", occurredAt=occurredAt, knowledge=knowledge))
-            session.add_all(
-                [
-                    EventTarget(eventRef=eventRef, targetRef=candidate.feedRef, role="feed", position=0),
-                    EventTarget(eventRef=eventRef, targetRef=candidate.url, role="feed-url", position=1),
-                ]
-            )
-    finally:
-        engine.dispose()
-    return eventRef, len(entryTimestamps)
+    networkStats = {
+        "serverIp": witness.serverIp,
+        "timings": witness.timings,
+        "requestCount": len(witness.timings.get("requests", [])),
+        "redirectCount": len(witness.redirects),
+        "transferredBytes": len(witness.body),
+    }
+    objects: list[Any] = [
+        Event(id=eventRef, name="feedWitness", occurredAt=occurredAt, knowledge=eventKnowledge),
+        Thing(id=observationRef, name="httpObservationResult", knowledge=observationKnowledge),
+        Thing(id=networkStatsRef, name="networkStats", stats=networkStats, statsUpdated=occurredAt),
+        ObjectType(objectRef=eventRef, typeRef="syn://type/observation"),
+        ObjectType(objectRef=observationRef, typeRef="syn://type/observation-result"),
+        ObjectType(objectRef=networkStatsRef, typeRef="syn://type/network-measurement"),
+        EventTarget(eventRef=eventRef, targetRef=candidate.feedRef, role="feed", position=0),
+        EventTarget(eventRef=eventRef, targetRef=candidate.url, role="feed-url", position=1),
+        EventTarget(eventRef=eventRef, targetRef=observationRef, role="observation-result", position=2),
+        EventTarget(eventRef=eventRef, targetRef=networkStatsRef, role="network-stats", position=3),
+        ObjectRelationship(
+            sourceRef=eventRef, targetRef=observationRef,
+            relationshipType="has-observation-result", properties={},
+        ),
+        ObjectRelationship(
+            sourceRef=eventRef, targetRef=networkStatsRef,
+            relationshipType="has-network-stats", properties={},
+        ),
+        ObjectRelationship(
+            sourceRef=observationRef, targetRef=networkStatsRef,
+            relationshipType="measured-with", properties={},
+        ),
+    ]
+    return objects, eventRef, len(entryTimestamps)
+
+
+def _redactHeaders(headers: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: "[REDACTED]" if key.casefold() in _SENSITIVE_HEADERS else value
+        for key, value in headers.items()
+    }
 
 
 def timedHttpGet(
@@ -371,14 +426,19 @@ def timedHttpGet(
                 "startedAt": hops[0].timings["startedAt"],
                 "finishedAt": witness.timings["finishedAt"],
                 "requests": [
-                    {"url": hop.url, "status": hop.status, "timings": hop.timings}
+                    {
+                        "url": hop.url,
+                        "status": hop.status,
+                        "timings": hop.timings,
+                        "tlsCertificates": list(hop.tlsCertificates),
+                    }
                     for hop in hops
                 ],
             }
             return HttpWitness(
                 witness.url, witness.status, witness.reason, witness.serverIp,
                 witness.requestHeaders, witness.responseHeaders, witness.body,
-                combinedTimings, tuple(redirects),
+                combinedTimings, witness.tlsCertificates, tuple(redirects),
             )
         if redirectCount == maximumRedirects:
             raise ValueError(f"Feed exceeded the maximum of {maximumRedirects} redirects")
@@ -423,6 +483,7 @@ def _timedSingleHttpGet(url: str, timeoutSeconds: float, maximumBytes: int) -> H
     rawSocket.settimeout(timeoutSeconds)
     connection: Any = rawSocket
     tlsConnection = False
+    tlsCertificates: tuple[dict[str, Any], ...] = ()
     try:
         mark("tcpConnectStarted", ip=endpoint[0], port=port)
         _requestCall(lambda: rawSocket.connect(endpoint), url, "TCP connection", stages)
@@ -451,6 +512,11 @@ def _timedSingleHttpGet(url: str, timeoutSeconds: float, maximumBytes: int) -> H
                 url, "TLS certificate hostname verification", stages,
             )
             mark("tlsHandshakeCompleted", protocol=tlsObject.get_protocol_version_name())
+            tlsCertificates = tuple(
+                _certificateDetails(certificate, position)
+                for position, certificate in enumerate(tlsObject.get_peer_cert_chain() or ())
+            )
+            mark("tlsCertificateChainCaptured", certificates=len(tlsCertificates))
 
         requestHeaders = {
             "Host": host if port in (80, 443) else f"{host}:{port}",
@@ -481,6 +547,7 @@ def _timedSingleHttpGet(url: str, timeoutSeconds: float, maximumBytes: int) -> H
         return HttpWitness(
             url, status, reason, endpoint[0], requestHeaders, responseHeaders, body,
             {"startedAt": startedAt.isoformat(), "finishedAt": finishedAt.isoformat(), "stages": stages},
+            tlsCertificates,
         )
     finally:
         mark("connectionCloseStarted")
@@ -508,6 +575,36 @@ def _requestCall(operation: Any, url: str, action: str, stages: list[dict[str, A
         error.add_note(f"Failed action: {action}")
         error.add_note("Completed timing stages: " + json.dumps(stages, default=str))
         raise
+
+
+def _certificateDetails(certificate: Any, position: int) -> dict[str, Any]:
+    value = certificate.to_cryptography()
+    publicKey = value.public_key()
+    details: dict[str, Any] = {
+        "chainPosition": position,
+        "certificateType": "X.509",
+        "version": value.version.name,
+        "serialNumber": str(value.serial_number),
+        "subject": value.subject.rfc4514_string(),
+        "issuer": value.issuer.rfc4514_string(),
+        "notValidBefore": value.not_valid_before_utc.isoformat(),
+        "notValidAfter": value.not_valid_after_utc.isoformat(),
+        "sha256Fingerprint": value.fingerprint(hashes.SHA256()).hex(),
+        "signatureAlgorithmOid": value.signature_algorithm_oid.dotted_string,
+        "signatureAlgorithm": value.signature_algorithm_oid._name,
+        "publicKeyType": type(publicKey).__name__,
+        "publicKeyPem": publicKey.public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode("ascii"),
+    }
+    keySize = getattr(publicKey, "key_size", None)
+    if keySize is not None:
+        details["publicKeySizeBits"] = keySize
+    curve = getattr(publicKey, "curve", None)
+    if curve is not None:
+        details["publicKeyCurve"] = curve.name
+    return details
 
 
 class _RetryingTlsConnection:

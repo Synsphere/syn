@@ -67,3 +67,15 @@ def test_offline_head_contains_jobs_table() -> None:
     assert 'CREATE TYPE "jobStatus"' in sql
     assert 'CREATE TABLE "jobs"' in sql
     assert 'CREATE INDEX "jobsStatusCreatedIdx"' in sql
+
+
+def test_offline_head_contains_network_measurement_type() -> None:
+    config = alembicConfig()
+    output = StringIO()
+    config.output_buffer = output
+    with patch("syn.config.loadConfig") as load:
+        load.return_value.database.url = "postgresql+psycopg://localhost/syn"
+        command.upgrade(config, "head", sql=True)
+    sql = output.getvalue()
+    assert "20260730_0005" in sql
+    assert "syn://type/network-measurement" in sql
