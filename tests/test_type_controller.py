@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,13 +12,15 @@ from sqlalchemy.orm import Session
 
 from syn.api import createApp
 from syn.controllers.common import databaseSession as databaseSessionDependency
-from syn.models import Type
+from syn.models import InvalidTypeParentsError, Type
 from syn.refs import ObjectRef
 
 
 @pytest.fixture
 def databaseSession() -> Mock:
-    return Mock(spec=Session)
+    session = Mock(spec=Session)
+    session.execute.return_value.all.return_value = []
+    return session
 
 
 @pytest.fixture
@@ -62,8 +64,64 @@ def test_get_type_resolves_local_object_reference(
         "knowledgeUpdated": None,
         "confidence": "0.75",
         "confidenceUpdated": None,
+        "parents": [],
     }
     databaseSession.get.assert_called_once_with(Type, ObjectRef("syn://type/person"))
+
+
+def test_get_type_returns_recursive_parent_tree(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    person = typeRecord("person", "Person")
+    socialAgent = typeRecord("social-agent", "Social agent")
+    organism = typeRecord("organism", "Organism")
+    agent = typeRecord("agent", "Agent")
+    livingThing = typeRecord("living-thing", "Living thing")
+    thing = typeRecord("thing", "thing")
+    databaseSession.get.return_value = person
+    databaseSession.execute.return_value.all.return_value = [
+        (socialAgent, person.id),
+        (organism, person.id),
+        (agent, socialAgent.id),
+        (livingThing, organism.id),
+        (thing, agent.id),
+        (thing, livingThing.id),
+    ]
+
+    response = apiClient.get("/api/type/person")
+
+    assert response.status_code == 200
+    parents = response.json()["parents"]
+    assert [parent["id"] for parent in parents] == [
+        "syn://type/organism",
+        "syn://type/social-agent",
+    ]
+    assert parents[0]["parents"][0]["id"] == "syn://type/living-thing"
+    assert parents[0]["parents"][0]["parents"][0]["id"] == "syn://type/thing"
+    assert parents[1]["parents"][0]["id"] == "syn://type/agent"
+    assert parents[1]["parents"][0]["parents"][0]["id"] == "syn://type/thing"
+    statement = databaseSession.execute.call_args.args[0]
+    compiled = str(statement.compile(dialect=postgresql.dialect()))
+    assert 'WITH RECURSIVE "ancestorEdges"' in compiled
+    assert 'FROM "typeParents"' in compiled
+
+
+def test_get_type_defensively_stops_corrupt_parent_cycles(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    child = typeRecord("child", "Child")
+    parent = typeRecord("parent", "Parent")
+    databaseSession.get.return_value = child
+    databaseSession.execute.return_value.all.return_value = [
+        (parent, child.id),
+        (child, parent.id),
+    ]
+
+    response = apiClient.get("/api/type/child")
+
+    assert response.status_code == 200
+    assert response.json()["parents"][0]["id"] == "syn://type/parent"
+    assert response.json()["parents"][0]["parents"] == []
 
 
 def test_get_type_returns_not_found(apiClient: TestClient, databaseSession: Mock) -> None:
@@ -135,6 +193,8 @@ def test_update_type_returns_not_found_without_committing(
         {"name": "Person", "id": "syn://type/other"},
         {"name": "Person", "stats": []},
         {"name": "Person", "knowledge": "not-json"},
+        {"name": "Person", "parents": ["https://example.com/type"]},
+        {"name": "Person", "parents": ["syn://thing/not-a-type"]},
     ],
 )
 def test_update_type_rejects_invalid_bodies(
@@ -158,6 +218,75 @@ def test_update_type_rolls_back_database_errors(
     assert response.status_code == 409
     assert response.json() == {"detail": "Unable to save type"}
     databaseSession.rollback.assert_called_once_with()
+
+
+def test_update_type_replaces_parent_relationships(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    record = typeRecord("person", "Person")
+    databaseSession.get.return_value = record
+    parents = ["syn://type/human-organism", "syn://type/agent"]
+
+    with patch.object(Type, "replaceParents") as replaceParents:
+        response = apiClient.put(
+            "/api/type/person",
+            json={"name": "Person", "parents": parents},
+        )
+
+    assert response.status_code == 200
+    replaceParents.assert_called_once_with(databaseSession, parents)
+    databaseSession.commit.assert_called_once_with()
+
+
+def test_update_type_reports_redundant_parent_relationships(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    record = typeRecord("person", "Person")
+    databaseSession.get.return_value = record
+
+    with patch.object(
+        Type,
+        "replaceParents",
+        side_effect=InvalidTypeParentsError(
+            "syn://type/organism is an ancestor of syn://type/human-organism"
+        ),
+    ):
+        response = apiClient.put(
+            "/api/type/person",
+            json={
+                "name": "Person",
+                "parents": [
+                    "syn://type/human-organism",
+                    "syn://type/organism",
+                ],
+            },
+        )
+
+    assert response.status_code == 422
+    assert "is an ancestor" in response.json()["detail"]
+    databaseSession.rollback.assert_called_once_with()
+    databaseSession.commit.assert_not_called()
+
+
+def test_update_type_rolls_back_database_errors_during_parent_validation(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    databaseSession.get.return_value = typeRecord("person", "Person")
+
+    with patch.object(
+        Type,
+        "replaceParents",
+        side_effect=SQLAlchemyError("ancestry query failed"),
+    ):
+        response = apiClient.put(
+            "/api/type/person",
+            json={"name": "Person", "parents": ["syn://type/agent"]},
+        )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Unable to save type"}
+    databaseSession.rollback.assert_called_once_with()
+    databaseSession.commit.assert_not_called()
 
 
 def test_type_controller_closes_its_database_session() -> None:

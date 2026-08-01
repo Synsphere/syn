@@ -7,8 +7,9 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import Connection, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
+from sqlalchemy.orm import Session
 
-from syn import LOCAL_KINDS
+from syn import InvalidTypeParentsError, LOCAL_KINDS, ObjectRef, Type
 from syn import buildFeedImportPlan, importFeedPlan
 from test_feeds import feedRow, writeBundle
 
@@ -847,6 +848,28 @@ def test_all_expected_indexes_are_installed(db: Connection) -> None:
 def test_curated_type_ontology_is_seeded(db: Connection) -> None:
     assert db.scalar(text("SELECT count(*) FROM types")) >= 350
     assert db.scalar(text('SELECT count(*) FROM "typeParents"')) >= 400
+
+
+def test_type_model_rejects_transitively_redundant_parents(db: Connection) -> None:
+    with Session(bind=db, join_transaction_mode="create_savepoint") as session:
+        person = session.get(Type, ObjectRef("syn://type/person"))
+        assert person is not None
+
+        with pytest.raises(
+            InvalidTypeParentsError,
+            match=(
+                "syn://type/organism is an ancestor of "
+                "syn://type/human-organism"
+            ),
+        ):
+            person.replaceParents(
+                session,
+                [
+                    ObjectRef("syn://type/human-organism"),
+                    ObjectRef("syn://type/agent"),
+                    ObjectRef("syn://type/organism"),
+                ],
+            )
 
 
 def test_feed_type_ontology_is_seeded(db: Connection) -> None:
