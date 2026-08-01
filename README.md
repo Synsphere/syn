@@ -127,6 +127,8 @@ Use `--host`, `--port`, `--config`, and `--log-level` to override the defaults:
 uv run syn-server --host 0.0.0.0 --port 8080 --log-level debug
 ```
 
+Open `http://127.0.0.1:8000/` to view the Jinja-rendered Syn welcome page.
+
 The FastAPI application exposes placeholder `GET` controllers for each core
 database primitive while their persistence behavior is developed:
 

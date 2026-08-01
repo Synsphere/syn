@@ -42,6 +42,22 @@ def client() -> tuple[TestClient, FakeScheduler]:
     return TestClient(app), fake
 
 
+def test_index_renders_welcome_template() -> None:
+    http, _ = client()
+
+    response = http.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<h1>Welcome to Syn</h1>" in response.text
+
+
+def test_index_is_not_published_as_an_api_operation() -> None:
+    http, _ = client()
+
+    assert "/" not in http.get("/openapi.json").json()["paths"]
+
+
 def test_scheduler_and_job_endpoint_flow() -> None:
     http, fake = client()
     assert http.post("/scheduler/start").json() == {"status": "running"}
