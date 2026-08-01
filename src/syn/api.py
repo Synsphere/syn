@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session, sessionmaker
 
+from .controllers import primitiveRouters
 from .models import Job, JobStatus
 from .scheduler import JobHandler, ProcessScheduler, UnknownHandlerError
 
@@ -47,8 +48,11 @@ def createApp(
         yield
         await scheduler.stop()
 
-    app = FastAPI(title="Syn process scheduler", lifespan=lifespan)
+    app = FastAPI(title="Syn API", lifespan=lifespan)
     app.state.processScheduler = scheduler
+
+    for router in primitiveRouters:
+        app.include_router(router)
 
     def service(request: Request) -> ProcessScheduler:
         return request.app.state.processScheduler

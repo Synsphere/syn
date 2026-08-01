@@ -108,7 +108,24 @@ Run only the PostgreSQL domain, constraint, trigger, and index tests:
 uv run pytest -m database
 ```
 
-## Process scheduler API
+## API service
+
+The FastAPI application exposes placeholder `GET` controllers for each core
+database primitive while their persistence behavior is developed:
+
+- `GET /cogs`
+- `GET /embers`
+- `GET /enigmas`
+- `GET /events`
+- `GET /oms`
+- `GET /pondles`
+- `GET /snugs`
+- `GET /things`
+
+Each currently returns the primitive name, a `placeholder` status, and a
+temporary response message. They are included in the generated OpenAPI schema.
+
+### Process scheduler
 
 Create an application with an explicit allow-list of process-safe handlers. Handler
 functions must be module-level callables so Python can pickle them for a child process.
