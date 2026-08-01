@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from sqlalchemy import Text, case, cast, or_, select
+from sqlalchemy import Integer, Text, case, cast, literal, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, aliased
 
@@ -28,6 +28,14 @@ TypeId = Annotated[
 ]
 TypeQuery = Annotated[str, Query(min_length=1, max_length=255)]
 PropertyName = Annotated[str, Path(min_length=1, max_length=1024)]
+TreeDepth = Annotated[
+    int,
+    Query(
+        ge=0,
+        le=100,
+        description="Maximum number of child edges to include below the starting Type.",
+    ),
+]
 
 
 class TypeResponse(BaseModel):
@@ -47,6 +55,12 @@ class TypeResponse(BaseModel):
 
 class TypeTreeResponse(TypeResponse):
     parents: list[TypeTreeResponse] = Field(default_factory=list)
+
+
+class TypeDescendantTreeResponse(BaseModel):
+    typeRef: str
+    name: str
+    children: list[TypeDescendantTreeResponse] = Field(default_factory=list)
 
 
 class TypeUpdateRequest(BaseModel):
@@ -166,6 +180,68 @@ def typeParentTree(record: Type, session: Session) -> TypeTreeResponse:
     return build(record, frozenset({str(record.id)}))
 
 
+def typeChildTree(
+    record: Type,
+    session: Session,
+    depth: int,
+) -> TypeDescendantTreeResponse:
+    childrenByParent: dict[str, dict[str, Type]] = {}
+    if depth > 0:
+        childEdge = aliased(TypeParent)
+        descendantEdges = (
+            select(
+                TypeParent.parentRef.label("parentRef"),
+                TypeParent.childRef.label("childRef"),
+                literal(1, Integer).label("depth"),
+            )
+            .where(TypeParent.parentRef == record.id)
+            .cte("descendantEdges", recursive=True)
+        )
+        descendantEdges = descendantEdges.union(
+            select(
+                childEdge.parentRef,
+                childEdge.childRef,
+                (descendantEdges.c.depth + 1).label("depth"),
+            ).where(
+                childEdge.parentRef == descendantEdges.c.childRef,
+                descendantEdges.c.depth < depth,
+            )
+        )
+        statement = (
+            select(Type, descendantEdges.c.parentRef)
+            .join(descendantEdges, Type.id == descendantEdges.c.childRef)
+            .order_by(descendantEdges.c.depth, Type.name, Type.id)
+        )
+        for child, parentRef in session.execute(statement).all():
+            childrenByParent.setdefault(str(parentRef), {})[str(child.id)] = child
+
+    def build(
+        node: Type,
+        remainingDepth: int,
+        path: frozenset[str],
+    ) -> TypeDescendantTreeResponse:
+        childRecords = sorted(
+            childrenByParent.get(str(node.id), {}).values(),
+            key=lambda child: (child.name.casefold(), str(child.id)),
+        )
+        children = (
+            [
+                build(child, remainingDepth - 1, path | {str(child.id)})
+                for child in childRecords
+                if str(child.id) not in path
+            ]
+            if remainingDepth > 0
+            else []
+        )
+        return TypeDescendantTreeResponse(
+            typeRef=str(node.id),
+            name=node.name,
+            children=children,
+        )
+
+    return build(record, depth, frozenset({str(record.id)}))
+
+
 @router.get("/{id}", response_model=TypeTreeResponse)
 async def getType(
     id: TypeId, session: Session = Depends(databaseSession)
@@ -175,6 +251,19 @@ async def getType(
     if record is None:
         raise HTTPException(status_code=404, detail="Type not found")
     return typeParentTree(record, session)
+
+
+@router.get("/{id}/tree", response_model=TypeDescendantTreeResponse)
+async def getTypeTree(
+    id: TypeId,
+    depth: TreeDepth = 10,
+    session: Session = Depends(databaseSession),
+) -> TypeDescendantTreeResponse:
+    reference = ObjectRef.local("type", id)
+    record = session.get(Type, reference)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Type not found")
+    return typeChildTree(record, session, depth)
 
 
 @router.put("/{id}", response_model=TypeResponse)

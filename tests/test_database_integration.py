@@ -5,12 +5,14 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import Connection, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from syn import InvalidTypeParentsError, LOCAL_KINDS, ObjectRef, Type
 from syn import buildFeedImportPlan, importFeedPlan
+from syn.api import createApp
 from test_feeds import feedRow, writeBundle
 
 from conftest import MODEL_TABLES
@@ -18,6 +20,7 @@ from conftest import MODEL_TABLES
 
 pytestmark = pytest.mark.database
 TYPED_KINDS = sorted(LOCAL_KINDS - {"type"})
+PRIMITIVE_TYPES = ("cog", "ember", "enigma", "event", "om", "pondle", "snug", "thing")
 
 
 def token(prefix: str) -> str:
@@ -36,6 +39,32 @@ def expectDatabaseError(db: Connection, operation: Callable[[], object]) -> DBAP
         return caught.value
     finally:
         savepoint.rollback()
+
+
+def test_type_tree_api_starts_at_every_primitive(databaseEngine) -> None:
+    http = TestClient(createApp(sessionmaker(bind=databaseEngine), {}))
+
+    for primitive in PRIMITIVE_TYPES:
+        response = http.get(f"/api/type/{primitive}/tree", params={"depth": 1})
+
+        assert response.status_code == 200
+        tree = response.json()
+        assert tree["typeRef"] == f"syn://type/{primitive}"
+        assert tree["name"]
+        assert isinstance(tree["children"], list)
+        assert all(child["children"] == [] for child in tree["children"])
+
+
+def test_type_tree_api_depth_zero_omits_installed_descendants(databaseEngine) -> None:
+    http = TestClient(createApp(sessionmaker(bind=databaseEngine), {}))
+
+    rootOnly = http.get("/api/type/thing/tree", params={"depth": 0})
+    directChildren = http.get("/api/type/thing/tree", params={"depth": 1})
+
+    assert rootOnly.status_code == 200
+    assert rootOnly.json()["children"] == []
+    assert directChildren.status_code == 200
+    assert directChildren.json()["children"]
 
 
 @pytest.mark.parametrize(
