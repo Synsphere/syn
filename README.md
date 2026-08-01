@@ -146,12 +146,18 @@ database primitive while their persistence behavior is developed:
 Each currently returns the primitive name, a `placeholder` status, and a
 temporary response message. They are included in the generated OpenAPI schema.
 
-Types additionally expose database-backed read endpoints:
+Types additionally expose database-backed endpoints:
 
-- `GET /api/type/{id}` retrieves `syn://type/{id}`.
+- `GET /api/type/{id}` retrieves `syn://type/{id}` with its recursively nested
+  parent-type branches.
 - `PUT /api/type/{id}` updates the existing `syn://type/{id}` record.
 - `GET /api/type?query={search}` searches type names and IDs and returns up to
   ten relevance-ranked results.
+
+When `parents` is supplied to the PUT endpoint, it must be a list of local Type
+ObjectRefs. The Type model rejects missing types, duplicates, self-parenting,
+and any list in which one selected parent is an ancestor of another selected
+parent at any depth. Omitting `parents` leaves the existing relationships intact.
 
 ### Process scheduler
 

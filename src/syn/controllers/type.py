@@ -8,9 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import Text, case, cast, or_, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
-from ..models import Type
+from ..models import InvalidTypeParentsError, Type, TypeParent
 from ..refs import ObjectRef
 from .common import databaseSession
 
@@ -44,6 +44,10 @@ class TypeResponse(BaseModel):
     confidenceUpdated: datetime | None
 
 
+class TypeTreeResponse(TypeResponse):
+    parents: list[TypeTreeResponse] = Field(default_factory=list)
+
+
 class TypeUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -53,6 +57,7 @@ class TypeUpdateRequest(BaseModel):
     stats: dict[str, Any] | None = None
     knowledge: dict[str, Any] | None = None
     confidence: Decimal | None = Field(default=None, ge=0, le=1)
+    parents: list[str] | None = None
 
     @field_validator("name")
     @classmethod
@@ -62,18 +67,69 @@ class TypeUpdateRequest(BaseModel):
             raise ValueError("name must not be blank")
         return name
 
+    @field_validator("parents")
+    @classmethod
+    def parentsMustBeLocalTypeRefs(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        for value in values:
+            try:
+                reference = ObjectRef(value)
+            except (TypeError, ValueError) as error:
+                raise ValueError(str(error)) from error
+            if not reference.isLocal or reference.objectTable != "type":
+                raise ValueError("parents must contain only syn://type/ references")
+        return values
+
 
 def escapedLike(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-@router.get("/{id}", response_model=TypeResponse)
-async def getType(id: TypeId, session: Session = Depends(databaseSession)) -> Type:
+def typeParentTree(record: Type, session: Session) -> TypeTreeResponse:
+    parentEdge = aliased(TypeParent)
+    ancestorEdges = (
+        select(TypeParent.childRef, TypeParent.parentRef)
+        .where(TypeParent.childRef == record.id)
+        .cte("ancestorEdges", recursive=True)
+    )
+    ancestorEdges = ancestorEdges.union(
+        select(parentEdge.childRef, parentEdge.parentRef).where(
+            parentEdge.childRef == ancestorEdges.c.parentRef
+        )
+    )
+    statement = select(Type, ancestorEdges.c.childRef).join(
+        ancestorEdges, Type.id == ancestorEdges.c.parentRef
+    )
+    parentsByChild: dict[str, list[Type]] = {}
+    for parent, childRef in session.execute(statement).all():
+        parentsByChild.setdefault(str(childRef), []).append(parent)
+
+    def build(node: Type, path: frozenset[str]) -> TypeTreeResponse:
+        parentRecords = sorted(
+            parentsByChild.get(str(node.id), []),
+            key=lambda parent: (parent.name.casefold(), str(parent.id)),
+        )
+        parents = [
+            build(parent, path | {str(parent.id)})
+            for parent in parentRecords
+            if str(parent.id) not in path
+        ]
+        values = TypeResponse.model_validate(node).model_dump()
+        return TypeTreeResponse(**values, parents=parents)
+
+    return build(record, frozenset({str(record.id)}))
+
+
+@router.get("/{id}", response_model=TypeTreeResponse)
+async def getType(
+    id: TypeId, session: Session = Depends(databaseSession)
+) -> TypeTreeResponse:
     reference = ObjectRef.local("type", id)
     record = session.get(Type, reference)
     if record is None:
         raise HTTPException(status_code=404, detail="Type not found")
-    return record
+    return typeParentTree(record, session)
 
 
 @router.put("/{id}", response_model=TypeResponse)
@@ -87,23 +143,28 @@ async def updateType(
     if record is None:
         raise HTTPException(status_code=404, detail="Type not found")
 
-    updatedAt = datetime.now(UTC)
-    if record.stats != body.stats:
-        record.stats = body.stats
-        record.statsUpdated = updatedAt
-    if record.knowledge != body.knowledge:
-        record.knowledge = body.knowledge
-        record.knowledgeUpdated = updatedAt
-    if record.confidence != body.confidence:
-        record.confidence = body.confidence
-        record.confidenceUpdated = updatedAt
-
-    record.name = body.name
-    record.wikipediaRef = body.wikipediaRef
-    record.locality = body.locality
-
     try:
+        if body.parents is not None:
+            record.replaceParents(session, body.parents)
+
+        updatedAt = datetime.now(UTC)
+        if record.stats != body.stats:
+            record.stats = body.stats
+            record.statsUpdated = updatedAt
+        if record.knowledge != body.knowledge:
+            record.knowledge = body.knowledge
+            record.knowledgeUpdated = updatedAt
+        if record.confidence != body.confidence:
+            record.confidence = body.confidence
+            record.confidenceUpdated = updatedAt
+
+        record.name = body.name
+        record.wikipediaRef = body.wikipediaRef
+        record.locality = body.locality
         session.commit()
+    except InvalidTypeParentsError as error:
+        session.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except SQLAlchemyError as error:
         session.rollback()
         raise HTTPException(status_code=409, detail="Unable to save type") from error
