@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
@@ -10,17 +11,26 @@ from sqlalchemy import (
     BigInteger,
     CheckConstraint,
     DateTime,
+    delete,
     Identity,
     Index,
     Integer,
     Numeric,
     Text,
     UniqueConstraint,
+    select,
     text,
 )
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.dialects.postgresql import UUID as SAUUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    aliased,
+    declared_attr,
+    mapped_column,
+)
 
 from .refs import ObjectRef
 from .sqltypes import (
@@ -39,6 +49,10 @@ from .sqltypes import (
 
 
 class Base(DeclarativeBase):
+    pass
+
+
+class InvalidTypeParentsError(ValueError):
     pass
 
 
@@ -81,6 +95,94 @@ class Type(WikipediaMixin, NamedLocalMixin, Base):
     __tablename__ = "types"
 
     id: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
+
+    def replaceParents(
+        self,
+        session: Session,
+        parents: Sequence[str | ObjectRef],
+    ) -> None:
+        try:
+            parentRefs = tuple(ObjectRef(str(parent)) for parent in parents)
+        except (TypeError, ValueError) as error:
+            raise InvalidTypeParentsError(str(error)) from error
+
+        invalidRefs = [
+            str(parent)
+            for parent in parentRefs
+            if not parent.isLocal or parent.objectTable != "type"
+        ]
+        if invalidRefs:
+            raise InvalidTypeParentsError(
+                "Parents must be local syn://type/ references: "
+                + ", ".join(sorted(invalidRefs))
+            )
+
+        uniqueRefs = {str(parent) for parent in parentRefs}
+        if len(uniqueRefs) != len(parentRefs):
+            raise InvalidTypeParentsError("Parent list contains duplicate references")
+        if str(self.id) in uniqueRefs:
+            raise InvalidTypeParentsError(f"A type cannot be its own parent: {self.id}")
+
+        session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended('syn.typeParents', 0))")
+        )
+
+        if parentRefs:
+            knownRefs = {
+                str(reference)
+                for reference in session.scalars(
+                    select(Type.id).where(Type.id.in_(parentRefs))
+                ).all()
+            }
+            missingRefs = uniqueRefs - knownRefs
+            if missingRefs:
+                raise InvalidTypeParentsError(
+                    "Unknown parent types: " + ", ".join(sorted(missingRefs))
+                )
+
+        if len(parentRefs) > 1:
+            parentEdge = aliased(TypeParent)
+            candidateAncestry = (
+                select(
+                    TypeParent.childRef.label("descendantRef"),
+                    TypeParent.parentRef.label("ancestorRef"),
+                )
+                .where(TypeParent.childRef.in_(parentRefs))
+                .cte("candidateAncestry", recursive=True)
+            )
+            candidateAncestry = candidateAncestry.union(
+                select(candidateAncestry.c.descendantRef, parentEdge.parentRef).where(
+                    parentEdge.childRef == candidateAncestry.c.ancestorRef
+                )
+            )
+            conflicts = session.execute(
+                select(
+                    candidateAncestry.c.descendantRef,
+                    candidateAncestry.c.ancestorRef,
+                ).where(candidateAncestry.c.ancestorRef.in_(parentRefs))
+            ).all()
+            if conflicts:
+                descendantRef, ancestorRef = sorted(
+                    ((str(descendant), str(ancestor)) for descendant, ancestor in conflicts)
+                )[0]
+                raise InvalidTypeParentsError(
+                    f"Parent list is redundant: {ancestorRef} is an ancestor of "
+                    f"{descendantRef}"
+                )
+
+        currentRefs = {
+            str(reference)
+            for reference in session.scalars(
+                select(TypeParent.parentRef).where(TypeParent.childRef == self.id)
+            ).all()
+        }
+        if currentRefs == uniqueRefs:
+            return
+
+        session.execute(delete(TypeParent).where(TypeParent.childRef == self.id))
+        session.add_all(
+            TypeParent(childRef=self.id, parentRef=parent) for parent in parentRefs
+        )
 
 
 class Thing(WikipediaMixin, NamedLocalMixin, Base):
