@@ -26,12 +26,10 @@ MODEL_TABLES = {
 
 @pytest.fixture(scope="session")
 def databaseUrl() -> str:
-    url = os.getenv("SYN_TEST_DATABASE_URL")
-    if not url:
-        configPath = Path(os.getenv("SYN_CONFIG", "config.toml"))
-        if not configPath.exists():
-            pytest.skip("Set SYN_TEST_DATABASE_URL or create config.toml for database tests")
-        url = loadConfig(configPath).database.url
+    configPath = Path(os.getenv("SYN_CONFIG", "config.toml"))
+    if not configPath.exists():
+        pytest.skip("Create config.toml for database tests")
+    url = loadConfig(configPath).database.url
 
     if "change-me" in url:
         pytest.skip("Replace the placeholder password in config.toml for database tests")
