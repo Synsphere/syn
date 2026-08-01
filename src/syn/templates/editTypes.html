@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Edit types · Syn</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        color: #18201b;
+        background: #edf2ed;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, #d5e7d8 0, transparent 34rem),
+          #edf2ed;
+      }
+
+      main {
+        width: min(54rem, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: 4rem 0;
+      }
+
+      header { margin-bottom: 2rem; }
+
+      h1 {
+        margin: 0 0 .5rem;
+        font-family: Georgia, serif;
+        font-size: clamp(2.25rem, 7vw, 4.25rem);
+        font-weight: 500;
+        letter-spacing: -.04em;
+      }
+
+      h2 { margin-top: 0; }
+      p { color: #526057; }
+
+      .panel {
+        padding: clamp(1.25rem, 4vw, 2rem);
+        border: 1px solid #cad5cc;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, .86);
+        box-shadow: 0 1.25rem 3rem rgba(35, 62, 44, .08);
+      }
+
+      .search { position: relative; }
+
+      label {
+        display: block;
+        margin-bottom: .4rem;
+        color: #35443a;
+        font-size: .86rem;
+        font-weight: 700;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid #abb9ae;
+        border-radius: .55rem;
+        padding: .72rem .8rem;
+        color: #18201b;
+        background: #fff;
+        font: inherit;
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: #39754a;
+        outline: 3px solid rgba(57, 117, 74, .16);
+      }
+
+      input[readonly] { color: #59665d; background: #f0f3f0; }
+      textarea { min-height: 8rem; resize: vertical; font-family: ui-monospace, monospace; }
+
+      #typeResults {
+        position: absolute;
+        z-index: 2;
+        top: calc(100% + .35rem);
+        width: 100%;
+        max-height: 20rem;
+        margin: 0;
+        padding: .35rem;
+        overflow-y: auto;
+        border: 1px solid #abb9ae;
+        border-radius: .65rem;
+        background: #fff;
+        box-shadow: 0 .8rem 2rem rgba(21, 42, 28, .14);
+        list-style: none;
+      }
+
+      #typeResults[hidden], #typeEditor[hidden] { display: none; }
+
+      [role="option"] {
+        padding: .65rem .7rem;
+        border-radius: .4rem;
+        cursor: pointer;
+      }
+
+      [role="option"][aria-selected="true"] { background: #e3efe5; }
+      .result-name { display: block; font-weight: 700; }
+      .result-id { color: #657168; font-family: ui-monospace, monospace; font-size: .78rem; }
+      .status { min-height: 1.5rem; margin: .6rem 0 0; font-size: .9rem; }
+      #typeEditor { margin-top: 1.25rem; }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .full { grid-column: 1 / -1; }
+
+      .notice {
+        margin: 1.25rem 0 0;
+        padding: .8rem 1rem;
+        border-left: .22rem solid #c18b33;
+        background: #fff6df;
+        color: #645022;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1.25rem;
+      }
+
+      button {
+        border: 0;
+        border-radius: .55rem;
+        padding: .72rem 1.1rem;
+        color: #fff;
+        background: #285f39;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover { background: #1f4d2e; }
+      button:focus { outline: 3px solid rgba(57, 117, 74, .22); }
+      button:disabled { cursor: wait; opacity: .6; }
+
+      @media (max-width: 42rem) {
+        main { padding: 2rem 0; }
+        .grid { grid-template-columns: 1fr; }
+        .full { grid-column: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Edit types</h1>
+        <p>Find a type, select it, and inspect or edit its current details.</p>
+      </header>
+
+      <section class="panel" aria-labelledby="searchHeading">
+        <h2 id="searchHeading">Choose a type</h2>
+        <div class="search">
+          <label for="typeSearch">Search by name or ID</label>
+          <input
+            id="typeSearch"
+            type="search"
+            role="combobox"
+            autocomplete="off"
+            aria-autocomplete="list"
+            aria-controls="typeResults"
+            aria-expanded="false"
+            placeholder="Start typing, for example person"
+          >
+          <ul id="typeResults" role="listbox" hidden></ul>
+        </div>
+        <p id="searchStatus" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="typeEditor" class="panel" aria-labelledby="editorHeading" hidden>
+        <h2 id="editorHeading">Type details</h2>
+        <form id="typeForm">
+          <div class="grid">
+            <div class="full">
+              <label for="typeId">ObjectRef</label>
+              <input id="typeId" name="id" readonly>
+            </div>
+            <div>
+              <label for="typeName">Name</label>
+              <input id="typeName" name="name" required>
+            </div>
+            <div>
+              <label for="typeWikipediaRef">Wikipedia URL</label>
+              <input id="typeWikipediaRef" name="wikipediaRef" type="url">
+            </div>
+            <div>
+              <label for="typeLocality">Locality</label>
+              <input id="typeLocality" name="locality" type="number" step="1">
+            </div>
+            <div>
+              <label for="typeConfidence">Confidence</label>
+              <input id="typeConfidence" name="confidence" type="number" min="0" max="1" step="any">
+            </div>
+            <div class="full">
+              <label for="typeStats">Stats (JSON)</label>
+              <textarea id="typeStats" name="stats" spellcheck="false"></textarea>
+            </div>
+            <div class="full">
+              <label for="typeKnowledge">Knowledge (JSON)</label>
+              <textarea id="typeKnowledge" name="knowledge" spellcheck="false"></textarea>
+            </div>
+            <div>
+              <label for="typeStatsUpdated">Stats updated</label>
+              <input id="typeStatsUpdated" name="statsUpdated" readonly>
+            </div>
+            <div>
+              <label for="typeKnowledgeUpdated">Knowledge updated</label>
+              <input id="typeKnowledgeUpdated" name="knowledgeUpdated" readonly>
+            </div>
+            <div>
+              <label for="typeConfidenceUpdated">Confidence updated</label>
+              <input id="typeConfidenceUpdated" name="confidenceUpdated" readonly>
+            </div>
+          </div>
+          <p class="notice">The ObjectRef identifies this record and cannot be changed. Audit timestamps update when their corresponding values change.</p>
+          <div class="actions">
+            <button id="saveType" type="submit">Save changes</button>
+            <span id="saveStatus" class="status" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const input = document.querySelector("#typeSearch");
+        const resultsList = document.querySelector("#typeResults");
+        const status = document.querySelector("#searchStatus");
+        const editor = document.querySelector("#typeEditor");
+        const form = document.querySelector("#typeForm");
+        const saveButton = document.querySelector("#saveType");
+        const saveStatus = document.querySelector("#saveStatus");
+        const fields = {
+          id: document.querySelector("#typeId"),
+          name: document.querySelector("#typeName"),
+          wikipediaRef: document.querySelector("#typeWikipediaRef"),
+          locality: document.querySelector("#typeLocality"),
+          confidence: document.querySelector("#typeConfidence"),
+          stats: document.querySelector("#typeStats"),
+          knowledge: document.querySelector("#typeKnowledge"),
+          statsUpdated: document.querySelector("#typeStatsUpdated"),
+          knowledgeUpdated: document.querySelector("#typeKnowledgeUpdated"),
+          confidenceUpdated: document.querySelector("#typeConfidenceUpdated")
+        };
+
+        let results = [];
+        let selectedIndex = -1;
+        let debounceTimer;
+        let searchRequest;
+        let detailRequest;
+        let saveRequest;
+
+        const jsonValue = value => value == null ? "" : JSON.stringify(value, null, 2);
+
+        function closeResults() {
+          resultsList.hidden = true;
+          input.setAttribute("aria-expanded", "false");
+          input.removeAttribute("aria-activedescendant");
+          selectedIndex = -1;
+        }
+
+        function setActiveResult(index) {
+          if (!results.length) return;
+          selectedIndex = (index + results.length) % results.length;
+          const options = resultsList.querySelectorAll('[role="option"]');
+          options.forEach((option, optionIndex) => {
+            option.setAttribute("aria-selected", String(optionIndex === selectedIndex));
+          });
+          const active = options[selectedIndex];
+          input.setAttribute("aria-activedescendant", active.id);
+          active.scrollIntoView({ block: "nearest" });
+        }
+
+        function renderResults(records) {
+          results = records;
+          resultsList.replaceChildren();
+          if (!records.length) {
+            closeResults();
+            status.textContent = "No matching types found.";
+            return;
+          }
+
+          records.forEach((record, index) => {
+            const option = document.createElement("li");
+            option.id = `type-option-${index}`;
+            option.setAttribute("role", "option");
+            option.setAttribute("aria-selected", "false");
+
+            const name = document.createElement("span");
+            name.className = "result-name";
+            name.textContent = record.name;
+            const id = document.createElement("span");
+            id.className = "result-id";
+            id.textContent = record.id;
+            option.append(name, id);
+            option.addEventListener("mousedown", event => {
+              event.preventDefault();
+              selectType(record);
+            });
+            resultsList.append(option);
+          });
+
+          resultsList.hidden = false;
+          input.setAttribute("aria-expanded", "true");
+          status.textContent = `${records.length} matching type${records.length === 1 ? "" : "s"}.`;
+        }
+
+        function populateForm(record) {
+          fields.id.value = record.id;
+          fields.name.value = record.name;
+          fields.wikipediaRef.value = record.wikipediaRef ?? "";
+          fields.locality.value = record.locality ?? "";
+          fields.confidence.value = record.confidence ?? "";
+          fields.stats.value = jsonValue(record.stats);
+          fields.knowledge.value = jsonValue(record.knowledge);
+          fields.statsUpdated.value = record.statsUpdated ?? "";
+          fields.knowledgeUpdated.value = record.knowledgeUpdated ?? "";
+          fields.confidenceUpdated.value = record.confidenceUpdated ?? "";
+          editor.hidden = false;
+        }
+
+        function parseJsonObject(field, label) {
+          const value = field.value.trim();
+          if (!value) return null;
+          const parsed = JSON.parse(value);
+          if (parsed == null || Array.isArray(parsed) || typeof parsed !== "object") {
+            throw new Error(`${label} must be a JSON object.`);
+          }
+          return parsed;
+        }
+
+        function updatePayload() {
+          const locality = fields.locality.value.trim();
+          const confidence = fields.confidence.value.trim();
+          if (locality && !Number.isInteger(Number(locality))) {
+            throw new Error("Locality must be a whole number.");
+          }
+          if (
+            confidence &&
+            (!Number.isFinite(Number(confidence)) || Number(confidence) < 0 || Number(confidence) > 1)
+          ) {
+            throw new Error("Confidence must be between 0 and 1.");
+          }
+          return {
+            name: fields.name.value,
+            wikipediaRef: fields.wikipediaRef.value.trim() || null,
+            locality: locality ? Number(locality) : null,
+            stats: parseJsonObject(fields.stats, "Stats"),
+            knowledge: parseJsonObject(fields.knowledge, "Knowledge"),
+            confidence: confidence ? Number(confidence) : null
+          };
+        }
+
+        async function selectType(record) {
+          closeResults();
+          searchRequest?.abort();
+          detailRequest?.abort();
+          saveRequest?.abort();
+          input.value = record.name;
+          status.textContent = `Loading ${record.name}…`;
+          editor.hidden = true;
+
+          const prefix = "syn://type/";
+          if (!record.id.startsWith(prefix)) {
+            status.textContent = "The selected result does not have a valid local type ID.";
+            return;
+          }
+
+          detailRequest = new AbortController();
+          try {
+            const slug = record.id.slice(prefix.length);
+            const response = await fetch(`/api/type/${encodeURIComponent(slug)}`, {
+              headers: { Accept: "application/json" },
+              signal: detailRequest.signal
+            });
+            if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+            const detail = await response.json();
+            populateForm(detail);
+            status.textContent = `${detail.name} is ready to edit.`;
+            fields.name.focus();
+          } catch (error) {
+            if (error.name !== "AbortError") {
+              status.textContent = "Unable to load that type. Please try again.";
+            }
+          }
+        }
+
+        async function searchTypes(query) {
+          searchRequest?.abort();
+          searchRequest = new AbortController();
+          status.textContent = "Searching…";
+          try {
+            const response = await fetch(`/api/type?query=${encodeURIComponent(query)}`, {
+              headers: { Accept: "application/json" },
+              signal: searchRequest.signal
+            });
+            if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+            renderResults(await response.json());
+          } catch (error) {
+            if (error.name !== "AbortError") {
+              closeResults();
+              status.textContent = "Unable to search types. Please try again.";
+            }
+          }
+        }
+
+        input.addEventListener("input", () => {
+          clearTimeout(debounceTimer);
+          searchRequest?.abort();
+          detailRequest?.abort();
+          saveRequest?.abort();
+          editor.hidden = true;
+          closeResults();
+          const query = input.value.trim();
+          if (!query) {
+            status.textContent = "";
+            return;
+          }
+          debounceTimer = setTimeout(() => searchTypes(query), 220);
+        });
+
+        input.addEventListener("keydown", event => {
+          if (resultsList.hidden) return;
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setActiveResult(selectedIndex + 1);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setActiveResult(selectedIndex - 1);
+          } else if (event.key === "Enter" && selectedIndex >= 0) {
+            event.preventDefault();
+            selectType(results[selectedIndex]);
+          } else if (event.key === "Escape") {
+            closeResults();
+          }
+        });
+
+        input.addEventListener("blur", () => setTimeout(closeResults, 100));
+
+        form.addEventListener("input", event => {
+          if (!event.target.readOnly) saveStatus.textContent = "Unsaved changes.";
+        });
+
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          saveRequest?.abort();
+          let body;
+          try {
+            body = updatePayload();
+          } catch (error) {
+            saveStatus.textContent = error.message;
+            return;
+          }
+
+          const prefix = "syn://type/";
+          if (!fields.id.value.startsWith(prefix)) {
+            saveStatus.textContent = "This record does not have a valid local type ID.";
+            return;
+          }
+
+          saveRequest = new AbortController();
+          saveButton.disabled = true;
+          saveStatus.textContent = "Saving…";
+          try {
+            const slug = fields.id.value.slice(prefix.length);
+            const response = await fetch(`/api/type/${encodeURIComponent(slug)}`, {
+              method: "PUT",
+              headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(body),
+              signal: saveRequest.signal
+            });
+            if (!response.ok) {
+              const error = await response.json();
+              const detail = typeof error.detail === "string" ? error.detail : "Unable to save this type.";
+              throw new Error(detail);
+            }
+            const saved = await response.json();
+            populateForm(saved);
+            input.value = saved.name;
+            status.textContent = `${saved.name} is ready to edit.`;
+            saveStatus.textContent = "Changes saved.";
+          } catch (error) {
+            if (error.name !== "AbortError") saveStatus.textContent = error.message;
+          } finally {
+            saveButton.disabled = false;
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
