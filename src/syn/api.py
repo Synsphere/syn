@@ -2,16 +2,22 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session, sessionmaker
 
 from .controllers import primitiveRouters
 from .models import Job, JobStatus
 from .scheduler import JobHandler, ProcessScheduler, UnknownHandlerError
+
+
+templates = Jinja2Templates(directory=Path(__file__).with_name("templates"))
 
 
 class AddJobRequest(BaseModel):
@@ -50,6 +56,10 @@ def createApp(
 
     app = FastAPI(title="Syn API", lifespan=lifespan)
     app.state.processScheduler = scheduler
+
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    async def index(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(request=request, name="index.html")
 
     for router in primitiveRouters:
         app.include_router(router, prefix="/api")
