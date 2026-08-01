@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -14,8 +14,9 @@ from syn.feed_jobs import (
     feedActivityScore,
     parseFeedEntryTimestamps,
     _buildWitnessObjects,
+    _storeWitness,
 )
-from syn import Event, EventTarget, ObjectRelationship, ObjectType, Thing
+from syn import Ember, Event, EventTarget, ObjectRelationship, ObjectType
 
 
 def test_activity_score_combines_weekly_updates_and_request_lag() -> None:
@@ -135,16 +136,18 @@ def test_witness_builds_observation_result_and_separate_network_stats_with_redac
     )
     objects, eventRef, entryCount = _buildWitnessObjects(candidate, witness)
     event = next(item for item in objects if isinstance(item, Event))
-    things = [item for item in objects if isinstance(item, Thing)]
+    embers = [item for item in objects if isinstance(item, Ember)]
     types = [item for item in objects if isinstance(item, ObjectType)]
     targets = [item for item in objects if isinstance(item, EventTarget)]
     relationships = [item for item in objects if isinstance(item, ObjectRelationship)]
-    observation = next(item for item in things if item.name == "httpObservationResult")
-    network = next(item for item in things if item.name == "networkStats")
+    observation = next(item for item in embers if item.name == "httpObservationResult")
+    network = next(item for item in embers if item.name == "networkStats")
 
     assert event.id == eventRef
     assert event.knowledge["observationRef"] == observation.id
     assert event.knowledge["networkStatsRef"] == network.id
+    assert str(observation.id).startswith("syn://ember/")
+    assert str(network.id).startswith("syn://ember/")
     assert observation.knowledge["request"]["headersSent"]["Authorization"] == "[REDACTED]"
     assert observation.knowledge["request"]["headersReceived"]["set-cookie"] == "[REDACTED]"
     assert observation.knowledge["request"]["headersSent"]["Accept"] == "application/json"
@@ -161,3 +164,30 @@ def test_witness_builds_observation_result_and_separate_network_stats_with_redac
     assert {item.relationshipType for item in relationships} == {
         "has-observation-result", "has-network-stats", "measured-with"
     }
+
+
+def test_store_witness_flushes_principals_before_links() -> None:
+    now = datetime(2026, 7, 30, tzinfo=UTC)
+    candidate = FeedCandidate("syn://thing/feed", "https://example.com/feed", now, ())
+    witness = HttpWitness(
+        candidate.url, 200, "OK", "93.184.216.34", {}, {}, b"",
+        {"startedAt": now.isoformat(), "finishedAt": now.isoformat(), "requests": []},
+    )
+    session = MagicMock()
+    transaction = MagicMock()
+    transaction.__enter__.return_value = session
+    sessions = MagicMock()
+    sessions.begin.return_value = transaction
+
+    with (
+        patch("syn.feed_jobs.createEngine") as create_engine,
+        patch("syn.feed_jobs.createSessionFactory", return_value=sessions),
+    ):
+        _storeWitness("unused", candidate, witness)
+
+    first_objects = session.add_all.call_args_list[0].args[0]
+    second_objects = session.add_all.call_args_list[1].args[0]
+    assert all(isinstance(item, (Event, Ember)) for item in first_objects)
+    assert all(not isinstance(item, (Event, Ember)) for item in second_objects)
+    session.flush.assert_called_once_with()
+    create_engine.return_value.dispose.assert_called_once_with()
