@@ -112,17 +112,32 @@ uv run pytest -m database
 
 ## API service
 
+Start the web server with the uv command installed by the package:
+
+```sh
+uv run syn-server
+```
+
+The equivalent direct script is `uv run python scripts/startServer.py`. Both
+load `config.toml`, apply migrations when `database.autoMigrate` is enabled,
+register the default process handlers, and serve on `http://127.0.0.1:8000`.
+Use `--host`, `--port`, `--config`, and `--log-level` to override the defaults:
+
+```sh
+uv run syn-server --host 0.0.0.0 --port 8080 --log-level debug
+```
+
 The FastAPI application exposes placeholder `GET` controllers for each core
 database primitive while their persistence behavior is developed:
 
-- `GET /cogs`
-- `GET /embers`
-- `GET /enigmas`
-- `GET /events`
-- `GET /oms`
-- `GET /pondles`
-- `GET /snugs`
-- `GET /things`
+- `GET /api/cog`
+- `GET /api/ember`
+- `GET /api/enigma`
+- `GET /api/event`
+- `GET /api/om`
+- `GET /api/pondle`
+- `GET /api/snug`
+- `GET /api/thing`
 
 Each currently returns the primitive name, a `placeholder` status, and a
 temporary response message. They are included in the generated OpenAPI schema.

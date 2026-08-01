@@ -5,9 +5,9 @@ from fastapi import APIRouter
 from .common import PlaceholderResponse, placeholderResponse
 
 
-router = APIRouter(prefix="/embers", tags=["embers"])
+router = APIRouter(prefix="/ember", tags=["ember"])
 
 
 @router.get("", response_model=PlaceholderResponse)
-async def getEmbers() -> PlaceholderResponse:
+async def getEmber() -> PlaceholderResponse:
     return placeholderResponse("ember")
