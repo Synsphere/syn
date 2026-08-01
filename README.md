@@ -148,3 +148,13 @@ destination safety checks repeated for every hop. The job prints timestamped
 actions while it runs and includes those logs and per-hop timings in its result.
 TLS verification uses the checksum-pinned Mozilla CA bundle packaged at
 `src/syn/cacert.pem`; its upstream checksum is retained alongside it.
+
+In persistence-enabled environments, a successful witness creates an Event
+classified as `observation`, a Thing classified as `observation-result` holding
+the redacted HTTP result, and a separate `network-measurement` Thing holding network
+timings and transfer statistics. Event targets and object relationships connect
+all three objects. Authorization, cookie, proxy-authorization, and API-key
+headers are replaced with `[REDACTED]` before objects are constructed.
+The network measurement records the peer certificate chain for every TLS hop,
+including X.509 metadata, fingerprints, signature algorithms, and PEM-encoded
+public keys.

@@ -16,7 +16,7 @@ from syn import (
 
 
 def test_curated_ontology_is_large_and_versioned() -> None:
-    assert ONTOLOGY_VERSION == 1
+    assert ONTOLOGY_VERSION == 2
     assert len(TYPE_DEFINITIONS) >= 350
     assert len(TYPE_BY_SLUG) == len(TYPE_DEFINITIONS)
 
@@ -40,6 +40,9 @@ def test_polyhierarchy_contains_representative_multiple_parent_types() -> None:
     }
     assert set(TYPE_BY_SLUG["building"].parents) == {"artifact", "spatial-thing"}
     assert set(TYPE_BY_SLUG["dataset"].parents) == {"information-object", "collection"}
+    assert set(TYPE_BY_SLUG["network-measurement"].parents) == {
+        "measurement-result", "data-point"
+    }
 
 
 def test_every_type_is_reachable_from_thing() -> None:

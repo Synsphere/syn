@@ -13,7 +13,9 @@ from syn.feed_jobs import (
     evaluateStaleFeeds,
     feedActivityScore,
     parseFeedEntryTimestamps,
+    _buildWitnessObjects,
 )
+from syn import Event, EventTarget, ObjectRelationship, ObjectType, Thing
 
 
 def test_activity_score_combines_weekly_updates_and_request_lag() -> None:
@@ -116,3 +118,46 @@ def test_dry_run_parses_response_without_storing_event(monkeypatch) -> None:
     assert result["dryRun"] is True
     assert result["requested"][0]["eventRef"] is None
     assert result["requested"][0]["entryTimestampCount"] == 1
+
+
+def test_witness_builds_observation_result_and_separate_network_stats_with_redaction() -> None:
+    now = datetime(2026, 7, 30, tzinfo=UTC)
+    candidate = FeedCandidate("syn://thing/feed", "https://example.com/feed", now, ())
+    witness = HttpWitness(
+        candidate.url, 200, "OK", "93.184.216.34",
+        {"Authorization": "Bearer secret", "Accept": "application/json"},
+        {"set-cookie": ["secret=1"], "content-type": ["application/feed+json"]},
+        b'{"date_published":"2026-07-30T00:00:00Z"}',
+        {
+            "startedAt": now.isoformat(), "finishedAt": now.isoformat(),
+            "requests": [{"url": candidate.url, "status": 200, "timings": {"stages": []}}],
+        },
+    )
+    objects, eventRef, entryCount = _buildWitnessObjects(candidate, witness)
+    event = next(item for item in objects if isinstance(item, Event))
+    things = [item for item in objects if isinstance(item, Thing)]
+    types = [item for item in objects if isinstance(item, ObjectType)]
+    targets = [item for item in objects if isinstance(item, EventTarget)]
+    relationships = [item for item in objects if isinstance(item, ObjectRelationship)]
+    observation = next(item for item in things if item.name == "httpObservationResult")
+    network = next(item for item in things if item.name == "networkStats")
+
+    assert event.id == eventRef
+    assert event.knowledge["observationRef"] == observation.id
+    assert event.knowledge["networkStatsRef"] == network.id
+    assert observation.knowledge["request"]["headersSent"]["Authorization"] == "[REDACTED]"
+    assert observation.knowledge["request"]["headersReceived"]["set-cookie"] == "[REDACTED]"
+    assert observation.knowledge["request"]["headersSent"]["Accept"] == "application/json"
+    assert network.stats["serverIp"] == "93.184.216.34"
+    assert network.stats["requestCount"] == 1
+    assert entryCount == 1
+    assert {item.typeRef for item in types} == {
+        "syn://type/observation", "syn://type/observation-result",
+        "syn://type/network-measurement"
+    }
+    assert {item.role for item in targets} == {
+        "feed", "feed-url", "observation-result", "network-stats"
+    }
+    assert {item.relationshipType for item in relationships} == {
+        "has-observation-result", "has-network-stats", "measured-with"
+    }

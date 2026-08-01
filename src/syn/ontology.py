@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 
-ONTOLOGY_VERSION = 1
+ONTOLOGY_VERSION = 2
 QUESTION_DEFINITION = (
     "A proposition which can be answered, either yes or no, or with any other "
     "kind of response."
@@ -370,6 +370,13 @@ TYPE_DEFINITIONS: tuple[TypeDefinition, ...] = (
     _type("observation-result", "information-object", module="epistemic"),
     _type("measurement-result", "observation-result", module="epistemic"),
     _type("data-point", "observation-result", module="epistemic"),
+    _type(
+        "network-measurement",
+        "measurement-result",
+        "data-point",
+        module="epistemic",
+        definition="A measurement result describing network resolution, connection, security negotiation, or data transfer.",
+    ),
     _type("study", "epistemic-activity", module="epistemic"),
     _type("scientific-model", "conceptual-model", module="epistemic"),
     _type("quality-measure", "metric", module="epistemic"),
