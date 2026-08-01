@@ -22,7 +22,7 @@ def main() -> None:
                 text(
                     '''
                     SELECT count(DISTINCT "objectRef")
-                    FROM "objectTypesInherited"
+                    FROM "objectTypeAncestry"
                     WHERE "typeRef" = 'syn://type/feed'::"typeRef"
                     '''
                 )

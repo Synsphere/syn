@@ -17,6 +17,7 @@ from conftest import MODEL_TABLES
 
 
 pytestmark = pytest.mark.database
+TYPED_KINDS = sorted(LOCAL_KINDS - {"type"})
 
 
 def token(prefix: str) -> str:
@@ -210,8 +211,8 @@ def test_insert_registers_every_concrete_object_kind(db: Connection, kind: str) 
     slug = token("register")
     reference = localRef(kind, slug)
     table = MODEL_TABLES[kind]
-    typeColumn = ', "typeRef"' if kind == "thing" else ""
-    typeValue = ", 'syn://type/thing'" if kind == "thing" else ""
+    typeColumn = ', "typeRef"' if kind != "type" else ""
+    typeValue = f", 'syn://type/{kind}'" if kind != "type" else ""
     db.execute(
         text(
             f'INSERT INTO {table} (id, name{typeColumn}) '
@@ -226,8 +227,8 @@ def test_insert_registers_every_concrete_object_kind(db: Connection, kind: str) 
 def test_delete_removes_unreferenced_registry_entry(db: Connection, kind: str) -> None:
     reference = localRef(kind, token("delete"))
     table = MODEL_TABLES[kind]
-    typeColumn = ', "typeRef"' if kind == "thing" else ""
-    typeValue = ", 'syn://type/thing'" if kind == "thing" else ""
+    typeColumn = ', "typeRef"' if kind != "type" else ""
+    typeValue = f", 'syn://type/{kind}'" if kind != "type" else ""
     db.execute(
         text(
             f'INSERT INTO {table} (id, name{typeColumn}) '
@@ -244,8 +245,8 @@ def test_concrete_identity_is_immutable(db: Connection, kind: str) -> None:
     reference = localRef(kind, token("immutable"))
     replacement = localRef(kind, token("replacement"))
     table = MODEL_TABLES[kind]
-    typeColumn = ', "typeRef"' if kind == "thing" else ""
-    typeValue = ", 'syn://type/thing'" if kind == "thing" else ""
+    typeColumn = ', "typeRef"' if kind != "type" else ""
+    typeValue = f", 'syn://type/{kind}'" if kind != "type" else ""
     db.execute(
         text(
             f'INSERT INTO {table} (id, name{typeColumn}) '
@@ -266,8 +267,8 @@ def test_concrete_identity_is_immutable(db: Connection, kind: str) -> None:
 @pytest.mark.parametrize("kind", sorted(LOCAL_KINDS))
 def test_concrete_name_is_required(db: Connection, kind: str) -> None:
     table = MODEL_TABLES[kind]
-    typeColumn = ', "typeRef"' if kind == "thing" else ""
-    typeValue = ", 'syn://type/thing'" if kind == "thing" else ""
+    typeColumn = ', "typeRef"' if kind != "type" else ""
+    typeValue = f", 'syn://type/{kind}'" if kind != "type" else ""
     expectDatabaseError(
         db,
         lambda: db.execute(
@@ -286,8 +287,8 @@ def test_confidence_accepts_closed_unit_interval(
     db: Connection, kind: str, confidence: float
 ) -> None:
     table = MODEL_TABLES[kind]
-    typeColumn = ', "typeRef"' if kind == "thing" else ""
-    typeValue = ", 'syn://type/thing'" if kind == "thing" else ""
+    typeColumn = ', "typeRef"' if kind != "type" else ""
+    typeValue = f", 'syn://type/{kind}'" if kind != "type" else ""
     db.execute(
         text(
             f'INSERT INTO {table} (id, name, confidence{typeColumn}) '
@@ -303,8 +304,8 @@ def test_confidence_rejects_values_outside_unit_interval(
     db: Connection, kind: str, confidence: float
 ) -> None:
     table = MODEL_TABLES[kind]
-    typeColumn = ', "typeRef"' if kind == "thing" else ""
-    typeValue = ", 'syn://type/thing'" if kind == "thing" else ""
+    typeColumn = ', "typeRef"' if kind != "type" else ""
+    typeValue = f", 'syn://type/{kind}'" if kind != "type" else ""
     expectDatabaseError(
         db,
         lambda: db.execute(
@@ -364,8 +365,8 @@ def test_jsonb_intel_fields_round_trip(db: Connection) -> None:
 def test_duplicate_concrete_identity_is_rejected(db: Connection, kind: str) -> None:
     reference = localRef(kind, token("duplicate"))
     table = MODEL_TABLES[kind]
-    typeColumn = ', "typeRef"' if kind == "thing" else ""
-    typeValue = ", 'syn://type/thing'" if kind == "thing" else ""
+    typeColumn = ', "typeRef"' if kind != "type" else ""
+    typeValue = f", 'syn://type/{kind}'" if kind != "type" else ""
     statement = text(
         f'INSERT INTO {table} (id, name{typeColumn}) '
         f'VALUES (CAST(:id AS "{kind}Ref"), :name{typeValue})'
@@ -454,74 +455,50 @@ def test_materialization_never_overwrites_existing_object(db: Connection) -> Non
     assert db.scalar(text("SELECT name FROM things WHERE id = :id"), {"id": reference}) == "Real name"
 
 
-def test_object_types_materializes_object_and_type(db: Connection) -> None:
-    objectRef = localRef("cog", token("classified"))
-    typeRef = localRef("type", token("classification"))
-    db.execute(
-        text('INSERT INTO "objectTypes" ("objectRef", "typeRef") VALUES (:object, :type)'),
-        {"object": objectRef, "type": typeRef},
-    )
-    assert db.scalar(text("SELECT count(*) FROM cogs WHERE id = :id"), {"id": objectRef}) == 1
-    assert db.scalar(text("SELECT count(*) FROM types WHERE id = :id"), {"id": typeRef}) == 1
-
-
-def test_thing_requires_exactly_one_type_reference(db: Connection) -> None:
+@pytest.mark.parametrize("kind", TYPED_KINDS)
+def test_every_primitive_requires_exactly_one_type_reference(
+    db: Connection, kind: str
+) -> None:
+    table = MODEL_TABLES[kind]
     expectDatabaseError(
         db,
         lambda: db.execute(
-            text('INSERT INTO things (id, name) VALUES (CAST(:id AS "thingRef"), :name)'),
-            {"id": localRef("thing", token("missing-type")), "name": "Missing type"},
+            text(
+                f'INSERT INTO {table} (id, name) '
+                f'VALUES (CAST(:id AS "{kind}Ref"), :name)'
+            ),
+            {"id": localRef(kind, token("missing-type")), "name": "Missing type"},
         ),
     )
 
 
-def test_thing_type_reference_materializes_a_missing_type(db: Connection) -> None:
-    thingRef = localRef("thing", token("typed-thing"))
-    typeRef = localRef("type", token("materialized-thing-type"))
+@pytest.mark.parametrize("kind", TYPED_KINDS)
+def test_primitive_type_reference_materializes_a_missing_type(
+    db: Connection, kind: str
+) -> None:
+    objectRef = localRef(kind, token("typed-object"))
+    typeRef = localRef("type", token("materialized-primitive-type"))
+    table = MODEL_TABLES[kind]
 
     db.execute(
         text(
-            'INSERT INTO things (id, "typeRef", name) '
-            'VALUES (CAST(:thing AS "thingRef"), CAST(:type AS "typeRef"), :name)'
+            f'INSERT INTO {table} (id, "typeRef", name) '
+            f'VALUES (CAST(:object AS "{kind}Ref"), CAST(:type AS "typeRef"), :name)'
         ),
-        {"thing": thingRef, "type": typeRef, "name": "Typed thing"},
+        {"object": objectRef, "type": typeRef, "name": "Typed object"},
     )
 
-    assert db.scalar(text('SELECT "typeRef"::text FROM things WHERE id = :id'), {"id": thingRef}) == typeRef
+    assert db.scalar(
+        text(f'SELECT "typeRef"::text FROM {table} WHERE id = :id'),
+        {"id": objectRef},
+    ) == typeRef
     assert db.scalar(text("SELECT count(*) FROM types WHERE id = :id"), {"id": typeRef}) == 1
 
 
-def test_object_types_rejects_local_things(db: Connection) -> None:
-    thingRef = localRef("thing", token("legacy-object-type"))
-    db.execute(
-        text(
-            'INSERT INTO things (id, "typeRef", name) '
-            "VALUES (CAST(:thing AS \"thingRef\"), 'syn://type/thing', :name)"
-        ),
-        {"thing": thingRef, "name": "Single typed thing"},
-    )
-
-    error = expectDatabaseError(
-        db,
-        lambda: db.execute(
-            text(
-                'INSERT INTO "objectTypes" ("objectRef", "typeRef") '
-                "VALUES (:thing, 'syn://type/thing')"
-            ),
-            {"thing": thingRef},
-        ),
-    )
-    assert "objectTypesNoThingCheck" in str(error)
-
-
-def test_duplicate_object_type_pair_is_rejected(db: Connection) -> None:
-    values = {
-        "object": localRef("cog", token("typed-object")),
-        "type": localRef("type", token("typed-type")),
-    }
-    statement = text('INSERT INTO "objectTypes" ("objectRef", "typeRef") VALUES (:object, :type)')
-    db.execute(statement, values)
-    expectDatabaseError(db, lambda: db.execute(statement, values))
+def test_legacy_object_types_table_is_removed(db: Connection) -> None:
+    assert db.scalar(text("SELECT to_regclass('\"objectTypes\"')")) is None
+    assert db.scalar(text("SELECT to_regclass('\"objectTypesInherited\"')")) is None
+    assert db.scalar(text("SELECT to_regclass('\"objectTypeAncestry\"')")) is not None
 
 
 def test_event_targets_materializes_event_and_target(db: Connection) -> None:
@@ -863,16 +840,11 @@ def test_deleting_referenced_local_object_is_rejected(db: Connection) -> None:
     assert "cannot delete referenced local ObjectRef" in str(error)
 
 
-@pytest.mark.parametrize("linkTable", ["objectTypes", "eventTargets", "objectChronicle"])
+@pytest.mark.parametrize("linkTable", ["eventTargets", "objectChronicle"])
 def test_delete_guard_covers_other_link_tables(db: Connection, linkTable: str) -> None:
-    kind = "cog" if linkTable == "objectTypes" else "thing"
+    kind = "thing"
     reference = localRef(kind, token(f"delete-{linkTable.lower()}"))
-    if linkTable == "objectTypes":
-        db.execute(
-            text('INSERT INTO "objectTypes" ("objectRef", "typeRef") VALUES (:object, :type)'),
-            {"object": reference, "type": localRef("type", token("delete-type"))},
-        )
-    elif linkTable == "eventTargets":
+    if linkTable == "eventTargets":
         db.execute(
             text('INSERT INTO "eventTargets" ("eventRef", "targetRef") VALUES (:event, :target)'),
             {"event": localRef("event", token("delete-event")), "target": reference},
@@ -927,12 +899,12 @@ def test_assert_object_has_type_rejects_unclassified_object(db: Connection) -> N
 
 def test_all_expected_indexes_are_installed(db: Connection) -> None:
     expected = {
-        "objectTypesTypeIdx",
-        "thingsTypeRefIdx",
         "typeParentsParentIdx",
+        "typePropertiesPropertyTypeRefIdx",
         "eventTargetsTargetIdx",
         "objectRelationshipsTargetIdx",
         "objectChronicleTimelineIdx",
+        *(f"{MODEL_TABLES[kind]}TypeRefIdx" for kind in TYPED_KINDS),
         *(f"{table}StatsGinIdx" for table in MODEL_TABLES.values()),
     }
     installed = set(
@@ -948,13 +920,121 @@ def test_curated_type_ontology_is_seeded(db: Connection) -> None:
     assert db.scalar(text('SELECT count(*) FROM "typeParents"')) >= 400
 
 
-def test_every_installed_thing_has_one_direct_type_and_no_legacy_link(db: Connection) -> None:
-    assert db.scalar(text('SELECT count(*) FROM things WHERE "typeRef" IS NULL')) == 0
-    assert db.scalar(
+def test_type_properties_materialize_types_and_default_cardinality(
+    db: Connection,
+) -> None:
+    owner = localRef("type", token("property-owner"))
+    propertyType = localRef("type", token("property-value"))
+    row = db.execute(
         text(
-            'SELECT count(*) FROM "objectTypes" '
-            "WHERE \"objectRef\"::text ~ '^syn://thing/'"
-        )
+            'INSERT INTO "typeProperties" ("type", name, "propertyTypeRef") '
+            'VALUES (CAST(:owner AS "typeRef"), :name, CAST(:propertyType AS "typeRef")) '
+            'RETURNING "type"::text, name, "propertyTypeRef"::text, min, max'
+        ),
+        {"owner": owner, "name": "relatedItem", "propertyType": propertyType},
+    ).one()
+
+    assert row == (owner, "relatedItem", propertyType, 1, 1)
+    assert db.scalar(text("SELECT count(*) FROM types WHERE id = :id"), {"id": owner}) == 1
+    assert db.scalar(
+        text("SELECT count(*) FROM types WHERE id = :id"), {"id": propertyType}
+    ) == 1
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum"),
+    [(-1, 1), (2, 1), (0, -1)],
+)
+def test_type_properties_reject_invalid_cardinality(
+    db: Connection, minimum: int, maximum: int
+) -> None:
+    expectDatabaseError(
+        db,
+        lambda: db.execute(
+            text(
+                'INSERT INTO "typeProperties" '
+                '("type", name, "propertyTypeRef", min, max) '
+                "VALUES ('syn://type/thing', :name, 'syn://type/thing', :min, :max)"
+            ),
+            {"name": token("bad-cardinality"), "min": minimum, "max": maximum},
+        ),
+    )
+
+
+def test_type_properties_reject_duplicate_owner_and_name(db: Connection) -> None:
+    values = {"name": token("duplicate-property")}
+    statement = text(
+        'INSERT INTO "typeProperties" ("type", name, "propertyTypeRef") '
+        "VALUES ('syn://type/thing', :name, 'syn://type/thing')"
+    )
+    db.execute(statement, values)
+    expectDatabaseError(db, lambda: db.execute(statement, values))
+
+
+def test_type_properties_reject_names_over_1024_characters(db: Connection) -> None:
+    expectDatabaseError(
+        db,
+        lambda: db.execute(
+            text(
+                'INSERT INTO "typeProperties" ("type", name, "propertyTypeRef") '
+                "VALUES ('syn://type/thing', :name, 'syn://type/thing')"
+            ),
+            {"name": "x" * 1025},
+        ),
+    )
+
+
+@pytest.mark.parametrize("column", ["type", "name", "propertyTypeRef", "min", "max"])
+def test_type_property_required_columns_reject_null(
+    db: Connection, column: str
+) -> None:
+    values = {
+        "owner": None if column == "type" else "syn://type/thing",
+        "name": None if column == "name" else token("required-property"),
+        "propertyType": None if column == "propertyTypeRef" else "syn://type/thing",
+        "min": None if column == "min" else 1,
+        "max": None if column == "max" else 1,
+    }
+    expectDatabaseError(
+        db,
+        lambda: db.execute(
+            text(
+                'INSERT INTO "typeProperties" '
+                '("type", name, "propertyTypeRef", min, max) '
+                "VALUES (:owner, :name, :propertyType, :min, :max)"
+            ),
+            values,
+        ),
+    )
+
+
+@pytest.mark.parametrize("referenceColumn", ["type", "propertyTypeRef"])
+def test_type_properties_protect_referenced_types_from_deletion(
+    db: Connection, referenceColumn: str
+) -> None:
+    owner = localRef("type", token("protected-property-owner"))
+    propertyType = localRef("type", token("protected-property-value"))
+    db.execute(
+        text(
+            'INSERT INTO "typeProperties" ("type", name, "propertyTypeRef") '
+            "VALUES (:owner, :name, :propertyType)"
+        ),
+        {"owner": owner, "name": token("protected-property"), "propertyType": propertyType},
+    )
+    reference = owner if referenceColumn == "type" else propertyType
+
+    expectDatabaseError(
+        db,
+        lambda: db.execute(text("DELETE FROM types WHERE id = :id"), {"id": reference}),
+    )
+
+
+@pytest.mark.parametrize("kind", TYPED_KINDS)
+def test_every_installed_primitive_has_one_direct_type(
+    db: Connection, kind: str
+) -> None:
+    assert db.scalar(
+        text(f'SELECT count(*) FROM {MODEL_TABLES[kind]} WHERE "typeRef" IS NULL')
     ) == 0
 
 
@@ -1068,10 +1148,6 @@ def test_feed_import_upserts_thing_knowledge_and_inherited_types(
     assert row.name == "Example Channel"
     assert row.knowledge["description"]
     assert row.knowledge["sourceDataset"] == "global_data_sources_master_2326.csv"
-    assert db.scalar(
-        text('SELECT count(*) FROM "objectTypes" WHERE "objectRef" = :id'),
-        {"id": record.objectRef},
-    ) == 0
     assert db.scalar(
         text(
             'SELECT "objectHasType"('

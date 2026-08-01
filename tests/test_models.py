@@ -21,13 +21,13 @@ from syn import (
     ObjectRef,
     ObjectRegistry,
     ObjectRelationship,
-    ObjectType,
     Om,
     Pondle,
     Snug,
     Thing,
     Type,
     TypeParent,
+    TypeProperty,
     modelByObjectTable,
 )
 
@@ -47,8 +47,8 @@ def test_every_schema_table_has_exactly_one_model() -> None:
         "pondles",
         "snugs",
         "oms",
-        "objectTypes",
         "typeParents",
+        "typeProperties",
         "eventTargets",
         "objectRelationships",
         "objectChronicle",
@@ -91,12 +91,15 @@ def test_wikipedia_models_have_wikipedia_ref(model: type[Base]) -> None:
     assert "wikipediaRef" in model.__table__.columns
 
 
-def test_thing_has_one_required_type_reference() -> None:
-    typeRef = Thing.__table__.c.typeRef
+@pytest.mark.parametrize("model", [Thing, Event, Ember, Cog, Enigma, Pondle, Snug, Om])
+def test_every_primitive_has_one_required_type_reference(model: type[Base]) -> None:
+    typeRef = model.__table__.c.typeRef
 
     assert typeRef.nullable is False
     assert str(typeRef.type.compile(dialect=postgresql.dialect())) == '"typeRef"'
-    assert "thingsTypeRefIdx" in {index.name for index in Thing.__table__.indexes}
+    assert f"{model.__tablename__}TypeRefIdx" in {
+        index.name for index in model.__table__.indexes
+    }
 
 
 @pytest.mark.parametrize("model", [Event, Ember, Cog, Enigma, Pondle, Snug, Om])
@@ -124,10 +127,6 @@ def test_every_concrete_model_compiles_with_quoted_ref_domain(model: type[Base])
 
 
 def test_linking_table_primary_keys_match_schema() -> None:
-    assert [column.name for column in ObjectType.__table__.primary_key] == [
-        "objectRef",
-        "typeRef",
-    ]
     assert [column.name for column in EventTarget.__table__.primary_key] == [
         "eventRef",
         "targetRef",
@@ -136,15 +135,32 @@ def test_linking_table_primary_keys_match_schema() -> None:
         "childRef",
         "parentRef",
     ]
+    assert [column.name for column in TypeProperty.__table__.primary_key] == [
+        "type",
+        "name",
+    ]
     assert [column.name for column in ObjectRelationship.__table__.primary_key] == [
         "sourceRef",
         "targetRef",
         "relationshipType",
     ]
-    assert any(
-        constraint.name == "objectTypesNoThingCheck"
-        for constraint in ObjectType.__table__.constraints
-    )
+
+
+def test_type_property_model_matches_cardinality_contract() -> None:
+    table = TypeProperty.__table__
+    assert table.c.name.type.length == 1024
+    assert table.c.propertyTypeRef.nullable is False
+    assert table.c.min.nullable is False
+    assert table.c.max.nullable is False
+    assert str(table.c.min.server_default.arg) == "1"
+    assert str(table.c.max.server_default.arg) == "1"
+    assert {constraint.name for constraint in table.constraints} >= {
+        "typePropertiesMinCheck",
+        "typePropertiesRangeCheck",
+    }
+    assert "typePropertiesPropertyTypeRefIdx" in {
+        index.name for index in table.indexes
+    }
 
 
 def test_json_defaults_match_database_contract() -> None:

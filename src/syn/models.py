@@ -16,6 +16,7 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    String,
     Text,
     UniqueConstraint,
     select,
@@ -192,13 +193,11 @@ class Thing(WikipediaMixin, NamedLocalMixin, Base):
     typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
-Index("thingsTypeRefIdx", Thing.typeRef, Thing.id)
-
-
 class Event(NamedLocalMixin, Base):
     __tablename__ = "events"
 
     id: Mapped[ObjectRef] = mapped_column(eventRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
     occurredAt: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -206,50 +205,46 @@ class Ember(NamedLocalMixin, Base):
     __tablename__ = "embers"
 
     id: Mapped[ObjectRef] = mapped_column(emberRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
 class Cog(NamedLocalMixin, Base):
     __tablename__ = "cogs"
 
     id: Mapped[ObjectRef] = mapped_column(cogRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
 class Enigma(NamedLocalMixin, Base):
     __tablename__ = "enigmas"
 
     id: Mapped[ObjectRef] = mapped_column(enigmaRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
 class Pondle(NamedLocalMixin, Base):
     __tablename__ = "pondles"
 
     id: Mapped[ObjectRef] = mapped_column(pondleRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
 class Snug(NamedLocalMixin, Base):
     __tablename__ = "snugs"
 
     id: Mapped[ObjectRef] = mapped_column(snugRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
 class Om(NamedLocalMixin, Base):
     __tablename__ = "oms"
 
     id: Mapped[ObjectRef] = mapped_column(omRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
-class ObjectType(Base):
-    __tablename__ = "objectTypes"
-    __table_args__ = (
-        CheckConstraint(
-            '"objectRef"::text !~ \'^syn://thing/\'',
-            name="objectTypesNoThingCheck",
-        ),
-        Index("objectTypesTypeIdx", "typeRef", "objectRef"),
-    )
-
-    objectRef: Mapped[ObjectRef] = mapped_column(objectRefType, primary_key=True)
-    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
+for model in (Thing, Event, Ember, Cog, Enigma, Pondle, Snug, Om):
+    Index(f"{model.__tablename__}TypeRefIdx", model.typeRef, model.id)
 
 
 class TypeParent(Base):
@@ -261,6 +256,21 @@ class TypeParent(Base):
 
     childRef: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
     parentRef: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
+
+
+class TypeProperty(Base):
+    __tablename__ = "typeProperties"
+    __table_args__ = (
+        CheckConstraint('min >= 0', name="typePropertiesMinCheck"),
+        CheckConstraint('max >= min', name="typePropertiesRangeCheck"),
+        Index("typePropertiesPropertyTypeRefIdx", "propertyTypeRef", "type", "name"),
+    )
+
+    type: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
+    name: Mapped[str] = mapped_column(String(1024), primary_key=True)
+    propertyTypeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
+    min: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1, server_default="1")
+    max: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1, server_default="1")
 
 
 class EventTarget(Base):

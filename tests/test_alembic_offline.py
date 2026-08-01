@@ -94,3 +94,44 @@ def test_offline_head_contains_single_thing_type_migration() -> None:
     assert 'CREATE OR REPLACE FUNCTION "resolveTypeIntersection"' in sql
     assert 'CREATE TRIGGER "thingsRequireType"' in sql
     assert 'ADD CONSTRAINT "objectTypesNoThingCheck"' in sql
+
+
+def test_offline_head_contains_primitive_type_ref_migration() -> None:
+    config = alembicConfig()
+    output = StringIO()
+    config.output_buffer = output
+    with patch("syn.config.loadConfig") as load:
+        load.return_value.database.url = "postgresql+psycopg://localhost/syn"
+        command.upgrade(config, "head", sql=True)
+    sql = output.getvalue()
+    assert "20260801_0007" in sql
+    for table, kind in (
+        ("events", "event"),
+        ("embers", "ember"),
+        ("cogs", "cog"),
+        ("enigmas", "enigma"),
+        ("pondles", "pondle"),
+        ("snugs", "snug"),
+        ("oms", "om"),
+    ):
+        assert f'ALTER TABLE {table} ADD COLUMN "typeRef" "typeRef"' in sql
+        assert f"syn://type/{kind}" in sql
+        assert f'CREATE TRIGGER "{table}RequireType"' in sql
+    assert 'DROP TABLE "objectTypes"' in sql
+    assert 'ALTER VIEW "objectTypesInherited" RENAME TO "objectTypeAncestry"' in sql
+
+
+def test_offline_head_contains_type_properties_migration() -> None:
+    config = alembicConfig()
+    output = StringIO()
+    config.output_buffer = output
+    with patch("syn.config.loadConfig") as load:
+        load.return_value.database.url = "postgresql+psycopg://localhost/syn"
+        command.upgrade(config, "head", sql=True)
+    sql = output.getvalue()
+    assert "20260801_0009" in sql
+    assert 'CREATE TABLE "typeProperties"' in sql
+    assert 'PRIMARY KEY ("type", name)' in sql
+    assert 'CREATE TRIGGER "typePropertiesRequireType"' in sql
+    assert 'CREATE TRIGGER "typePropertiesRequirePropertyType"' in sql
+    assert 'CREATE INDEX "typePropertiesPropertyTypeRefIdx"' in sql

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from syn.api import createApp
 from syn.controllers.common import databaseSession as databaseSessionDependency
-from syn.models import InvalidTypeParentsError, Type
+from syn.models import InvalidTypeParentsError, Type, TypeProperty
 from syn.refs import ObjectRef
 
 
@@ -42,6 +42,22 @@ def typeRecord(slug: str, name: str) -> Type:
         locality=1,
         knowledge={"description": f"The {name} type."},
         confidence=Decimal("0.75"),
+    )
+
+
+def propertyRecord(
+    owner: str = "person",
+    name: str = "birthPlace",
+    propertyType: str = "place",
+    minimum: int = 1,
+    maximum: int = 1,
+) -> TypeProperty:
+    return TypeProperty(
+        type=ObjectRef.local("type", owner),
+        name=name,
+        propertyTypeRef=ObjectRef.local("type", propertyType),
+        min=minimum,
+        max=maximum,
     )
 
 
@@ -378,8 +394,195 @@ def test_search_rejects_queries_over_255_characters(apiClient: TestClient) -> No
     assert apiClient.get("/api/type", params={"query": "x" * 256}).status_code == 422
 
 
+def test_get_type_properties_returns_sorted_records(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    databaseSession.get.return_value = typeRecord("person", "Person")
+    databaseSession.scalars.return_value.all.return_value = [
+        propertyRecord(name="birthPlace"),
+        propertyRecord(name="name", propertyType="text-value", minimum=0, maximum=3),
+    ]
+
+    response = apiClient.get("/api/type/person/properties")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "type": "syn://type/person",
+            "name": "birthPlace",
+            "propertyTypeRef": "syn://type/place",
+            "min": 1,
+            "max": 1,
+        },
+        {
+            "type": "syn://type/person",
+            "name": "name",
+            "propertyTypeRef": "syn://type/text-value",
+            "min": 0,
+            "max": 3,
+        },
+    ]
+    statement = databaseSession.scalars.call_args.args[0]
+    compiled = str(statement.compile(dialect=postgresql.dialect()))
+    assert 'FROM "typeProperties"' in compiled
+    assert 'ORDER BY "typeProperties".name' in compiled
+
+
+def test_create_type_property(apiClient: TestClient, databaseSession: Mock) -> None:
+    databaseSession.get.side_effect = [typeRecord("person", "Person"), None]
+
+    response = apiClient.post(
+        "/api/type/person/properties",
+        json={
+            "name": "  birthPlace  ",
+            "propertyTypeRef": "syn://type/place",
+            "min": 0,
+            "max": 1,
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json() == {
+        "type": "syn://type/person",
+        "name": "birthPlace",
+        "propertyTypeRef": "syn://type/place",
+        "min": 0,
+        "max": 1,
+    }
+    created = databaseSession.add.call_args.args[0]
+    assert isinstance(created, TypeProperty)
+    assert created.type == "syn://type/person"
+    databaseSession.commit.assert_called_once_with()
+
+
+def test_create_type_property_rejects_duplicate(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    existing = propertyRecord()
+    databaseSession.get.side_effect = [typeRecord("person", "Person"), existing]
+
+    response = apiClient.post(
+        "/api/type/person/properties",
+        json={"name": "birthPlace", "propertyTypeRef": "syn://type/place"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Type property already exists"}
+    databaseSession.add.assert_not_called()
+
+
+def test_update_type_property_can_rename_and_change_cardinality(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    existing = propertyRecord()
+    databaseSession.get.side_effect = [typeRecord("person", "Person"), existing, None]
+
+    response = apiClient.put(
+        "/api/type/person/property/birthPlace",
+        json={
+            "name": "placeOfBirth",
+            "propertyTypeRef": "syn://type/geographic-region",
+            "min": 0,
+            "max": 2,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "placeOfBirth"
+    assert response.json()["propertyTypeRef"] == "syn://type/geographic-region"
+    assert existing.min == 0
+    assert existing.max == 2
+    databaseSession.commit.assert_called_once_with()
+
+
+def test_delete_type_property(apiClient: TestClient, databaseSession: Mock) -> None:
+    existing = propertyRecord(name="display name")
+    databaseSession.get.side_effect = [typeRecord("person", "Person"), existing]
+
+    response = apiClient.delete("/api/type/person/property/display%20name")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    databaseSession.delete.assert_called_once_with(existing)
+    databaseSession.commit.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"name": "", "propertyTypeRef": "syn://type/place"},
+        {"name": "x" * 1025, "propertyTypeRef": "syn://type/place"},
+        {"name": "place", "propertyTypeRef": "https://example.com/place"},
+        {"name": "place", "propertyTypeRef": "syn://thing/place"},
+        {"name": "place", "propertyTypeRef": "syn://type/place", "min": -1},
+        {"name": "place", "propertyTypeRef": "syn://type/place", "min": 2, "max": 1},
+        {"name": "place", "propertyTypeRef": "syn://type/place", "extra": True},
+    ],
+)
+def test_type_property_writes_reject_invalid_bodies(
+    apiClient: TestClient, databaseSession: Mock, body: dict
+) -> None:
+    assert apiClient.post("/api/type/person/properties", json=body).status_code == 422
+    assert apiClient.put("/api/type/person/property/place", json=body).status_code == 422
+    databaseSession.get.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("get", "/api/type/missing/properties"),
+        ("post", "/api/type/missing/properties"),
+        ("put", "/api/type/missing/property/name"),
+        ("delete", "/api/type/missing/property/name"),
+    ],
+)
+def test_property_routes_require_existing_type(
+    apiClient: TestClient, databaseSession: Mock, method: str, path: str
+) -> None:
+    databaseSession.get.return_value = None
+    request = getattr(apiClient, method)
+    keyword = {} if method in {"get", "delete"} else {
+        "json": {"name": "name", "propertyTypeRef": "syn://type/thing"}
+    }
+
+    response = request(path, **keyword)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Type not found"}
+
+
+def test_property_routes_report_missing_property(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    databaseSession.get.side_effect = [typeRecord("person", "Person"), None]
+
+    response = apiClient.delete("/api/type/person/property/missing")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Type property not found"}
+
+
+def test_create_type_property_rolls_back_database_errors(
+    apiClient: TestClient, databaseSession: Mock
+) -> None:
+    databaseSession.get.side_effect = [typeRecord("person", "Person"), None]
+    databaseSession.commit.side_effect = SQLAlchemyError("rejected")
+
+    response = apiClient.post(
+        "/api/type/person/properties",
+        json={"name": "place", "propertyTypeRef": "syn://type/place"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Unable to create type property"}
+    databaseSession.rollback.assert_called_once_with()
+
+
 def test_type_routes_are_published_in_openapi(apiClient: TestClient) -> None:
     paths = apiClient.get("/openapi.json").json()["paths"]
 
     assert set(paths["/api/type"]) == {"get"}
     assert set(paths["/api/type/{id}"]) == {"get", "put"}
+    assert set(paths["/api/type/{id}/properties"]) == {"get", "post"}
+    assert set(paths["/api/type/{id}/property/{name}"]) == {"put", "delete"}
