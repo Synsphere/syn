@@ -49,11 +49,9 @@ def main() -> None:
             )
             summary["directClassifications"] = connection.scalar(
                 text(
-                    'SELECT count(*) FROM "objectTypes" classification '
-                    'JOIN things thing ON thing.id = classification."objectRef" '
-                    "JOIN types type ON type.id = classification.\"typeRef\" "
-                    "WHERE thing.knowledge ->> 'sourceDataset' = :dataset "
-                    "AND type.knowledge ->> 'ontology' = 'syn-feeds'"
+                    "SELECT count(*) FROM things "
+                    "WHERE knowledge ->> 'sourceDataset' = :dataset "
+                    'AND "typeRef" IS NOT NULL'
                 ),
                 {"dataset": MASTER_DATASET},
             )

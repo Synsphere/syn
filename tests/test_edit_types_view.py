@@ -91,6 +91,16 @@ def test_edit_types_view_lists_direct_parent_ancestry_paths() -> None:
     assert "parentPaths(ancestor, nextVisited)" in html
 
 
+def test_edit_types_view_places_parent_editor_below_object_ref() -> None:
+    _, html = editTypesPage()
+
+    assert (
+        html.index('id="typeId"')
+        < html.index("<legend>Parent types</legend>")
+        < html.index('id="typeName"')
+    )
+
+
 def test_edit_types_view_can_add_and_remove_direct_parents() -> None:
     _, html = editTypesPage()
 
