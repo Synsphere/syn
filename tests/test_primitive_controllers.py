@@ -17,6 +17,7 @@ def apiClient() -> TestClient:
     ("path", "primitive"),
     [
         ("/api/cog", "cog"),
+        ("/api/credential", "credential"),
         ("/api/ember", "ember"),
         ("/api/enigma", "enigma"),
         ("/api/event", "event"),
@@ -43,6 +44,7 @@ def test_every_primitive_controller_is_published_in_openapi(apiClient: TestClien
     schema = apiClient.get("/openapi.json").json()
     expectedPaths = {
         "/api/cog",
+        "/api/credential",
         "/api/ember",
         "/api/enigma",
         "/api/event",
@@ -61,6 +63,7 @@ def test_every_primitive_controller_is_published_in_openapi(apiClient: TestClien
     "oldPath",
     [
         "/cogs",
+        "/credentials",
         "/embers",
         "/enigmas",
         "/events",

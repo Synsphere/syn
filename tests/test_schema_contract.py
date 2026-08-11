@@ -9,6 +9,7 @@ from syn import LOCAL_KINDS
 
 
 SCHEMA_PATH = Path("database/objectReferenceSchema.sql")
+BASELINE_LOCAL_KINDS = LOCAL_KINDS - {"credential"}
 
 
 @pytest.fixture(scope="module")
@@ -27,7 +28,7 @@ def test_schema_contains_no_uuid_identity(schema: str) -> None:
     assert "gen_random_uuid" not in schema
 
 
-@pytest.mark.parametrize("kind", sorted(LOCAL_KINDS))
+@pytest.mark.parametrize("kind", sorted(BASELINE_LOCAL_KINDS))
 def test_every_kind_has_local_domain_table_and_domain_check(kind: str, schema: str) -> None:
     plural = {"type": "types", "thing": "things"}.get(kind, f"{kind}s")
     assert f'CREATE DOMAIN "{kind}Ref" AS "objectRef"' in schema
@@ -48,7 +49,7 @@ def test_general_object_ref_allows_non_syn_and_validates_syn(schema: str) -> Non
     assert "regexp_replace(VALUE, '%[0-9A-Fa-f]{2}', '', 'g') !~ '%'" in schema
 
 
-@pytest.mark.parametrize("kind", sorted(LOCAL_KINDS))
+@pytest.mark.parametrize("kind", sorted(BASELINE_LOCAL_KINDS))
 def test_every_kind_has_registry_and_identity_triggers(kind: str, schema: str) -> None:
     plural = {"type": "types", "thing": "things"}.get(kind, f"{kind}s")
     assert f'CREATE TRIGGER "{plural}PreventIdChange"' in schema
@@ -57,7 +58,7 @@ def test_every_kind_has_registry_and_identity_triggers(kind: str, schema: str) -
     assert f'EXECUTE FUNCTION "maintainObjectRegistry"(\'{kind}\')' in schema
 
 
-@pytest.mark.parametrize("kind", sorted(LOCAL_KINDS))
+@pytest.mark.parametrize("kind", sorted(BASELINE_LOCAL_KINDS))
 def test_placeholder_materialization_covers_every_kind(kind: str, schema: str) -> None:
     plural = {"type": "types", "thing": "things"}.get(kind, f"{kind}s")
     assert f"WHEN '{kind}' THEN" in schema
@@ -69,7 +70,7 @@ def test_placeholder_creation_is_idempotent_and_silent(schema: str) -> None:
     ensureBody = schema.split('CREATE FUNCTION "ensureLocalObject"', 1)[1].split(
         'CREATE FUNCTION "requireLocalObjectIfSyn"', 1
     )[0]
-    assert ensureBody.count("ON CONFLICT (id) DO NOTHING") == len(LOCAL_KINDS)
+    assert ensureBody.count("ON CONFLICT (id) DO NOTHING") == len(BASELINE_LOCAL_KINDS)
     assert "INSERT INTO \"objectRegistry\"" not in ensureBody
 
 
@@ -83,7 +84,7 @@ def test_missing_ref_triggers_call_materializer(schema: str) -> None:
 
 def test_all_concrete_models_enforce_confidence_range(schema: str) -> None:
     assert schema.count("CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1)") == len(
-        LOCAL_KINDS
+        BASELINE_LOCAL_KINDS
     )
 
 

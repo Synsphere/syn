@@ -6,10 +6,21 @@ from urllib.parse import quote
 
 
 LOCAL_KINDS = frozenset(
-    {"type", "thing", "event", "ember", "cog", "enigma", "pondle", "snug", "om"}
+    {
+        "type",
+        "thing",
+        "event",
+        "ember",
+        "cog",
+        "credential",
+        "enigma",
+        "pondle",
+        "snug",
+        "om",
+    }
 )
 _LOCAL_REF = re.compile(
-    r"^syn://(?P<table>type|thing|event|ember|cog|enigma|pondle|snug|om)/"
+    r"^syn://(?P<table>type|thing|event|ember|cog|credential|enigma|pondle|snug|om)/"
     r"(?P<slug>[a-z0-9]+(?:[-_][a-z0-9]+)*)$"
 )
 _SLUG_CHARS = re.compile(r"[^a-z0-9_-]+")

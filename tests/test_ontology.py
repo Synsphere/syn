@@ -16,7 +16,7 @@ from syn import (
 
 
 def test_curated_ontology_is_large_and_versioned() -> None:
-    assert ONTOLOGY_VERSION == 3
+    assert ONTOLOGY_VERSION == 4
     assert len(TYPE_DEFINITIONS) >= 350
     assert len(TYPE_BY_SLUG) == len(TYPE_DEFINITIONS)
 
@@ -34,6 +34,7 @@ def test_question_keeps_the_original_definition() -> None:
 def test_every_primitive_root_has_the_expected_semantic_parent() -> None:
     expected = {
         "cog": "computational-process",
+        "credential": "information-object",
         "ember": "knowledge-record",
         "enigma": "question",
         "event": "occurrent-thing",

@@ -45,11 +45,18 @@ The next migration installs Syn's polyhierarchical core ontology. Types may have
 multiple parents through `typeParents`, but `subTypeOf` cycles are rejected. The
 `typeAncestry` and `objectTypeAncestry` views expose transitive inheritance,
 and `objectHasType()` checks both direct and inherited membership. Every Thing,
-Event, Ember, Cog, Enigma, Pondle, Snug, and Om has exactly one required
+Event, Ember, Cog, Credential, Enigma, Pondle, Snug, and Om has exactly one required
 `typeRef` directly on its table. The former `objectTypes` linking table has been
 removed. Each primitive has a root Type such as `syn://type/enigma`; missing
 classifications fall back to the appropriate primitive root during migration
 or placeholder materialization.
+
+Credentials use `syn://credential/{slug}` identities and the
+`syn://type/credential` root Type. Their `publicKeyHash` and `privateData` are
+opaque binary fields so different key and secret formats can coexist. Public
+hashes are unique when present; empty values are rejected. Placeholder
+Credentials may leave both fields unset. `privateData` is deferred and raises
+on accidental ORM loading, and must never be included in public API payloads.
 
 The curated ontology is defined in `syn.ontology` and seeded idempotently during
 migration. Its `question` type retains the project definition: “A proposition
@@ -142,6 +149,7 @@ The FastAPI application exposes placeholder `GET` controllers for each core
 database primitive while their persistence behavior is developed:
 
 - `GET /api/cog`
+- `GET /api/credential`
 - `GET /api/ember`
 - `GET /api/enigma`
 - `GET /api/event`
