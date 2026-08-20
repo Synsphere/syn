@@ -58,6 +58,15 @@ def test_index_is_not_published_as_an_api_operation() -> None:
     assert "/" not in http.get("/openapi.json").json()["paths"]
 
 
+def test_p2p_status_is_accessible() -> None:
+    http, _ = client()
+
+    response = http.get("/p2p/status")
+
+    assert response.status_code == 200
+    assert response.json()["enabled"] is True
+
+
 def test_scheduler_and_job_endpoint_flow() -> None:
     http, fake = client()
     assert http.post("/scheduler/start").json() == {"status": "running"}
