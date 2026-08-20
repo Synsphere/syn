@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from .controllers import primitiveRouters
 from .models import Job, JobStatus
+from .config import P2PConfig
+from .p2p import Libp2pNode
 from .scheduler import JobHandler, ProcessScheduler, UnknownHandlerError
 
 
@@ -45,18 +47,29 @@ class JobResultResponse(BaseModel):
 
 
 def createApp(
-    sessions: sessionmaker[Session], handlers: dict[str, JobHandler]
+    sessions: sessionmaker[Session], handlers: dict[str, JobHandler],
+    p2pConfig: P2PConfig | None = None,
 ) -> FastAPI:
     scheduler = ProcessScheduler(sessions, handlers)
+    p2pNode = Libp2pNode(p2pConfig or P2PConfig())
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        yield
-        await scheduler.stop()
+        await p2pNode.start()
+        try:
+            yield
+        finally:
+            await scheduler.stop()
+            await p2pNode.stop()
 
     app = FastAPI(title="Syn API", lifespan=lifespan)
     app.state.processScheduler = scheduler
     app.state.sessions = sessions
+    app.state.p2pNode = p2pNode
+
+    @app.get("/p2p/status")
+    async def p2pStatus(request: Request) -> dict[str, Any]:
+        return request.app.state.p2pNode.status()
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def index(request: Request) -> HTMLResponse:

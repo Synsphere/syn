@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from syn import DatabaseConfig, SynConfig, loadConfig
+from syn import DatabaseConfig, P2PConfig, SynConfig, loadConfig
 
 
 def writeConfig(tmpPath: Path, body: str) -> Path:
@@ -39,6 +39,46 @@ def test_load_config_can_disable_automatic_migrations(tmp_path: Path) -> None:
         '[database]\nurl = "postgresql+psycopg://localhost/syn"\nautoMigrate = false\n',
     )
     assert loadConfig(path).database.autoMigrate is False
+
+
+def test_load_config_reads_p2p_settings(tmp_path: Path) -> None:
+    path = writeConfig(
+        tmp_path,
+        '[database]\nurl = "postgresql+psycopg://localhost/syn"\n'
+        '[p2p]\nenabled = true\nmdnsEnabled = false\n'
+        'listenAddresses = ["/ip4/0.0.0.0/tcp/4001"]\n'
+        'bootstrapPeers = ["/ip4/127.0.0.1/tcp/4002/p2p/QmPeer"]\n'
+        'startupTimeoutSeconds = 5\n',
+    )
+
+    assert loadConfig(path).p2p == P2PConfig(
+        enabled=True,
+        mdnsEnabled=False,
+        listenAddresses=("/ip4/0.0.0.0/tcp/4001",),
+        bootstrapPeers=("/ip4/127.0.0.1/tcp/4002/p2p/QmPeer",),
+        startupTimeoutSeconds=5.0,
+    )
+
+
+@pytest.mark.parametrize(
+    ("setting", "value", "message"),
+    [
+        ("enabled", '"yes"', "p2p.enabled"),
+        ("mdnsEnabled", '"yes"', "p2p.mdnsEnabled"),
+        ("listenAddresses", "[]", "p2p.listenAddresses"),
+        ("bootstrapPeers", '[1]', "p2p.bootstrapPeers"),
+        ("startupTimeoutSeconds", "0", "p2p.startupTimeoutSeconds"),
+    ],
+)
+def test_invalid_p2p_settings_are_rejected(
+    tmp_path: Path, setting: str, value: str, message: str
+) -> None:
+    body = (
+        '[database]\nurl = "postgresql+psycopg://localhost/syn"\n'
+        f"[p2p]\n{setting} = {value}\n"
+    )
+    with pytest.raises(ValueError, match=message):
+        loadConfig(writeConfig(tmp_path, body))
 
 
 def test_config_objects_are_immutable(tmp_path: Path) -> None:

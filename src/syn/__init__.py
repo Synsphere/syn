@@ -1,4 +1,4 @@
-from .config import DatabaseConfig, SynConfig, loadConfig
+from .config import DatabaseConfig, P2PConfig, SynConfig, loadConfig
 from .database import createEngine, createSessionFactory, sessionScope
 from .feeds import (
     FEED_ONTOLOGY_VERSION,
@@ -94,6 +94,7 @@ __all__ = [
     "ObjectRelationship",
     "Om",
     "Pondle",
+    "P2PConfig",
     "Snug",
     "SynConfig",
     "Thing",
