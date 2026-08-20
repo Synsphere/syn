@@ -16,6 +16,7 @@ class DatabaseConfig:
 class P2PConfig:
     enabled: bool = True
     mdnsEnabled: bool = True
+    upnpEnabled: bool = True
     listenAddresses: tuple[str, ...] = (
         "/ip4/0.0.0.0/tcp/0",
         "/ip6/::/tcp/0",
@@ -57,6 +58,7 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
         raise ValueError(f"{configPath} p2p must be a table")
     enabled = p2p.get("enabled", True)
     mdnsEnabled = p2p.get("mdnsEnabled", True)
+    upnpEnabled = p2p.get("upnpEnabled", True)
     listenAddresses = p2p.get(
         "listenAddresses",
         ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"],
@@ -67,6 +69,8 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
         raise ValueError(f"{configPath} p2p.enabled must be true or false")
     if not isinstance(mdnsEnabled, bool):
         raise ValueError(f"{configPath} p2p.mdnsEnabled must be true or false")
+    if not isinstance(upnpEnabled, bool):
+        raise ValueError(f"{configPath} p2p.upnpEnabled must be true or false")
     if not _stringList(listenAddresses):
         raise ValueError(f"{configPath} p2p.listenAddresses must be a non-empty string array")
     if not isinstance(bootstrapPeers, list) or not all(
@@ -81,6 +85,7 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
         p2p=P2PConfig(
             enabled=enabled,
             mdnsEnabled=mdnsEnabled,
+            upnpEnabled=upnpEnabled,
             listenAddresses=tuple(listenAddresses),
             bootstrapPeers=tuple(bootstrapPeers),
             startupTimeoutSeconds=float(startupTimeoutSeconds),
