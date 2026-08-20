@@ -224,3 +224,25 @@ headers are replaced with `[REDACTED]` before objects are constructed.
 The network measurement records the peer certificate chain for every TLS hop,
 including X.509 metadata, fingerprints, signature algorithms, and PEM-encoded
 public keys.
+
+### libp2p networking
+
+The API starts a py-libp2p node with its application lifespan and closes it during
+graceful shutdown. By default it listens on ephemeral TCP ports on every IPv4 and
+IPv6 interface. Use the optional `[p2p]` configuration table to choose fixed
+listening addresses or connect to bootstrap peers:
+
+```toml
+[p2p]
+enabled = true
+mdnsEnabled = true
+listenAddresses = ["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001"]
+bootstrapPeers = ["/dnsaddr/bootstrap.libp2p.io/p2p/<peer-id>"]
+startupTimeoutSeconds = 15
+```
+
+Built-in libp2p mDNS advertisement and LAN peer discovery are enabled by default.
+Discovered peers are added to the host peerstore. `GET /p2p/status` returns the
+node's runtime peer ID, bound multiaddresses, configured bootstrap peers, and
+discovered peer IDs. Set `mdnsEnabled = false` to disable only LAN discovery, or
+`enabled = false` when the application must run without its libp2p network.
