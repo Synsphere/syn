@@ -236,6 +236,7 @@ listening addresses or connect to bootstrap peers:
 [p2p]
 enabled = true
 mdnsEnabled = true
+upnpEnabled = true
 listenAddresses = ["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001"]
 bootstrapPeers = ["/dnsaddr/bootstrap.libp2p.io/p2p/<peer-id>"]
 startupTimeoutSeconds = 15
@@ -246,3 +247,9 @@ Discovered peers are added to the host peerstore. `GET /p2p/status` returns the
 node's runtime peer ID, bound multiaddresses, configured bootstrap peers, and
 discovered peer IDs. Set `mdnsEnabled = false` to disable only LAN discovery, or
 `enabled = false` when the application must run without its libp2p network.
+
+UPnP IGD discovery and TCP port forwarding are also enabled by default. When the
+router supports UPnP and reports a public address, py-libp2p maps each active TCP
+listener port to the host and removes those mappings during graceful shutdown.
+`GET /p2p/status` reports the gateway's `upnpExternalIp` when discovery succeeds.
+Set `upnpEnabled = false` to prevent the application from changing router mappings.

@@ -29,6 +29,7 @@ class Libp2pNode:
         self._peerId: str | None = None
         self._addresses: tuple[str, ...] = ()
         self._discoveredPeers: tuple[str, ...] = ()
+        self._upnpExternalIp: str | None = None
 
     async def start(self) -> None:
         if not self.config.enabled or self._thread is not None:
@@ -68,6 +69,8 @@ class Libp2pNode:
                 "bootstrapPeers": list(self.config.bootstrapPeers),
                 "mdnsEnabled": self.config.mdnsEnabled,
                 "discoveredPeers": list(self._discoveredPeers),
+                "upnpEnabled": self.config.upnpEnabled,
+                "upnpExternalIp": self._upnpExternalIp,
             }
 
     def _run(self) -> None:
@@ -81,7 +84,10 @@ class Libp2pNode:
 
     async def _serve(self) -> None:
         addresses = [multiaddr.Multiaddr(value) for value in self.config.listenAddresses]
-        host = new_host(bootstrap=list(self.config.bootstrapPeers))
+        host = new_host(
+            bootstrap=list(self.config.bootstrapPeers),
+            enable_upnp=self.config.upnpEnabled,
+        )
         async with host.run(listen_addrs=addresses):
             if self.config.mdnsEnabled:
                 host.mDNS = MDNSDiscovery(
@@ -91,6 +97,9 @@ class Libp2pNode:
             with self._lock:
                 self._peerId = str(host.get_id())
                 self._addresses = tuple(str(value) for value in host.get_addrs())
+                self._upnpExternalIp = (
+                    host.upnp.get_external_ip() if host.upnp is not None else None
+                )
             self._ready.set()
             while not self._stop.is_set():
                 peerId = str(host.get_id())

@@ -45,7 +45,7 @@ def test_load_config_reads_p2p_settings(tmp_path: Path) -> None:
     path = writeConfig(
         tmp_path,
         '[database]\nurl = "postgresql+psycopg://localhost/syn"\n'
-        '[p2p]\nenabled = true\nmdnsEnabled = false\n'
+        '[p2p]\nenabled = true\nmdnsEnabled = false\nupnpEnabled = false\n'
         'listenAddresses = ["/ip4/0.0.0.0/tcp/4001"]\n'
         'bootstrapPeers = ["/ip4/127.0.0.1/tcp/4002/p2p/QmPeer"]\n'
         'startupTimeoutSeconds = 5\n',
@@ -54,6 +54,7 @@ def test_load_config_reads_p2p_settings(tmp_path: Path) -> None:
     assert loadConfig(path).p2p == P2PConfig(
         enabled=True,
         mdnsEnabled=False,
+        upnpEnabled=False,
         listenAddresses=("/ip4/0.0.0.0/tcp/4001",),
         bootstrapPeers=("/ip4/127.0.0.1/tcp/4002/p2p/QmPeer",),
         startupTimeoutSeconds=5.0,
@@ -65,6 +66,7 @@ def test_load_config_reads_p2p_settings(tmp_path: Path) -> None:
     [
         ("enabled", '"yes"', "p2p.enabled"),
         ("mdnsEnabled", '"yes"', "p2p.mdnsEnabled"),
+        ("upnpEnabled", '"yes"', "p2p.upnpEnabled"),
         ("listenAddresses", "[]", "p2p.listenAddresses"),
         ("bootstrapPeers", '[1]', "p2p.bootstrapPeers"),
         ("startupTimeoutSeconds", "0", "p2p.startupTimeoutSeconds"),
