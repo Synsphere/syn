@@ -155,3 +155,20 @@ def test_offline_head_contains_credential_primitive_migration() -> None:
     assert "syn://type/credential" in sql
     assert "syn://type/information-object" in sql
     assert "FROM credentials" in sql
+    assert "jsonb_build_object(" in sql
+    assert '"ontologyVersion"%(' not in sql
+
+
+def test_offline_head_uses_direct_object_type_membership_lookup() -> None:
+    config = alembicConfig()
+    output = StringIO()
+    config.output_buffer = output
+    with patch("syn.config.loadConfig") as load:
+        load.return_value.database.url = "postgresql+psycopg://localhost/syn"
+        command.upgrade(config, "head", sql=True)
+    sql = output.getvalue()
+    optimized = sql.split("20260821_0011", 1)[1]
+    assert 'CASE "objectRefTable"("candidateRef")' in optimized
+    assert 'FROM things WHERE id = "candidateRef"::"thingRef"' in optimized
+    assert 'FROM credentials WHERE id = "candidateRef"::"credentialRef"' in optimized
+    assert 'FROM "objectTypeAncestry"' not in optimized
