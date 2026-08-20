@@ -1,4 +1,4 @@
-from .config import DatabaseConfig, SynConfig, loadConfig
+from .config import DatabaseConfig, P2PConfig, SynConfig, loadConfig
 from .database import createEngine, createSessionFactory, sessionScope
 from .feeds import (
     FEED_ONTOLOGY_VERSION,
@@ -31,6 +31,7 @@ from .models import (
     Base,
     ChronicleKind,
     Cog,
+    Credential,
     Ember,
     Enigma,
     Event,
@@ -66,6 +67,7 @@ __all__ = [
     "Base",
     "ChronicleKind",
     "Cog",
+    "Credential",
     "DatabaseConfig",
     "Ember",
     "Enigma",
@@ -92,6 +94,7 @@ __all__ = [
     "ObjectRelationship",
     "Om",
     "Pondle",
+    "P2PConfig",
     "Snug",
     "SynConfig",
     "Thing",

@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+import asyncio
+import socket
+
+from syn import P2PConfig
+from syn.p2p import Libp2pNode
+
+
+def test_libp2p_node_starts_listens_and_stops() -> None:
+    async def exercise() -> None:
+        node = Libp2pNode(
+            P2PConfig(
+                listenAddresses=("/ip4/127.0.0.1/tcp/0",),
+                startupTimeoutSeconds=10,
+            )
+        )
+        await node.start()
+        running = node.status()
+        assert running["running"] is True
+        assert running["peerId"]
+        assert running["listenAddresses"]
+        assert running["mdnsEnabled"] is True
+        assert all("/tcp/" in address for address in running["listenAddresses"])
+
+        await node.stop()
+        assert node.status()["running"] is False
+
+    asyncio.run(exercise())
+
+
+def test_default_node_listens_on_all_ipv4_and_ipv6_interfaces() -> None:
+    async def exercise() -> None:
+        node = Libp2pNode(P2PConfig(startupTimeoutSeconds=10))
+        await node.start()
+        try:
+            addresses = node.status()["listenAddresses"]
+            assert any(address.startswith("/ip4/0.0.0.0/tcp/") for address in addresses)
+            assert any(address.startswith("/ip6/::/tcp/") for address in addresses)
+        finally:
+            await node.stop()
+
+    asyncio.run(exercise())
+
+
+def test_disabled_libp2p_node_does_not_start() -> None:
+    async def exercise() -> None:
+        node = Libp2pNode(P2PConfig(enabled=False))
+        await node.start()
+        assert node.status() == {
+            "enabled": False,
+            "running": False,
+            "peerId": None,
+            "listenAddresses": [],
+            "bootstrapPeers": [],
+            "mdnsEnabled": True,
+            "discoveredPeers": [],
+        }
+
+    asyncio.run(exercise())
+
+
+def test_two_nodes_discover_each_other_over_mdns() -> None:
+    async def exercise() -> None:
+        firstPort, secondPort = _freeTcpPort(), _freeTcpPort()
+        first = Libp2pNode(P2PConfig(
+            listenAddresses=(f"/ip4/0.0.0.0/tcp/{firstPort}",),
+            startupTimeoutSeconds=10,
+        ))
+        second = Libp2pNode(P2PConfig(
+            listenAddresses=(f"/ip4/0.0.0.0/tcp/{secondPort}",),
+            startupTimeoutSeconds=10,
+        ))
+        await first.start()
+        await second.start()
+        try:
+            firstId = first.status()["peerId"]
+            secondId = second.status()["peerId"]
+            for _ in range(100):
+                if (
+                    secondId in first.status()["discoveredPeers"]
+                    and firstId in second.status()["discoveredPeers"]
+                ):
+                    break
+                await asyncio.sleep(0.1)
+            assert secondId in first.status()["discoveredPeers"]
+            assert firstId in second.status()["discoveredPeers"]
+        finally:
+            await second.stop()
+            await first.stop()
+
+    asyncio.run(exercise())
+
+
+def _freeTcpPort() -> int:
+    with socket.socket() as listener:
+        listener.bind(("0.0.0.0", 0))
+        return int(listener.getsockname()[1])
