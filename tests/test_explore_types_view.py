@@ -36,7 +36,7 @@ def test_explore_types_view_uses_d3_collapsible_tree_primitives() -> None:
 def test_explore_types_view_loads_all_primitive_roots_through_ajax() -> None:
     _, html = exploreTypesPage()
 
-    assert '["cog", "ember", "enigma", "event", "om", "pondle", "snug", "thing"]' in html
+    assert '["cog", "credential", "ember", "enigma", "event", "om", "pondle", "snug", "thing"]' in html
     assert "primitiveTypes.map(slug => fetchTree(slug, depth, request.signal))" in html
     assert "`/api/type/${encodeURIComponent(slug)}/tree?depth=${depth}`" in html
     assert 'headers: { Accept: "application/json" }' in html
