@@ -2,3 +2,10 @@
 url = "postgresql+psycopg://syn:change-me@localhost:5432/syn"
 echo = false
 autoMigrate = true
+
+[p2p]
+enabled = true
+mdnsEnabled = true
+listenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
+bootstrapPeers = []
+startupTimeoutSeconds = 15
