@@ -11,6 +11,7 @@ from syn import (
     Base,
     ChronicleKind,
     Cog,
+    Credential,
     Ember,
     Enigma,
     Event,
@@ -32,7 +33,7 @@ from syn import (
 )
 
 
-MODEL_CLASSES = [Type, Thing, Event, Ember, Cog, Enigma, Pondle, Snug, Om]
+MODEL_CLASSES = [Type, Thing, Event, Ember, Cog, Credential, Enigma, Pondle, Snug, Om]
 
 
 def test_every_schema_table_has_exactly_one_model() -> None:
@@ -43,6 +44,7 @@ def test_every_schema_table_has_exactly_one_model() -> None:
         "events",
         "embers",
         "cogs",
+        "credentials",
         "enigmas",
         "pondles",
         "snugs",
@@ -63,6 +65,7 @@ def test_model_kind_mapping_is_complete_and_exact() -> None:
         "event": Event,
         "ember": Ember,
         "cog": Cog,
+        "credential": Credential,
         "enigma": Enigma,
         "pondle": Pondle,
         "snug": Snug,
@@ -91,7 +94,9 @@ def test_wikipedia_models_have_wikipedia_ref(model: type[Base]) -> None:
     assert "wikipediaRef" in model.__table__.columns
 
 
-@pytest.mark.parametrize("model", [Thing, Event, Ember, Cog, Enigma, Pondle, Snug, Om])
+@pytest.mark.parametrize(
+    "model", [Thing, Event, Ember, Cog, Credential, Enigma, Pondle, Snug, Om]
+)
 def test_every_primitive_has_one_required_type_reference(model: type[Base]) -> None:
     typeRef = model.__table__.c.typeRef
 
@@ -102,7 +107,9 @@ def test_every_primitive_has_one_required_type_reference(model: type[Base]) -> N
     }
 
 
-@pytest.mark.parametrize("model", [Event, Ember, Cog, Enigma, Pondle, Snug, Om])
+@pytest.mark.parametrize(
+    "model", [Event, Ember, Cog, Credential, Enigma, Pondle, Snug, Om]
+)
 def test_non_wikipedia_models_do_not_gain_wikipedia_ref(model: type[Base]) -> None:
     assert "wikipediaRef" not in model.__table__.columns
 
@@ -194,6 +201,22 @@ def test_models_can_be_constructed_with_python_object_refs() -> None:
 def test_registry_model_uses_general_object_ref_domain() -> None:
     sql = str(CreateTable(ObjectRegistry.__table__).compile(dialect=postgresql.dialect()))
     assert '"objectRef"' in sql
+
+
+def test_credential_private_fields_are_binary_and_private_data_requires_explicit_load() -> None:
+    table = Credential.__table__
+    sql = str(CreateTable(table).compile(dialect=postgresql.dialect()))
+
+    assert "BYTEA" in sql
+    assert table.c.publicKeyHash.nullable is True
+    assert table.c.privateData.nullable is True
+    assert Credential.__mapper__.attrs.privateData.deferred is True
+    assert Credential.__mapper__.attrs.privateData.raiseload is True
+    assert {constraint.name for constraint in table.constraints} >= {
+        "credentialsPublicKeyHashNotEmptyCheck",
+        "credentialsPrivateDataNotEmptyCheck",
+        "credentialsPublicKeyHashKey",
+    }
 
 
 def test_job_model_matches_scheduler_persistence_contract() -> None:

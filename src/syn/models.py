@@ -15,6 +15,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -36,6 +37,7 @@ from sqlalchemy.orm import (
 from .refs import ObjectRef
 from .sqltypes import (
     cogRefType,
+    credentialRefType,
     emberRefType,
     enigmaRefType,
     eventRefType,
@@ -215,6 +217,19 @@ class Cog(NamedLocalMixin, Base):
     typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
+class Credential(NamedLocalMixin, Base):
+    __tablename__ = "credentials"
+
+    id: Mapped[ObjectRef] = mapped_column(credentialRefType, primary_key=True)
+    typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
+    publicKeyHash: Mapped[bytes | None] = mapped_column(LargeBinary)
+    privateData: Mapped[bytes | None] = mapped_column(
+        LargeBinary,
+        deferred=True,
+        deferred_raiseload=True,
+    )
+
+
 class Enigma(NamedLocalMixin, Base):
     __tablename__ = "enigmas"
 
@@ -243,7 +258,24 @@ class Om(NamedLocalMixin, Base):
     typeRef: Mapped[ObjectRef] = mapped_column(typeRefType, nullable=False)
 
 
-for model in (Thing, Event, Ember, Cog, Enigma, Pondle, Snug, Om):
+Credential.__table__.append_constraint(
+    CheckConstraint(
+        '"publicKeyHash" IS NULL OR octet_length("publicKeyHash") > 0',
+        name="credentialsPublicKeyHashNotEmptyCheck",
+    )
+)
+Credential.__table__.append_constraint(
+    CheckConstraint(
+        '"privateData" IS NULL OR octet_length("privateData") > 0',
+        name="credentialsPrivateDataNotEmptyCheck",
+    )
+)
+Credential.__table__.append_constraint(
+    UniqueConstraint("publicKeyHash", name="credentialsPublicKeyHashKey")
+)
+
+
+for model in (Thing, Event, Ember, Cog, Credential, Enigma, Pondle, Snug, Om):
     Index(f"{model.__tablename__}TypeRefIdx", model.typeRef, model.id)
 
 
@@ -367,6 +399,7 @@ modelByObjectTable = {
     "event": Event,
     "ember": Ember,
     "cog": Cog,
+    "credential": Credential,
     "enigma": Enigma,
     "pondle": Pondle,
     "snug": Snug,

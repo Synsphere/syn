@@ -63,6 +63,9 @@ thingRefType = ObjectRefType("thingRef", localKind="thing", localOnly=True)
 eventRefType = ObjectRefType("eventRef", localKind="event", localOnly=True)
 emberRefType = ObjectRefType("emberRef", localKind="ember", localOnly=True)
 cogRefType = ObjectRefType("cogRef", localKind="cog", localOnly=True)
+credentialRefType = ObjectRefType(
+    "credentialRef", localKind="credential", localOnly=True
+)
 enigmaRefType = ObjectRefType("enigmaRef", localKind="enigma", localOnly=True)
 pondleRefType = ObjectRefType("pondleRef", localKind="pondle", localOnly=True)
 snugRefType = ObjectRefType("snugRef", localKind="snug", localOnly=True)

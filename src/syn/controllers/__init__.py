@@ -1,4 +1,5 @@
 from .cog import router as cogRouter
+from .credential import router as credentialRouter
 from .ember import router as emberRouter
 from .enigma import router as enigmaRouter
 from .event import router as eventRouter
@@ -11,6 +12,7 @@ from .type import router as typeRouter
 
 primitiveRouters = (
     cogRouter,
+    credentialRouter,
     emberRouter,
     enigmaRouter,
     eventRouter,
@@ -23,6 +25,7 @@ primitiveRouters = (
 
 __all__ = [
     "cogRouter",
+    "credentialRouter",
     "emberRouter",
     "enigmaRouter",
     "eventRouter",

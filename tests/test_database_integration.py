@@ -20,7 +20,17 @@ from conftest import MODEL_TABLES
 
 pytestmark = pytest.mark.database
 TYPED_KINDS = sorted(LOCAL_KINDS - {"type"})
-PRIMITIVE_TYPES = ("cog", "ember", "enigma", "event", "om", "pondle", "snug", "thing")
+PRIMITIVE_TYPES = (
+    "cog",
+    "credential",
+    "ember",
+    "enigma",
+    "event",
+    "om",
+    "pondle",
+    "snug",
+    "thing",
+)
 
 
 def token(prefix: str) -> str:
@@ -388,6 +398,78 @@ def test_jsonb_intel_fields_round_trip(db: Connection) -> None:
     ).one()
     assert row.stats == {"count": 2, "nested": {"ok": True}}
     assert row.knowledge == {"description": "known"}
+
+
+def test_credential_binary_fields_round_trip(db: Connection) -> None:
+    reference = localRef("credential", token("binary"))
+    publicKeyHash = bytes.fromhex("00112233445566778899aabbccddeeff")
+    privateData = b"\x00owner-private\xff"
+
+    row = db.execute(
+        text(
+            'INSERT INTO credentials '
+            '(id, "typeRef", name, "publicKeyHash", "privateData") '
+            "VALUES (CAST(:id AS \"credentialRef\"), 'syn://type/credential', "
+            ':name, :publicKeyHash, :privateData) '
+            'RETURNING "publicKeyHash", "privateData"'
+        ),
+        {
+            "id": reference,
+            "name": "Binary credential",
+            "publicKeyHash": publicKeyHash,
+            "privateData": privateData,
+        },
+    ).one()
+
+    assert bytes(row.publicKeyHash) == publicKeyHash
+    assert bytes(row.privateData) == privateData
+
+
+@pytest.mark.parametrize("column", ["publicKeyHash", "privateData"])
+def test_credential_rejects_empty_binary_fields(db: Connection, column: str) -> None:
+    expectDatabaseError(
+        db,
+        lambda: db.execute(
+            text(
+                f'INSERT INTO credentials (id, "typeRef", name, "{column}") '
+                f"VALUES (CAST(:id AS \"credentialRef\"), "
+                f"'syn://type/credential', :name, :value)"
+            ),
+            {
+                "id": localRef("credential", token("empty-binary")),
+                "name": "Invalid credential",
+                "value": b"",
+            },
+        ),
+    )
+
+
+def test_credential_public_key_hash_is_unique_when_present(db: Connection) -> None:
+    publicKeyHash = bytes.fromhex("deadbeef")
+    statement = text(
+        'INSERT INTO credentials (id, "typeRef", name, "publicKeyHash") '
+        "VALUES (CAST(:id AS \"credentialRef\"), 'syn://type/credential', "
+        ':name, :publicKeyHash)'
+    )
+    db.execute(
+        statement,
+        {
+            "id": localRef("credential", token("unique-hash-first")),
+            "name": "First credential",
+            "publicKeyHash": publicKeyHash,
+        },
+    )
+    expectDatabaseError(
+        db,
+        lambda: db.execute(
+            statement,
+            {
+                "id": localRef("credential", token("unique-hash-second")),
+                "name": "Second credential",
+                "publicKeyHash": publicKeyHash,
+            },
+        ),
+    )
 
 
 @pytest.mark.parametrize("kind", sorted(LOCAL_KINDS))
