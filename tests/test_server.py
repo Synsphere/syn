@@ -92,7 +92,7 @@ def test_server_builds_application_and_disposes_engine() -> None:
     )
     createSessions.assert_called_once_with(engine)
     buildHandlers.assert_called_once_with(config.database.url)
-    createApp.assert_called_once_with(sessions, handlers)
+    createApp.assert_called_once_with(sessions, handlers, config.p2p)
     runServer.assert_called_once_with(
         app,
         host="0.0.0.0",

@@ -554,7 +554,7 @@ def test_property_routes_require_existing_type(
 
 @pytest.mark.parametrize(
     "primitive",
-    ["cog", "ember", "enigma", "event", "om", "pondle", "snug", "thing"],
+    ["cog", "credential", "ember", "enigma", "event", "om", "pondle", "snug", "thing"],
 )
 def test_get_type_tree_can_start_at_every_primitive(
     apiClient: TestClient,

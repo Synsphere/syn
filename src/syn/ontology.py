@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 
-ONTOLOGY_VERSION = 3
+ONTOLOGY_VERSION = 4
 QUESTION_DEFINITION = (
     "A proposition which can be answered, either yes or no, or with any other "
     "kind of response."
@@ -437,6 +437,15 @@ TYPE_DEFINITIONS: tuple[TypeDefinition, ...] = (
         "computational-process",
         module="syn",
         definition="The root type for computational processes represented as Cogs.",
+    ),
+    _type(
+        "credential",
+        "information-object",
+        module="syn",
+        definition=(
+            "The root type for owner-held credentials identified by a public-key hash "
+            "and containing owner-private data."
+        ),
     ),
     _type(
         "ember",

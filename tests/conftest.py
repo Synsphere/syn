@@ -17,6 +17,7 @@ MODEL_TABLES = {
     "event": "events",
     "ember": "embers",
     "cog": "cogs",
+    "credential": "credentials",
     "enigma": "enigmas",
     "pondle": "pondles",
     "snug": "snugs",
