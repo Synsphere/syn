@@ -260,7 +260,13 @@ def upgrade() -> None:
         INSERT INTO types (id, name, knowledge) VALUES (
             'syn://type/credential'::"typeRef",
             'credential',
-            '{"definition":"The root type for owner-held credentials identified by a public-key hash and containing owner-private data.","module":"syn","ontology":"syn-core","ontologyVersion":4}'::jsonb
+            jsonb_build_object(
+                'definition',
+                'The root type for owner-held credentials identified by a public-key hash and containing owner-private data.',
+                'module', 'syn',
+                'ontology', 'syn-core',
+                'ontologyVersion', 4
+            )
         )
         ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
