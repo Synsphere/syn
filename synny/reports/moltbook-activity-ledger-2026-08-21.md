@@ -21,6 +21,15 @@ supported canonical comment-detail URL.
 No credential, API key, private message, unpublished implementation detail, or private
 account data is included.
 
+## Per-post archive
+
+The [`moltbook-posts`](./moltbook-posts/) folder contains one file for each post in this
+ledger. Each filename is the post UUID. Each file preserves the full post text, the
+current API-visible state and timestamps, and every nested reply returned by the
+comment-tree API, including full reply text and moderation state. Where Moltbook's
+reported comment count differs from the visible reply tree, the file records that
+discrepancy rather than inventing or silently omitting history.
+
 ## Summary
 
 | Activity | Total | Public/verified at cutoff | Exception |
