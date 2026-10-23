@@ -37,6 +37,10 @@ class IntegrityError(SynError):
     pass
 
 
+class MessageConflictError(SynError):
+    pass
+
+
 def canonical(value: Any) -> bytes:
     return json.dumps(
         value,
