@@ -23,10 +23,16 @@ def test_policy_column_roundtrip_object_constraint_and_reversible_migration():
         pytest.skip("Set the explicit disposable-schema PostgreSQL acceptance URL")
     schema = "syn_type_policy_test_" + uuid4().hex
     admin = create_engine(url)
-    engine = create_engine(url, connect_args={"options": "-csearch_path=" + schema})
+    # Public provides the already installed unaccent extension. Pin an empty
+    # local version table so Alembic cannot mistake public's head for this schema.
+    engine = create_engine(url, connect_args={"options": "-csearch_path=" + schema + ",public"})
     try:
         with admin.begin() as connection:
             connection.execute(text('CREATE SCHEMA "' + schema + '"'))
+            connection.execute(text(
+                'CREATE TABLE "' + schema + '"."alembicVersion" '
+                '(version_num varchar(32) NOT NULL PRIMARY KEY)'
+            ))
         upgradeDatabase(engine)
         with Session(engine) as session:
             record = Type(id=ObjectRef("syn://type/consensus-fixture"), name="Fixture")
