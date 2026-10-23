@@ -1,0 +1,79 @@
+# Syn-owned verification workflows
+
+23 October 2026. Workflow definitions accompany the Type-policy foundation.
+Execution results must be read from the exact candidate's Actions runs; saved
+YAML does not establish a passing platform or database result.
+
+![Syn application, portable client, database and explicit Potbot compatibility lanes](../media/syn-ci-lanes.svg)
+
+*Generated workflow illustration. This shows configured responsibilities, rather
+than a screenshot of successful runs. Actual run URLs belong in the PR handoff.*
+
+| Workflow | Trigger and environment | Checks and limits |
+| --- | --- | --- |
+| `ci.yml` — Syn verification | Push, PR, manual; Ubuntu 24.04, Python 3.12/3.13 | Locked full application, HTTP/discovery/scheduler tests, shared policy tests, compilation, offline Alembic and Syn wheel build |
+| `ci.yml` — postgres job | Same triggers; Ubuntu, Python 3.13, separate PostgreSQL 17.11 service | Full schema upgrade, all database tests, isolated communication/Type migration tests; fail on skipped required database cases |
+| `client.yml` — Syn client portability | Push, PR, manual; Ubuntu/Windows, Python 3.12/3.13 | Install the built dependency-free client wheel in a separate environment; isolated imports, canonical/identity/resolution contracts and minimal Python correctness lint |
+| `potbot-compatibility.yml` | Manual, with a reviewed full 40-character Potbot commit | Test that exact public consumer with this exact private Syn candidate, selected policy/exchange/custody tests; no branch guessing or changing Potbot's gitlink |
+
+The application matrix qualifies Linux application execution. The client matrix
+qualifies the small shared wheel on Windows; it does not qualify the complete
+Windows Syn host or native custody. Potbot retains its own full application,
+PostgreSQL, sandbox and native-custody workflows. Compatibility is a focused
+consumer test, not a substitute for either repository's complete checks.
+
+## Execution and security boundaries
+
+All workflows use `contents: read`, SHA-pinned actions, disabled checkout
+credential persistence and disabled dependency caches. No production operator
+keys, live credentials, publishing token or deployment environment is required.
+The PostgreSQL password is an openly declared disposable fixture value. PRs
+execute under `pull_request`, never `pull_request_target`. No script interpolates
+the manual commit input as shell code; validate it through an environment variable
+before checkout. The compatibility workflow is manual because its reviewed
+consumer commit executes alongside private Syn source.
+
+The database helper accepts only an explicit loopback database named `syn_ci`,
+writes a runner-temporary test config with P2P disabled, and upgrades that service.
+It refuses other database targets. Acceptance fails if its JUnit report contains
+zero cases or skipped required cases. Normal jobs exclude database-marked tests
+and make no PostgreSQL qualification claim. Service containers require a Linux
+runner; see [GitHub's PostgreSQL service guide](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers).
+
+Exact action/uv/test-tool pins are shared with the integration's verified tooling.
+The PostgreSQL image uses a versioned upstream tag; it is not an immutable image
+digest pin. Review digest locking and dependency updates together when changing
+the database profile, rather than claiming that a tag cannot move. Current release
+context: [PostgreSQL release notes](https://www.postgresql.org/docs/release/).
+The permission/checkout rules follow [GitHub's secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use).
+
+## Running and interpreting checks
+
+Run application checks locally with `uv sync --locked --dev` followed by
+`uv run --locked python -m pytest tests packages/syn-client/tests -m 'not database'`.
+Run required database checks only against an explicitly disposable database:
+set `SYN_CI_DATABASE_URL` and `SYN_COMMUNICATION_TEST_URL` to the same loopback
+`syn_ci` service, set `SYN_CONFIG` to a task-owned temporary file, then execute
+`scripts/ci_database.py` and `scripts/ci_database.py --test`.
+
+After the manual workflow is available on the default branch, dispatch it against
+the selected Syn branch with a reviewed Potbot SHA. A newly proposed dispatch
+workflow may need to land on the default branch before GitHub exposes its manual
+trigger. Its absence from the run list is not a compatibility pass.
+
+Require application jobs for both Python versions, postgres and all four client
+matrix jobs when configuring branch protection. Workflow files do not alter
+repository settings or make checks required automatically. Keep both integration
+PRs as drafts until their exact source revisions and mandatory checks qualify.
+No release/upload/deploy workflow is introduced here: production packaging,
+registry identity and release approval remain separate milestones.
+
+## Planned additions
+
+Add actual two-Agent encrypted pub-sub, protected signing and repair tests with
+SBT05–SBT08. Add Raft crash/partition and four-independent-root BFT DAG/Hashgraph
+fault suites only when their adapters exist. Neither current discovery tests nor
+policy parsing proves consensus, protected-node startup or live key possession.
+Add measured resource/retention and restore limits before a pilot. Capture actual
+sanitised demonstrations then; a video of this workflow map would add no execution
+evidence.

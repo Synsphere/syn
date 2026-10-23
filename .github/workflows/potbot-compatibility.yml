@@ -1,0 +1,53 @@
+name: Syn Potbot compatibility
+
+on:
+  workflow_dispatch:
+    inputs:
+      potbot_sha:
+        description: Reviewed full Potbot commit SHA to test with this Syn revision
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  consumer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Require an exact reviewed consumer revision
+        shell: bash
+        env:
+          POTBOT_SHA: ${{ inputs.potbot_sha }}
+        run: '[[ "$POTBOT_SHA" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: kieransimkin/potbot
+          ref: ${{ inputs.potbot_sha }}
+          path: consumer
+          persist-credentials: false
+      - name: Substitute this exact Syn candidate for compatibility testing
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: consumer/vendor/syn
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.23"
+          enable-cache: false
+          python-version: "3.12"
+      - name: Verify both source identities
+        env:
+          POTBOT_SHA: ${{ inputs.potbot_sha }}
+          SYN_SHA: ${{ github.sha }}
+        run: |
+          test "$(git -C consumer rev-parse HEAD)" = "$POTBOT_SHA"
+          test "$(git -C consumer/vendor/syn rev-parse HEAD)" = "$SYN_SHA"
+      - name: Install locked consumer and selected private client
+        working-directory: consumer
+        run: uv sync --locked --dev --extra security --extra syn --extra semantics --extra postgres
+      - name: Check policy consumption, custody evidence and legacy exchange
+        working-directory: consumer
+        run: uv run --locked python -m pytest -q tests/unit/test_syn_consensus.py tests/unit/test_syn_service.py tests/unit/test_syn_exchange.py tests/unit/test_agent_provisioning.py

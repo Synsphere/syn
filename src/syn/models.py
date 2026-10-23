@@ -98,6 +98,8 @@ class Type(WikipediaMixin, NamedLocalMixin, Base):
     __tablename__ = "types"
 
     id: Mapped[ObjectRef] = mapped_column(typeRefType, primary_key=True)
+    # Local authoring state. Adoption requires a separately pinned canonical release.
+    consensusPolicy: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     def replaceParents(
         self,

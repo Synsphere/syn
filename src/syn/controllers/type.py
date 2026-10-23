@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from sqlalchemy import Integer, Text, case, cast, literal, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, aliased
+from syn_client.consensus import ConsensusPolicy
 
 from ..models import InvalidTypeParentsError, Type, TypeParent, TypeProperty
 from ..refs import ObjectRef
@@ -51,6 +52,7 @@ class TypeResponse(BaseModel):
     knowledgeUpdated: datetime | None
     confidence: Decimal | None
     confidenceUpdated: datetime | None
+    consensusPolicy: dict[str, Any] | None
 
 
 class TypeTreeResponse(TypeResponse):
@@ -73,6 +75,12 @@ class TypeUpdateRequest(BaseModel):
     knowledge: dict[str, Any] | None = None
     confidence: Decimal | None = Field(default=None, ge=0, le=1)
     parents: list[str] | None = None
+    consensusPolicy: dict[str, Any] | None = None
+
+    @field_validator("consensusPolicy")
+    @classmethod
+    def validateConsensusPolicy(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        return ConsensusPolicy.from_dict(value).to_dict() if value is not None else None
 
     @field_validator("name")
     @classmethod
@@ -266,6 +274,28 @@ async def getTypeTree(
     return typeChildTree(record, session, depth)
 
 
+@router.get("/{id}/consensus-definition")
+async def getConsensusDefinition(
+    id: TypeId,
+    revision: Annotated[str, Query(pattern=r"^[1-9][0-9]{0,15}$")],
+    session: Session = Depends(databaseSession),
+) -> dict[str, Any]:
+    """Export a draft projection; no response asserts adoption or consensus."""
+    from ..type_consensus import exportTypeDefinition
+
+    reference, record = requireType(id, session)
+    parents = session.scalars(
+        select(TypeParent.parentRef).where(TypeParent.childRef == reference)
+    ).all()
+    properties = session.scalars(
+        select(TypeProperty).where(TypeProperty.type == reference)
+    ).all()
+    definition = exportTypeDefinition(
+        record, revision=revision, parents=[str(p) for p in parents], properties=properties,
+    )
+    return {"status": "draft", "definition": definition.to_dict(), "digest": definition.digest}
+
+
 @router.put("/{id}", response_model=TypeResponse)
 async def updateType(
     id: TypeId,
@@ -295,6 +325,9 @@ async def updateType(
         record.name = body.name
         record.wikipediaRef = body.wikipediaRef
         record.locality = body.locality
+        # Old clients omit this field; omission must not erase an authored policy.
+        if "consensusPolicy" in body.model_fields_set:
+            record.consensusPolicy = body.consensusPolicy
         session.commit()
     except InvalidTypeParentsError as error:
         session.rollback()

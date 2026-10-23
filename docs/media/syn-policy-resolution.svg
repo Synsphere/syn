@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="350" viewBox="0 0 1120 350" role="img" aria-labelledby="t d">
+<title id="t">Implemented canonical Type policy resolution boundary</title>
+<desc id="d">Local Type policy drafts export to immutable definitions. A separately selected release and its independent trust pins feed the resolver. It returns an exact Type policy context; consensus execution and governed adoption are later work.</desc>
+<rect width="1120" height="350" rx="18" fill="#f4f7fa"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#47677e"/></marker></defs>
+<g font-family="Arial,sans-serif" fill="#17374a">
+<text x="30" y="43" font-size="25" font-weight="bold">Draft authoring becomes an exact policy context only through explicit pins.</text>
+<rect x="30" y="85" width="300" height="150" rx="12" fill="#fff1d6" stroke="#9d7938"/>
+<rect x="410" y="85" width="300" height="150" rx="12" fill="#e7eff8" stroke="#5d7996"/>
+<rect x="790" y="85" width="300" height="150" rx="12" fill="#e2f3e9" stroke="#4d866c"/>
+<text x="50" y="120" font-size="21" font-weight="bold">Type draft + policy</text><text x="50" y="155" font-size="17">Closed validated policy schema</text><text x="50" y="184" font-size="17">Bounded canonical definition</text><text x="50" y="213" font-size="17">Export remains a draft</text>
+<text x="430" y="120" font-size="21" font-weight="bold">Pinned canonical release</text><text x="430" y="155" font-size="17">Independent catalog + digest</text><text x="430" y="184" font-size="17">Trusted stream/roster binding</text><text x="430" y="213" font-size="17">Exact Type and policy pins</text>
+<text x="810" y="120" font-size="21" font-weight="bold">Immutable PolicyContext</text><text x="810" y="155" font-size="17">Protocol and required proof</text><text x="810" y="184" font-size="17">Conflict ownership and epoch</text><text x="810" y="213" font-size="17">No downgrade or default</text>
+<g fill="none" stroke="#47677e" stroke-width="2" marker-end="url(#a)"><path d="M335 160H400"/><path d="M715 160H780"/></g>
+<text x="30" y="281" font-size="18">Nodes use SHA-256(raw account public key). Issuer hashes describe custody, not node addresses.</text>
+<text x="30" y="319" font-size="17">Implemented contract illustration · governed adoption, live membership and consensus execution remain pending.</text>
+</g></svg>
