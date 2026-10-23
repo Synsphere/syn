@@ -94,6 +94,7 @@ def test_offline_head_contains_single_thing_type_migration() -> None:
     assert 'CREATE OR REPLACE FUNCTION "resolveTypeIntersection"' in sql
     assert sql.index('DROP TABLE pg_temp."thingTypeParentSets"') < sql.index("20260811_0010")
     assert 'CREATE TRIGGER "thingsRequireType"' in sql
+    assert sql.index('DROP TABLE pg_temp."primitiveTypeParentSets"') < sql.index("20260811_0010")
     assert 'ADD CONSTRAINT "objectTypesNoThingCheck"' in sql
 
 

@@ -273,6 +273,10 @@ def upgrade() -> None:
     op.execute(ENSURE_LOCAL_OBJECT)
     op.execute(OBJECT_TYPES_INHERITED)
     op.execute(PREVENT_REFERENCED_DELETE)
+    # A full bootstrap runs revisions in one transaction. Release completed
+    # domain-array scratch tables before later ObjectRef constraint changes.
+    op.execute('DROP TABLE pg_temp."primitiveTypeIntersectionGroups"')
+    op.execute('DROP TABLE pg_temp."primitiveTypeParentSets"')
     op.execute('DROP TABLE "objectTypes"')
 
 
