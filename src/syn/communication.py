@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hmac
 import json
 import os
@@ -26,6 +27,7 @@ from sqlalchemy.dialects.sqlite import insert as sqliteInsert
 from sqlalchemy.orm import Session, sessionmaker
 from syn_client.protocol import (
     GENESIS_HASH,
+    canonical,
     receipt_hash,
     uuid_text,
     validate_message,
@@ -96,7 +98,9 @@ class MessageStore:
                 .first()
             )
             if existing is not None:
-                if canonical({key: existing[key] for key in message}) != canonical(message):
+                if canonical({key: existing[key] for key in message}) != canonical(
+                    message
+                ):
                     raise MessageConflict("Message ID already has different contents")
                 return {"schema_version": 1, **dict(existing)}
             receipt = {
@@ -172,7 +176,7 @@ class MessageStore:
 def communicationTokens() -> dict[str, str]:
     raw = os.environ.get("SYN_COMMUNICATION_TOKENS", "{}")
     try:
-        return validateTokens(json.loads(raw))
+        return validateTokens(json.loads(raw, object_pairs_hook=_uniquePairs))
     except (ValueError, TypeError, AttributeError):
         raise ValueError(
             "SYN_COMMUNICATION_TOKENS must map canonical workspace UUIDs to unique 32..4096 character bearer tokens"
@@ -234,10 +238,14 @@ def communicationRouter(
     async def append(workspace: str, request: Request) -> dict[str, Any]:
         authorize(request, workspace)
         raw = bytearray()
-        async for chunk in request.stream():
-            raw.extend(chunk)
-            if len(raw) > 131_072:
-                raise HTTPException(413, "Message body exceeds 131072 bytes")
+        try:
+            async with asyncio.timeout(10):
+                async for chunk in request.stream():
+                    raw.extend(chunk)
+                    if len(raw) > 131_072:
+                        raise HTTPException(413, "Message body exceeds 131072 bytes")
+        except TimeoutError:
+            raise HTTPException(408, "Message body deadline exceeded") from None
         try:
             body = json.loads(raw, object_pairs_hook=_uniquePairs)
             # PostgreSQL access is synchronous; never block the asyncio server loop.

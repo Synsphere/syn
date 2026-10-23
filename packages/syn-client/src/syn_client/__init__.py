@@ -14,6 +14,7 @@ from .protocol import (
     GENESIS_HASH,
     MAX_RESPONSE_BYTES,
     IntegrityError,
+    MessageConflictError,
     SynError,
     canonical,
     uuid_text,
@@ -21,7 +22,13 @@ from .protocol import (
     verify_receipt,
 )
 
-__all__ = ["SynClient", "SynError", "IntegrityError", "GENESIS_HASH"]
+__all__ = [
+    "SynClient",
+    "SynError",
+    "IntegrityError",
+    "MessageConflictError",
+    "GENESIS_HASH",
+]
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -93,6 +100,10 @@ class SynClient:
         except HTTPError as error:
             code = error.code
             error.close()
+            if code == 409:
+                raise MessageConflictError(
+                    "Syn message ID already has different contents"
+                ) from None
             raise SynError(
                 f"Syn request failed (HTTP {code}); retry with the same message ID"
             ) from None
@@ -184,7 +195,8 @@ class SynClient:
         # Capture a finite target before reading so concurrent writers cannot extend this run forever.
         target = self.head(workspace_id) if expected_head is None else expected_head
         if (
-            target.get("workspace_id") != workspace_id
+            not isinstance(target, dict)
+            or target.get("workspace_id") != workspace_id
             or type(target.get("sequence")) is not int
             or target["sequence"] < 0
         ):
