@@ -316,6 +316,11 @@ def upgrade() -> None:
           ON groups.parents = parent_sets.parents
         WHERE thing.id::"objectRef" = parent_sets."objectRef"
         """,
+        # ON COMMIT DROP is too late when all revisions share one transaction:
+        # the later Credential domain check cannot validate a domain-array column.
+        # These scratch tables are no longer used after the preceding UPDATE.
+        'DROP TABLE pg_temp."thingTypeIntersectionGroups"',
+        'DROP TABLE pg_temp."thingTypeParentSets"',
         """
         DELETE FROM "objectTypes" direct
         USING things thing
