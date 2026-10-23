@@ -2,7 +2,9 @@
 
 23 October 2026. Implemented: first-class local Type policy authoring, public-key
 hash validation, immutable canonical Type/release contracts and offline pinned
-policy resolution. Consensus engines and governed release adoption remain pending.
+policy resolution. Durable explicit local genesis is described in
+[policy-genesis.md](policy-genesis.md); consensus engines and governed replacement
+remain pending.
 
 ![Draft Type export is pinned as a release before policy resolution returns a context](../media/syn-policy-resolution.svg)
 
@@ -71,9 +73,16 @@ entire release for every operation.
 
 Both operator-log and federated DAG/Hashgraph schemas are recognised. No Raft
 or Hashgraph adapter is activated by this foundation. Full roster credential/
-weight/independence checks, live challenges, governed policy transitions, durable
-adoption, Syn runtime startup binding and private peer transport remain separate
+weight/independence checks, live challenges, governed policy transitions,
+Syn runtime startup binding and private peer transport remain separate
 gates. Caller-supplied pins are trust configuration, not governance proof.
+
+The durable genesis store adds cross-catalog namespace ownership, immutable
+domain anchors and authenticated exact reads. It accepts only initial local
+trust configuration and exact retries. Potbot can resolve that stored document
+against an independently provisioned adoption digest; a database-returned digest
+cannot select its own trust. See the linked guide for administrative initialization,
+PostgreSQL protection and the distinction from signed Type governance.
 
 See [Syn's workflow design](ci.md) for the owned test lanes, and Potbot's
 [integration architecture](https://github.com/kieransimkin/potbot/blob/codex/syn-service-integration/docs/implementation/14-type-consensus-and-node-identity.md)

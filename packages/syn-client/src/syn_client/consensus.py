@@ -342,6 +342,10 @@ class PolicyBinding:
             _uuid(value)
         _revision(self.policy_epoch)
 
+    @classmethod
+    def from_dict(cls, value: object) -> Self:
+        return cls(**_fields(value, set(cls.__dataclass_fields__)))
+
 
 @dataclass(frozen=True, slots=True)
 class TypePolicyPin:
