@@ -1466,6 +1466,7 @@ dependencies = [
     { name = "pyopenssl" },
     { name = "service-identity" },
     { name = "sqlalchemy" },
+    { name = "syn-client" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1489,6 +1490,7 @@ requires-dist = [
     { name = "pyopenssl", specifier = ">=26.3.0" },
     { name = "service-identity", specifier = ">=26.1.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
+    { name = "syn-client", editable = "packages/syn-client" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.52.0" },
 ]
 
@@ -1499,6 +1501,11 @@ dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
 ]
+
+[[package]]
+name = "syn-client"
+version = "0.1.0"
+source = { editable = "packages/syn-client" }
 
 [[package]]
 name = "trio"

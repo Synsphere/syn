@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12,<3.14"
 dependencies = [
+    "syn-client==0.1.0",
     "alembic>=1.18.5",
     "asyncprocessscheduler==0.9.0b1",
     "fastapi>=0.141.1",
@@ -27,6 +28,9 @@ syn-server = "syn.server:main"
 [build-system]
 requires = ["uv_build>=0.12.0,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+syn-client = { path = "packages/syn-client", editable = true }
 
 
 [tool.pytest.ini_options]
