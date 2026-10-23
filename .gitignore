@@ -12,3 +12,4 @@ New shortcut.lnk
 references/double.pdf
 __pycache__/
 *.py[cod]
+.potbot-integration/

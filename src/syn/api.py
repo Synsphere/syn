@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -49,6 +50,7 @@ class JobResultResponse(BaseModel):
 def createApp(
     sessions: sessionmaker[Session], handlers: dict[str, JobHandler],
     p2pConfig: P2PConfig | None = None,
+    *, communicationTokens: Mapping[str, str] | None = None,
 ) -> FastAPI:
     scheduler = ProcessScheduler(sessions, handlers)
     p2pNode = Libp2pNode(p2pConfig or P2PConfig())
@@ -66,6 +68,11 @@ def createApp(
     app.state.processScheduler = scheduler
     app.state.sessions = sessions
     app.state.p2pNode = p2pNode
+
+    from .communication import communicationRouter, communicationTokens as loadCommunicationTokens
+    tokens = loadCommunicationTokens() if communicationTokens is None else communicationTokens
+    if tokens:
+        app.include_router(communicationRouter(sessions, tokens))
 
     @app.get("/p2p/status")
     async def p2pStatus(request: Request) -> dict[str, Any]:

@@ -126,6 +126,15 @@ uv run pytest -m database
 
 ## API service
 
+Syn now also supplies authenticated durable workspace messages and verifiable
+hash-chain receipts for consumers such as Potbot. The dependency-free client
+lives in `packages/syn-client`; [communication setup and contracts](docs/communication.md)
+describe credentials, migration, replay and the ledger's integrity limits.
+
+![Illustrated Potbot to Syn communication and receipt verification](docs/media/communication-flow.svg)
+
+*Explanatory illustration of the implemented service boundary, not a UI screenshot.*
+
 Start the web server with the uv command installed by the package:
 
 ```sh
