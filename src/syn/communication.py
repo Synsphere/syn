@@ -33,6 +33,9 @@ from syn_client.protocol import (
     validate_message,
 )
 
+from syn.policy_adoption import PolicyAdoptionStore, PolicyNotFound
+from syn_client.consensus import PolicyError
+
 metadata = MetaData()
 heads = Table(
     "syn_communication_heads",
@@ -206,6 +209,7 @@ def communicationRouter(
     credentials = validateTokens(tokens)
     router = APIRouter(prefix="/v1/communication")
     store = MessageStore(sessions)
+    policyStore = PolicyAdoptionStore(sessions)
 
     def authorize(request: Request, workspace: str) -> None:
         expected = credentials.get(workspace)
@@ -214,6 +218,18 @@ def communicationRouter(
             supplied.encode(), ("Bearer " + expected).encode()
         ):
             raise HTTPException(403, "Syn workspace access denied")
+
+    @router.get("/workspaces/{workspace}/policies/{catalog}/adoptions/{anchor}")
+    def policyAdoption(workspace: str, catalog: str, anchor: str, request: Request) -> dict[str, Any]:
+        authorize(request, workspace)
+        if request.query_params:
+            raise HTTPException(422, "Policy adoption does not accept query parameters")
+        try:
+            return policyStore.load(workspace, catalog, anchor).to_dict()
+        except PolicyNotFound:
+            raise HTTPException(404, "Pinned policy adoption is unavailable") from None
+        except (PolicyError, ValueError):
+            raise HTTPException(422, "Invalid or inconsistent policy adoption") from None
 
     @router.get("/workspaces/{workspace}/head")
     def head(workspace: str, request: Request) -> dict[str, Any]:

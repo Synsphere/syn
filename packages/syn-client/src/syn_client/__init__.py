@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import math
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
@@ -21,6 +21,9 @@ from .protocol import (
     validate_message,
     verify_receipt,
 )
+
+if TYPE_CHECKING:
+    from .policy_adoption import GenesisPolicyAdoption
 
 __all__ = [
     "SynClient",
@@ -77,7 +80,12 @@ class SynClient:
         self._opener = build_opener(ProxyHandler({}), _NoRedirect())
 
     def _request(
-        self, workspace_id: str, suffix: str, body: dict[str, Any] | None = None
+        self,
+        workspace_id: str,
+        suffix: str,
+        body: dict[str, Any] | None = None,
+        *,
+        consensus_document: bool = False,
     ) -> dict[str, Any]:
         identity = uuid_text(workspace_id)
         request = Request(
@@ -93,7 +101,12 @@ class SynClient:
                 raw = response.read(MAX_RESPONSE_BYTES + 1)
                 if len(raw) > MAX_RESPONSE_BYTES:
                     raise SynError("Syn response exceeded the configured bound")
-                value = json.loads(raw)
+                if consensus_document:
+                    from .consensus import load_document
+
+                    value = load_document(raw.decode("utf-8"))
+                else:
+                    value = json.loads(raw)
                 if not isinstance(value, dict):
                     raise SynError("Syn returned an invalid response")
                 return value
@@ -188,6 +201,32 @@ class SynClient:
         ):
             raise IntegrityError("Invalid Syn head")
         return value
+
+    def policy_adoption(
+        self, workspace_id: str, *, catalog_id: str, expected_adoption_digest: str
+    ) -> GenesisPolicyAdoption:
+        """Read an exact adoption; the caller supplies an independently retained pin."""
+        from .consensus import PolicyError, digest_text
+        from .policy_adoption import GenesisPolicyAdoption
+
+        uuid_text(workspace_id)
+        uuid_text(catalog_id)
+        digest_text(expected_adoption_digest)
+        value = self._request(
+            workspace_id,
+            f"policies/{catalog_id}/adoptions/{expected_adoption_digest}",
+            consensus_document=True,
+        )
+        try:
+            document = GenesisPolicyAdoption.from_dict(value)
+            document.resolver(
+                expected_workspace_id=workspace_id,
+                expected_catalog_id=catalog_id,
+                expected_adoption_digest=expected_adoption_digest,
+            )
+        except PolicyError as error:
+            raise IntegrityError("Syn policy adoption failed independent pin validation") from error
+        return document
 
     def verify(
         self, workspace_id: str, *, expected_head: dict[str, Any] | None = None
