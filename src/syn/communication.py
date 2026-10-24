@@ -34,6 +34,7 @@ from syn_client.protocol import (
 )
 
 from syn.policy_adoption import PolicyAdoptionStore, PolicyNotFound
+from syn.governance import GovernedPolicyStore
 from syn_client.consensus import PolicyError
 
 metadata = MetaData()
@@ -210,6 +211,7 @@ def communicationRouter(
     router = APIRouter(prefix="/v1/communication")
     store = MessageStore(sessions)
     policyStore = PolicyAdoptionStore(sessions)
+    governanceStore = GovernedPolicyStore(sessions)
 
     def authorize(request: Request, workspace: str) -> None:
         expected = credentials.get(workspace)
@@ -220,7 +222,9 @@ def communicationRouter(
             raise HTTPException(403, "Syn workspace access denied")
 
     @router.get("/workspaces/{workspace}/policies/{catalog}/adoptions/{anchor}")
-    def policyAdoption(workspace: str, catalog: str, anchor: str, request: Request) -> dict[str, Any]:
+    def policyAdoption(
+        workspace: str, catalog: str, anchor: str, request: Request
+    ) -> dict[str, Any]:
         authorize(request, workspace)
         if request.query_params:
             raise HTTPException(422, "Policy adoption does not accept query parameters")
@@ -229,7 +233,33 @@ def communicationRouter(
         except PolicyNotFound:
             raise HTTPException(404, "Pinned policy adoption is unavailable") from None
         except (PolicyError, ValueError):
-            raise HTTPException(422, "Invalid or inconsistent policy adoption") from None
+            raise HTTPException(
+                422, "Invalid or inconsistent policy adoption"
+            ) from None
+
+    @router.get(
+        "/workspaces/{workspace}/policies/{catalog}/governance/{genesis}/chains/{head}"
+    )
+    def governedChain(
+        workspace: str, catalog: str, genesis: str, head: str, request: Request
+    ) -> dict[str, Any]:
+        authorize(request, workspace)
+        if request.query_params:
+            raise HTTPException(
+                422, "Governance chain does not accept query parameters"
+            )
+        try:
+            chain = governanceStore.chain(workspace, catalog, genesis, head)
+            return {
+                "profile": "syn.governance-chain/1",
+                "records": [r.to_dict() for r in chain],
+            }
+        except PolicyNotFound:
+            raise HTTPException(404, "Pinned governance chain is unavailable") from None
+        except (PolicyError, ValueError):
+            raise HTTPException(
+                422, "Invalid or inconsistent governance chain"
+            ) from None
 
     @router.get("/workspaces/{workspace}/head")
     def head(workspace: str, request: Request) -> dict[str, Any]:

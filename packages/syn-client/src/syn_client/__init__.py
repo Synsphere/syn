@@ -23,6 +23,7 @@ from .protocol import (
 )
 
 if TYPE_CHECKING:
+    from .governance import GovernedPolicyRecord
     from .policy_adoption import GenesisPolicyAdoption
 
 __all__ = [
@@ -227,6 +228,32 @@ class SynClient:
         except PolicyError as error:
             raise IntegrityError("Syn policy adoption failed independent pin validation") from error
         return document
+
+    def governed_policy_chain(
+        self, workspace_id: str, *, catalog_id: str, expected_genesis_digest: str,
+        expected_head_digest: str,
+    ) -> tuple[GovernedPolicyRecord, ...]:
+        """Verify every successor from a retained genesis to an independently pinned head."""
+        from .consensus import PolicyError, digest_text
+        from .governance import MAX_CHAIN, GovernedPolicyRecord, verified_chain
+
+        uuid_text(workspace_id)
+        uuid_text(catalog_id)
+        digest_text(expected_genesis_digest)
+        digest_text(expected_head_digest)
+        value = self._request(workspace_id,
+            f"policies/{catalog_id}/governance/{expected_genesis_digest}/chains/{expected_head_digest}",
+            consensus_document=True)
+        try:
+            if (set(value) != {"profile", "records"} or value["profile"] != "syn.governance-chain/1"
+                or not isinstance(value["records"], list) or not 1 <= len(value["records"]) <= MAX_CHAIN):
+                raise PolicyError("Invalid governance chain response")
+            chain = tuple(GovernedPolicyRecord.from_dict(r) for r in value["records"])
+            verified_chain(chain, expected_workspace=workspace_id, expected_catalog=catalog_id,
+                expected_genesis_digest=expected_genesis_digest, expected_head_digest=expected_head_digest)
+        except PolicyError as error:
+            raise IntegrityError("Syn governance chain failed independent verification") from error
+        return chain
 
     def verify(
         self, workspace_id: str, *, expected_head: dict[str, Any] | None = None

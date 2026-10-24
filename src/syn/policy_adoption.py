@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import (
+    BigInteger,
     Column,
     ForeignKey,
     ForeignKeyConstraint,
@@ -10,6 +11,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
     select,
 )
 from sqlalchemy.dialects.postgresql import insert as pgInsert
@@ -54,6 +56,42 @@ owners = Table(
     ),
     ForeignKeyConstraint(
         ["workspace_id", "catalog_id"], [adoptions.c.workspace_id, adoptions.c.catalog_id]
+    ),
+)
+
+# Versioned signed governance appends records; it never rewrites legacy genesis.
+signedCatalogs = Table(
+    "syn_governed_catalogs",
+    metadata,
+    Column("workspace_id", String(36), ForeignKey(workspaces.c.workspace_id), primary_key=True),
+    Column("catalog_id", String(36), primary_key=True),
+    Column("genesis_record_digest", String(64), nullable=False),
+)
+signedRecords = Table(
+    "syn_governed_records",
+    metadata,
+    Column("workspace_id", String(36), primary_key=True),
+    Column("catalog_id", String(36), primary_key=True),
+    Column("sequence", BigInteger, primary_key=True),
+    Column("record_digest", String(64), nullable=False),
+    Column("document", Text, nullable=False),
+    ForeignKeyConstraint(
+        ["workspace_id", "catalog_id"], [signedCatalogs.c.workspace_id, signedCatalogs.c.catalog_id]
+    ),
+    UniqueConstraint("workspace_id", "catalog_id", "record_digest"),
+)
+signedClaims = Table(
+    "syn_governed_namespace_claims",
+    metadata,
+    Column("workspace_id", String(36), primary_key=True),
+    Column("domain_id", String(36), primary_key=True),
+    Column("conflict_namespace", String(128), primary_key=True),
+    Column("catalog_id", String(36), nullable=False),
+    ForeignKeyConstraint(
+        ["workspace_id", "catalog_id"], [signedCatalogs.c.workspace_id, signedCatalogs.c.catalog_id]
+    ),
+    ForeignKeyConstraint(
+        ["workspace_id", "domain_id"], [domains.c.workspace_id, domains.c.domain_id]
     ),
 )
 
@@ -114,6 +152,16 @@ class PolicyAdoptionStore:
                     .where(workspaces.c.workspace_id == workspace)
                     .with_for_update()
                 ).one()
+                if (
+                    session.scalar(
+                        select(signedCatalogs.c.catalog_id).where(
+                            signedCatalogs.c.workspace_id == workspace,
+                            signedCatalogs.c.catalog_id == catalog,
+                        )
+                    )
+                    is not None
+                ):
+                    raise PolicyConflict("Signed governance already owns this catalog")
                 existing = (
                     session.execute(
                         select(adoptions).where(
@@ -158,6 +206,17 @@ class PolicyAdoptionStore:
                     )
                 )
                 for domain, namespace, policy, stream in sorted(_claims(document)):
+                    if (
+                        session.scalar(
+                            select(signedClaims.c.catalog_id).where(
+                                signedClaims.c.workspace_id == workspace,
+                                signedClaims.c.domain_id == domain,
+                                signedClaims.c.conflict_namespace == namespace,
+                            )
+                        )
+                        is not None
+                    ):
+                        raise PolicyConflict("Signed governance already owns this namespace")
                     session.execute(
                         owners.insert().values(
                             workspace_id=workspace,
