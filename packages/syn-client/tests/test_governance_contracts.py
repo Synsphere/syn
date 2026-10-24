@@ -104,3 +104,42 @@ def test_closed_governance_profiles_and_invalid_native_encodings():
             expected_catalog=root.state.release.catalog_id,
             expected_genesis_digest=changed.digest,
         )
+
+
+@pytest.mark.parametrize("attack", [None, "truncated-dag", "governors", "v1-downgrade"])
+def test_portable_federated_history_replays_finality_and_old_governance(attack):
+    data = json.loads((FIXTURES / "federated-governed-chain.json").read_bytes())
+    if attack == "truncated-dag":
+        proof = next(iter(data["records"][1]["approvals"]["existing_policies"].values()))
+        proof["events"] = proof["events"][:4]
+    elif attack == "governors":
+        data["records"][1]["approvals"]["type_governance"] = []
+    elif attack == "v1-downgrade":
+        data["records"][1]["profile"] = "syn.governed-policy-record/1"
+    records = tuple(GovernedPolicyRecord.from_dict(r) for r in data["records"])
+    options = dict(
+        expected_workspace=records[0].state.workspace_id,
+        expected_catalog=records[0].state.release.catalog_id,
+        expected_genesis_digest=data["genesis_digest"],
+        expected_head_digest=data["head_digest"],
+    )
+    if attack is None:
+        assert verified_chain(records, **options).release == records[-1].state.release
+        from syn_client.dag_finality import verify_governance_finality
+
+        proof = next(iter(load_document(records[-1].approvals_json)["existing_policies"].values()))
+        result = verify_governance_finality(
+            proof,
+            previous=records[0],
+            policy_digest=records[0].state.bindings[0].policy_digest,
+            expected_proposal_digest=records[-1].proposal_digest,
+        )
+        assert result.received_round == 2
+        assert result.timestamp_twice_ms == 20010
+        assert (
+            result.event_digest
+            == "b6a2cacd8f90b18335edc8169e732a9b0e4d8e772aad756e7d95e4f46298a3a6"
+        )
+    else:
+        with pytest.raises(PolicyError):
+            verified_chain(records, **options)

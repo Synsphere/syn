@@ -4,8 +4,8 @@
 hash validation, immutable canonical Type/release contracts and offline pinned
 policy resolution. Durable explicit local genesis is described in
 [policy-genesis.md](policy-genesis.md). [Signed governance](signed-governance.md)
-adds locally authorized successors; consensus engines and federated replacement
-remain pending.
+adds locally authorized successors and [bounded federated governance replay](dag-finality.md).
+Operational consensus engines and mesh admission remain pending.
 
 ![Draft Type export is pinned as a release before policy resolution returns a context](../media/syn-policy-resolution.svg)
 

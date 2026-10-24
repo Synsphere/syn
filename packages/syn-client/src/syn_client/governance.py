@@ -1,8 +1,9 @@
-"""Signed local configuration governance; never a Raft or DAG finality proof.
+"""Signed configuration governance with profile-aware existing-policy approval.
 
 Records are append-only successors. Existing policy rosters AND the previous
 Type-governance authority approve the exact successor, including authority changes.
-Federated transitions hold until a real finality verifier is implemented.
+Record v2 requires old-epoch DAG replay for federated policies. Operator consent
+remains a local configuration authorization, not a Raft commit.
 """
 
 from __future__ import annotations
@@ -213,8 +214,11 @@ class GovernedPolicyRecord:
     previous_record_digest: str
     state: GovernedPolicyState
     approvals_json: str
+    profile: str = "syn.governed-policy-record/1"
 
     def __post_init__(self) -> None:
+        if self.profile not in ("syn.governed-policy-record/1", "syn.governed-policy-record/2"):
+            raise PolicyError("Unsupported governed record")
         _revision(self.sequence)
         digest_text(self.previous_record_digest)
         if not isinstance(self.state, GovernedPolicyState):
@@ -230,7 +234,7 @@ class GovernedPolicyRecord:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "profile": "syn.governed-policy-record/1",
+            "profile": self.profile,
             "sequence": self.sequence,
             "previous_record_digest": self.previous_record_digest,
             "state": self.state.to_dict(),
@@ -240,13 +244,14 @@ class GovernedPolicyRecord:
     @classmethod
     def from_dict(cls, value: object) -> Self:
         d = _fields(value, {"profile", "sequence", "previous_record_digest", "state", "approvals"})
-        if d["profile"] != "syn.governed-policy-record/1":
+        if d["profile"] not in ("syn.governed-policy-record/1", "syn.governed-policy-record/2"):
             raise PolicyError("Unsupported governed record")
         return cls(
             d["sequence"],
             d["previous_record_digest"],
             GovernedPolicyState.from_dict(d["state"]),
             canonical_bytes(d["approvals"]).decode(),
+            d["profile"],
         )
 
     @classmethod
@@ -258,12 +263,12 @@ class GovernedPolicyRecord:
 
     @property
     def digest(self) -> str:
-        return _digest("syn.governed-policy-record/1", self.to_dict())
+        return _digest(self.profile, self.to_dict())
 
     @property
     def proposal_digest(self) -> str:
         return _digest(
-            "syn.policy-proposal/1",
+            "syn.policy-proposal/1" if self.profile.endswith("/1") else "syn.policy-proposal/2",
             {
                 "sequence": self.sequence,
                 "previous_record_digest": self.previous_record_digest,
@@ -324,6 +329,7 @@ def _successor_policies(
         or old.workspace_id != new.workspace_id
         or old.release.catalog_id != new.release.catalog_id
         or int(new.release.release_revision) != int(old.release.release_revision) + 1
+        or (previous.profile.endswith("/2") and successor.profile.endswith("/1"))
     ):
         raise PolicyError("Transition scope, predecessor or release sequence mismatch")
     old_bindings = {b.policy_digest: b for b in old.bindings}
@@ -359,9 +365,11 @@ def _successor_policies(
     old_refs = {t.type_ref for t in old.release.types}
     if any(t.type_revision != "1" for t in new.release.types if t.type_ref not in old_refs):
         raise PolicyError("New Types must begin at revision one")
-    if any(p.protocol != "syn.operator-log/1" for p in policies.values()):
+    if successor.profile.endswith("/1") and any(
+        p.protocol != "syn.operator-log/1" for p in policies.values()
+    ):
         raise PolicyError(
-            "Federated policy transition requires the unimplemented DAG finality verifier"
+            "Federated policy transition requires v2 and DAG finality, never signature count"
         )
     return policies
 
@@ -386,6 +394,8 @@ def required_approval_authority(
         return previous.state.type_governance
     if policy_digest not in policies:
         raise PolicyError("Approval target is not an existing policy")
+    if policies[policy_digest].protocol != "syn.operator-log/1":
+        raise PolicyError("Federated approval requires DAG finality, not a consent signature")
     anchor = policies[policy_digest].membership_anchor_digest
     return next(a for a in previous.state.policy_authorities if a.digest == anchor)
 
@@ -401,16 +411,28 @@ def verify_transition(
     if set(approvals["existing_policies"]) != set(policies):
         raise PolicyError("Transition requires approval under every existing Type policy")
     authorities = {a.digest: a for a in old.policy_authorities}
-    for digest, policy in policies.items():
-        authority = authorities[policy.membership_anchor_digest]
-        authority.verify(
-            approvals["existing_policies"][digest],
-            successor.approval_payload(authority, digest),
-            now,
-        )
+    # Type governance is a separate authorization under the OLD authority. Verify
+    # before expensive history replay; a new governor cannot approve itself.
     old.type_governance.verify(
         approvals["type_governance"], successor.approval_payload(old.type_governance), now
     )
+    for digest, policy in policies.items():
+        authority = authorities[policy.membership_anchor_digest]
+        if policy.protocol == "syn.operator-log/1":
+            authority.verify(
+                approvals["existing_policies"][digest],
+                successor.approval_payload(authority, digest),
+                now,
+            )
+        else:
+            from .dag_finality import verify_governance_finality
+
+            verify_governance_finality(
+                approvals["existing_policies"][digest],
+                previous=previous,
+                policy_digest=digest,
+                expected_proposal_digest=successor.proposal_digest,
+            )
 
 
 def verified_chain(
