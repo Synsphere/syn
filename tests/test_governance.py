@@ -496,7 +496,8 @@ def test_signed_namespace_cannot_be_taken_by_unsigned_catalog(rig):
         initialize(PolicyAdoptionStore(sessionmaker(engine)), other)
 
 
-def test_authenticated_chain_read_and_actual_shared_parser(rig):
+@pytest.mark.parametrize("federated", [False, True])
+def test_authenticated_chain_read_and_actual_shared_parser(rig, federated):
     from io import BytesIO
     from unittest.mock import patch
 
@@ -507,8 +508,13 @@ def test_authenticated_chain_read_and_actual_shared_parser(rig):
     from syn.communication import communicationRouter
 
     store, _ = rig
-    root = genesis()
-    next_record = successor(root)
+    if federated:
+        from test_dag_finality import valid_pair
+
+        root, next_record = valid_pair()
+    else:
+        root = genesis()
+        next_record = successor(root)
     admit(store, root, root)
     admit(store, next_record, root)
     token = "synthetic-" + "x" * 40

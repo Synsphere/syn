@@ -2,7 +2,9 @@
 
 24 October 2026. Implemented signed configuration approval and serialized local
 adoption. These approvals are not Raft commits or DAG/Hashgraph finality proofs.
-Federated replacements remain blocked until their real finality verifier exists.
+Record v2 now requires [bounded old-epoch DAG replay](dag-finality.md) for
+federated replacements, plus separate old Type-governance approval. This does not
+activate a network engine or qualify a production federation.
 
 ![Existing policy quorums and Type governors separately authorize the exact successor](../media/syn-signed-governance.svg)
 
@@ -31,7 +33,8 @@ anchor, all credentials have one verified issuer, and the threshold is exactly a
 strict majority. A federated roster requires distinct issuer keys, one account per
 issuer and greater than two-thirds consent. This conservative structural cap does
 not prove independent human custody. Selecting a future federated policy is
-allowed under the old authority; subsequent replacements under it remain held.
+allowed under the old authority. Subsequent replacements require v2 replay under
+that old federated roster; signature counts cannot substitute for finality.
 
 ## Signed records and existing authority
 
@@ -57,8 +60,10 @@ alone establish no initial trust: the external pin selects the root. Governors
 are assigned accounts in restricted native vaults, including operator-controlled
 accounts. The operator base key remains in operator custody.
 
-Every successor requires **every existing Type policy's quorum and the previous
-Type-governance threshold**, including unchanged sibling policies. A new governor,
+Every successor requires **every existing Type policy's authorization and the
+previous Type-governance threshold**, including unchanged sibling policies.
+Operator policies use their local consent quorum; federated policies require the
+old epoch's first finalized authorized proposal in bounded DAG replay. A new governor,
 new roster or weaker policy cannot approve its own installation. Old authorities
 may authorize a legitimate authority change; later records use the adopted result.
 
@@ -70,13 +75,15 @@ replacement under an existing BFT policy without its finality verifier.
 
 ## Time, ordering and durable history
 
-On first admission the local Syn clock must fall within each native proof's
+On first admission the local Syn clock must fall within each outer consent proof's
 validity window, bounded to 300 seconds. Time is sampled after acquiring the
 workspace lock and rechecked before leaving the transaction. Historical checks validate signatures,
 scope and window shape without pretending old proofs are currently live. An exact
 retry after expiry returns the original record and cannot advance a head. Neither
 the record nor its claimed issue time is a trusted timestamp. Offline checks do
 not establish when initial admission occurred or that a head is globally latest.
+Historical DAG events and embedded governance certifications are replayed without
+a live clock; outer Type-governance consent remains fresh on first import.
 
 Migration `20261024_0015` adds immutable catalog roots, sequenced records and
 namespace reservations. PostgreSQL refuses UPDATE/DELETE/TRUNCATE. The workspace

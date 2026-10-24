@@ -17,6 +17,7 @@ from syn.governance import GovernedPolicyStore
 from syn.policy_adoption import PolicyConflict, signedRecords
 from test_governance import CATALOG, NOW, admit, genesis, successor
 from test_policy_adoption_postgres import database as _owned_database
+from test_dag_finality import valid_pair
 
 pytestmark = pytest.mark.database
 TABLES = ("syn_governed_catalogs", "syn_governed_records", "syn_governed_namespace_claims")
@@ -25,6 +26,31 @@ TABLES = ("syn_governed_catalogs", "syn_governed_records", "syn_governed_namespa
 @pytest.fixture(scope="module")
 def governance_database():
     yield from _owned_database.__wrapped__()
+
+
+def test_federated_replay_is_verified_before_postgres_append(governance_database):
+    legacy, engine = governance_database
+    store = GovernedPolicyStore(legacy.sessions)
+    root, one = valid_pair()
+    approvals = load_document(one.approvals_json)
+    approvals["type_governance"] = []
+    bad = replace(one, approvals_json=canonical_bytes(approvals).decode())
+    admit(store, root, root)
+    with pytest.raises(PolicyError):
+        admit(store, bad, root)
+    with engine.connect() as c:
+        assert (
+            len(
+                c.execute(
+                    select(signedRecords).where(
+                        signedRecords.c.workspace_id == root.state.workspace_id
+                    )
+                ).all()
+            )
+            == 1
+        )
+    admit(store, one, root)
+    assert store.chain(root.state.workspace_id, CATALOG, root.digest, one.digest) == (root, one)
 
 
 def test_concurrent_signed_initialization_and_successors_have_one_head(governance_database):
