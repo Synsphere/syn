@@ -4,6 +4,9 @@
 history for a policy replacement. It verifies a finite governance decision; it
 does not run a network, produce events or qualify a production consensus engine.
 
+[Protected signing and recovery](protected-dag-signing.md) now define an explicit
+v2 policy/proof profile with independent operator reservations. V1 remains frozen.
+
 ![Old policy and roster determine DAG replay; its first authorized proposal and old Type-governance approval jointly gate the replacement](../media/syn-dag-finality.svg)
 
 *Generated architecture illustration of implemented verification boundaries.
@@ -109,10 +112,10 @@ clock. The separate outer old-governor approvals must still be live on first
 local import, sampled after the store lock and again before commit. Historical
 verification and exact retries do not claim freshness or latest global state.
 
-Only governance selection is replayed. No arbitrary transaction execution,
-availability certificate, application outcome root, mesh transport, durable event
-producer, recovery checkpoint or protected one-event-per-parent reservation is
-implemented here. Automatic Agent traffic remains disabled pending those gates.
+Only governance selection is replayed. Protected v2 custody now reserves one event
+per parent and recovers its exact bytes, while v1 remains research-only. Arbitrary
+transaction execution, availability certificates, application outcome roots, mesh
+transport, automatic producers and authenticated recovery checkpoints remain gated.
 
 ## Upstream boundary and verification evidence
 

@@ -17,6 +17,20 @@ from syn_client.governance import (
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+def test_actual_rust_protected_event_and_operator_reservation_bytes():
+    from syn_client.dag_signing import protected_event_digest, verify_protected_event
+
+    event = json.loads((FIXTURES / "protected-native-dag-event.json").read_bytes())
+    member = event["proof"]["membership"]
+    assert member["account_number"] == 7
+    assert verify_protected_event(event, membership=member) == event
+    assert protected_event_digest(event) == event["reservation"]["intent"]["event_digest"]
+    wrong = json.loads(json.dumps(event))
+    wrong["reservation"]["signature"] = "A" * 86 + "=="
+    with pytest.raises(PolicyError):
+        verify_protected_event(wrong, membership=member)
+
+
 def test_rfc8032_ed25519_vector_and_corruption():
     key = bytes.fromhex("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")
     signature = bytes.fromhex(
@@ -107,8 +121,11 @@ def test_closed_governance_profiles_and_invalid_native_encodings():
 
 
 @pytest.mark.parametrize("attack", [None, "truncated-dag", "governors", "v1-downgrade"])
-def test_portable_federated_history_replays_finality_and_old_governance(attack):
-    data = json.loads((FIXTURES / "federated-governed-chain.json").read_bytes())
+@pytest.mark.parametrize(
+    "filename", ["federated-governed-chain.json", "protected-governed-chain.json"]
+)
+def test_portable_federated_history_replays_finality_and_old_governance(attack, filename):
+    data = json.loads((FIXTURES / filename).read_bytes())
     if attack == "truncated-dag":
         proof = next(iter(data["records"][1]["approvals"]["existing_policies"].values()))
         proof["events"] = proof["events"][:4]
@@ -136,10 +153,11 @@ def test_portable_federated_history_replays_finality_and_old_governance(attack):
         )
         assert result.received_round == 2
         assert result.timestamp_twice_ms == 20010
-        assert (
-            result.event_digest
-            == "b6a2cacd8f90b18335edc8169e732a9b0e4d8e772aad756e7d95e4f46298a3a6"
-        )
+        if filename == "federated-governed-chain.json":
+            assert (
+                result.event_digest
+                == "b6a2cacd8f90b18335edc8169e732a9b0e4d8e772aad756e7d95e4f46298a3a6"
+            )
     else:
         with pytest.raises(PolicyError):
             verified_chain(records, **options)

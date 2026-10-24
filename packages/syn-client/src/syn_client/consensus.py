@@ -35,6 +35,12 @@ _PROFILES = {
         "byzantine-less-than-one-third-weight",
         "syn.dag-hashgraph-finality/1",
     ),
+    "syn.bft-dag-hashgraph/2": (
+        "independent-issuer-weight-caps",
+        "bft-supermajority",
+        "byzantine-less-than-one-third-weight",
+        "syn.dag-hashgraph-finality/2",
+    ),
 }
 
 
