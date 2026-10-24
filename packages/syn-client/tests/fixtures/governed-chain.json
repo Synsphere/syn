@@ -1,0 +1,831 @@
+{
+  "genesis_digest": "252f86a334d15c968c38636a6418c9e56b899c246909b17f0be7d0f572855268",
+  "head_digest": "2a1ee60af39dfc342646ffe338bb216945614b58bbc46e7a377322306e2f002c",
+  "records": [
+    {
+      "profile": "syn.governed-policy-record/1",
+      "sequence": "1",
+      "previous_record_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "state": {
+        "profile": "syn.governed-policy-state/1",
+        "workspace_id": "44444444-4444-4444-8444-444444444444",
+        "release": {
+          "profile": "syn.type-release/1",
+          "catalog_id": "11111111-1111-4111-8111-111111111111",
+          "release_revision": "1",
+          "types": [
+            {
+              "profile": "syn.canonical-type/1",
+              "type_ref": "syn://type/task",
+              "type_revision": "1",
+              "definition": {
+                "name": "Task"
+              },
+              "consensusPolicy": {
+                "profile": "syn.consensus-policy/1",
+                "policy_revision": "1",
+                "protocol": "syn.operator-log/1",
+                "custody_constraint": "same-verified-issuer",
+                "membership_anchor_digest": "a6bc176b54dc6c4d3a94ec8b939bf5ac3540bf0b0bdfd5f6ec618cf86a8aca43",
+                "participant_reference": "node-public-key-sha256",
+                "quorum_rule": "strict-majority",
+                "fault_model": "crash-and-partition",
+                "proof_profile": "syn.operator-commit/1",
+                "conflict_namespace": "tasks",
+                "change_rule": "current-policy-and-type-governance"
+              }
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "policy_digest": "0e16fb851798774b05515c8d7a331a3c8236642864d1247426c1a01e82f793f1",
+            "domain_id": "22222222-2222-4222-8222-222222222222",
+            "genesis_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "stream_id": "33333333-3333-4333-8333-333333333333",
+            "policy_epoch": "1",
+            "roster_digest": "a6bc176b54dc6c4d3a94ec8b939bf5ac3540bf0b0bdfd5f6ec618cf86a8aca43"
+          }
+        ],
+        "type_governance": {
+          "profile": "syn.approval-authority/1",
+          "threshold": 2,
+          "memberships": [
+            {
+              "account_number": 6,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "iodf/x6zhFFXes1a/uQFRWVo3XyJ4JCGOgVXvHr0nxc=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "72456720412037a6b339f884ce6d91bb4cc163a7dc3e4c58c658e6c2097b92a2",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000006",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "5CeW+4latk/LEFfM7iLq0hGOjEw4Dj7YLeN6ezRJijq04K/vHoEr7Wn9QwDskTu3+E6eXfT3FYEvB1m/zD6AAA=="
+            },
+            {
+              "account_number": 5,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "bnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/E=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "7599776c3085e3f9da0d13071eb0b4ab50fd2bf64c06dd92c2365af3a328eca3",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000005",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "v+HYfx3RVMZEAUNAweJCUhZroRdZzjJWxz3l7E+gfLCgTEcpy6S0j8xWl8xaFq2GNTFneiDPMd1qj7zagQyPBA=="
+            },
+            {
+              "account_number": 4,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "ypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnw=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "c5b940ed3f65c391965de8295fc5d25f474fa57b48d36eb10ad363b8539c1b79",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000004",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "N1cEeYPMG1MwchMJ8joOuBUMnCgSjDjtHaDOlglnEz2o9WGx4NgJWqfTZupdn3NiBN0lk2QTMH+8NEvOCTUQDw=="
+            }
+          ]
+        },
+        "policy_authorities": [
+          {
+            "profile": "syn.approval-authority/1",
+            "threshold": 2,
+            "memberships": [
+              {
+                "account_number": 1,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "34750f98bd59fcfc946da45aaabe933be154a4b5094e1c4abf42866505f3c97e",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000001",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "yhysy+YOmRIvxEuaq1v7tQ4zC88IebuzfbepXbmMjhYITzLzpXPVgXUy3DM9MpK9bGugvfIkiMXGwtWuFLT0Ag=="
+              },
+              {
+                "account_number": 2,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "6a3803d5f059902a1c6dafbc9ba4729212f7caac08634cc3ae76b27529f03827",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000002",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "sQH4pg76g7uyjMdZ1xY085+v6rb+eoLhsQh/MdtkgNfWFdbfZLh35KhpQt1FCzN8V5nuRjjVAJ3vY1BwklIxAQ=="
+              },
+              {
+                "account_number": 3,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "b62e867fa2f33afe62d5d6b1642e1621d543307846b2a57b897e710919b76709",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000003",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "IymWlCZkDPwAb+nGZbNoXrU7HU/F7pdJXDrtVy2dV6slYmG+rOjY78uzxIqO5imdeOyfCkvhDmPVcEzknOfbAw=="
+              }
+            ]
+          }
+        ]
+      },
+      "approvals": {
+        "existing_policies": {},
+        "type_governance": [
+          {
+            "expires_at": 1792800300,
+            "issued_at": 1792800000,
+            "membership": {
+              "account_number": 6,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "iodf/x6zhFFXes1a/uQFRWVo3XyJ4JCGOgVXvHr0nxc=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "72456720412037a6b339f884ce6d91bb4cc163a7dc3e4c58c658e6c2097b92a2",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000006",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "5CeW+4latk/LEFfM7iLq0hGOjEw4Dj7YLeN6ezRJijq04K/vHoEr7Wn9QwDskTu3+E6eXfT3FYEvB1m/zD6AAA=="
+            },
+            "payload_sha256": "1cbe0088f471a2fd1e76453f48d877d30d6412d4952ed819c80f1be44c056214",
+            "profile": "syn-agent-proof-v1",
+            "request_id": "00000000-0000-4000-8000-000000000006",
+            "schema_version": 1,
+            "signature": "NTuz4gpL6bQQtevrSXxQPcNw3zilodzdVvbJJqHK9G+6uThY+PacOtInTJbOUb919CB+y/kvMn68kLpTZxeIBg=="
+          },
+          {
+            "expires_at": 1792800300,
+            "issued_at": 1792800000,
+            "membership": {
+              "account_number": 5,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "bnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/E=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "7599776c3085e3f9da0d13071eb0b4ab50fd2bf64c06dd92c2365af3a328eca3",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000005",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "v+HYfx3RVMZEAUNAweJCUhZroRdZzjJWxz3l7E+gfLCgTEcpy6S0j8xWl8xaFq2GNTFneiDPMd1qj7zagQyPBA=="
+            },
+            "payload_sha256": "1cbe0088f471a2fd1e76453f48d877d30d6412d4952ed819c80f1be44c056214",
+            "profile": "syn-agent-proof-v1",
+            "request_id": "00000000-0000-4000-8000-000000000005",
+            "schema_version": 1,
+            "signature": "uriEDRiUJnKe2RMP5eU5g24aBogOCoYe9COau6ev5g571GdvTXqVh5daxajsTsBhEpN7FyphXR9YxqDQ8OZ3CQ=="
+          },
+          {
+            "expires_at": 1792800300,
+            "issued_at": 1792800000,
+            "membership": {
+              "account_number": 4,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "ypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnw=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "c5b940ed3f65c391965de8295fc5d25f474fa57b48d36eb10ad363b8539c1b79",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000004",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "N1cEeYPMG1MwchMJ8joOuBUMnCgSjDjtHaDOlglnEz2o9WGx4NgJWqfTZupdn3NiBN0lk2QTMH+8NEvOCTUQDw=="
+            },
+            "payload_sha256": "1cbe0088f471a2fd1e76453f48d877d30d6412d4952ed819c80f1be44c056214",
+            "profile": "syn-agent-proof-v1",
+            "request_id": "00000000-0000-4000-8000-000000000004",
+            "schema_version": 1,
+            "signature": "739yX0Ksej+Lww8x5QkoioBpm/cp3ydJjo4IS05XdVZRd54/rlhb3COAaNuzjkvmdo2k8hFX1/M00D7t9mIJAg=="
+          }
+        ]
+      }
+    },
+    {
+      "profile": "syn.governed-policy-record/1",
+      "sequence": "2",
+      "previous_record_digest": "252f86a334d15c968c38636a6418c9e56b899c246909b17f0be7d0f572855268",
+      "state": {
+        "profile": "syn.governed-policy-state/1",
+        "workspace_id": "44444444-4444-4444-8444-444444444444",
+        "release": {
+          "profile": "syn.type-release/1",
+          "catalog_id": "11111111-1111-4111-8111-111111111111",
+          "release_revision": "2",
+          "types": [
+            {
+              "profile": "syn.canonical-type/1",
+              "type_ref": "syn://type/task",
+              "type_revision": "2",
+              "definition": {
+                "name": "Changed"
+              },
+              "consensusPolicy": {
+                "profile": "syn.consensus-policy/1",
+                "policy_revision": "2",
+                "protocol": "syn.operator-log/1",
+                "custody_constraint": "same-verified-issuer",
+                "membership_anchor_digest": "be87f628319e8a84589a34a801ae5bb0c8fdbe4bc647111c3abb5f7e88e9ba6f",
+                "participant_reference": "node-public-key-sha256",
+                "quorum_rule": "strict-majority",
+                "fault_model": "crash-and-partition",
+                "proof_profile": "syn.operator-commit/1",
+                "conflict_namespace": "tasks",
+                "change_rule": "current-policy-and-type-governance"
+              }
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "policy_digest": "6a82490179dbdfa2495b78976bf38256374b5ee15f1e22f6d42eb01e8a2956aa",
+            "domain_id": "22222222-2222-4222-8222-222222222222",
+            "genesis_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "stream_id": "33333333-3333-4333-8333-333333333333",
+            "policy_epoch": "2",
+            "roster_digest": "be87f628319e8a84589a34a801ae5bb0c8fdbe4bc647111c3abb5f7e88e9ba6f"
+          }
+        ],
+        "type_governance": {
+          "profile": "syn.approval-authority/1",
+          "threshold": 2,
+          "memberships": [
+            {
+              "account_number": 10,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "Q6cucUQBdi32a2jCbfvfJoKq7J8kdOykYT5CSg+6/Tw=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "506ef1879d748ce0713b0dd01da32ad2a4b1ce97b5a852ff18800c1e52982376",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000010",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "23XK5gGXwIrQThCJz9TPQO99GludHHnxRs4S2lVr922phy+Pbk12wO5d8mVnwnDWmxIulneqMLcvYZoS0NggCg=="
+            },
+            {
+              "account_number": 12,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "C1E62bSSQBXKCQLtB5BE06xdvsIwbwaUjBDajrbjny0=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "ed23d853125a3acff2782dddf84e018ebc85942ebf328ff1287202a479964207",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000012",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "HG3PO4TuHRvvDLiR8pzBURzrOuN2Z2SZWT6r9ggWep2Za/jW8YuUCPHaedGN5prWVqwg/WsPeZqhh6TN8uUgCQ=="
+            },
+            {
+              "account_number": 11,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "fdf72a088f18f7399e8c52bce448441501f759a595a86980e5d9a422a01e5d55",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000011",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "b1a4Pc7ihJbz7jHpc08fuVloxZ3w8oo64xbZl9ChKUxvHv7eyqSHdIgAGsa0dRMqbGnM88lWTLowXTaFSF3dAQ=="
+            }
+          ]
+        },
+        "policy_authorities": [
+          {
+            "profile": "syn.approval-authority/1",
+            "threshold": 2,
+            "memberships": [
+              {
+                "account_number": 8,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "E5j2LG0aRXxRumpLXz29L2n8qTIWIY3ImX5Ba9F9k8o=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "5c29b78f10a35a49a6231d08ee840a04bcc3a37a4f9d46df327dec56b8a9b7c9",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000008",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "Ik7Bin6WzfNu349oh63t3TfIfd1R8MnMyZy9DHDHDu8H4R40dfdtR/0mcxthEaP7EPqxiPOXkRHxLGCJO20gAg=="
+              },
+              {
+                "account_number": 9,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "/RckOFqgx1tk+3jNYC+h2ZH96/drE8WO1wLqyDXp9hg=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "dbc298251c51321b7266e78d1c151c2b62aff8cb95b293096d3463018544face",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000009",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "aybj0wWWWjwF0i1hm/QVCJSUu0idCeejZ2F9DzvJhm1uDlM48smih0cnqGCyjh/FC9YdIHxOxRaq5cSRAw3yBg=="
+              },
+              {
+                "account_number": 7,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iw=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "fe812c12f3ab4ce6ac5db69ac352f906cb1b11ef43fb33e252ef7ff552263889",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000007",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "oQnMCfN8vhpMI27GoeJDUFYAJ70cFSMFNPj0SHLhjeuM3TSuXh7UC0lXn4lBJfMTOkUEMJbyEwuoZ9HozMrbBw=="
+              }
+            ]
+          }
+        ]
+      },
+      "approvals": {
+        "existing_policies": {
+          "0e16fb851798774b05515c8d7a331a3c8236642864d1247426c1a01e82f793f1": [
+            {
+              "expires_at": 1792800300,
+              "issued_at": 1792800000,
+              "membership": {
+                "account_number": 1,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "34750f98bd59fcfc946da45aaabe933be154a4b5094e1c4abf42866505f3c97e",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000001",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "yhysy+YOmRIvxEuaq1v7tQ4zC88IebuzfbepXbmMjhYITzLzpXPVgXUy3DM9MpK9bGugvfIkiMXGwtWuFLT0Ag=="
+              },
+              "payload_sha256": "3691c15c61ff87e32bf02e47f470e2ac29a548954df12164153135daf1ac4131",
+              "profile": "syn-agent-proof-v1",
+              "request_id": "00000000-0000-4000-8000-000000000001",
+              "schema_version": 1,
+              "signature": "W3NIdpfHWTUCdPm9z2svC+xfdk/uoyk0CLCnKAL0iQKdpPDtS4ndeFLnDwqBYyw3zNnpINp7UE5CPGCu7xcMBQ=="
+            },
+            {
+              "expires_at": 1792800300,
+              "issued_at": 1792800000,
+              "membership": {
+                "account_number": 2,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "6a3803d5f059902a1c6dafbc9ba4729212f7caac08634cc3ae76b27529f03827",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000002",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "sQH4pg76g7uyjMdZ1xY085+v6rb+eoLhsQh/MdtkgNfWFdbfZLh35KhpQt1FCzN8V5nuRjjVAJ3vY1BwklIxAQ=="
+              },
+              "payload_sha256": "3691c15c61ff87e32bf02e47f470e2ac29a548954df12164153135daf1ac4131",
+              "profile": "syn-agent-proof-v1",
+              "request_id": "00000000-0000-4000-8000-000000000002",
+              "schema_version": 1,
+              "signature": "TSq8DFNlXV8NsvDZcN5RgPlwfzrD5FPKmbJqKtc2M+IuS2fnsNuzku6AzSedm/F6MWCRQD5uqRmXFExki1MbAg=="
+            },
+            {
+              "expires_at": 1792800300,
+              "issued_at": 1792800000,
+              "membership": {
+                "account_number": 3,
+                "agent": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "b62e867fa2f33afe62d5d6b1642e1621d543307846b2a57b897e710919b76709",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "group_epoch": 0,
+                "group_id": "22222222-2222-4222-8222-222222222222",
+                "instance_id": "00000000-0000-4000-8000-000000000003",
+                "operator": {
+                  "hash_algorithm": "SHA-256",
+                  "profile_id": "potbot-identity-v1",
+                  "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                  "public_key_algorithm": "Ed25519",
+                  "public_key_encoding": "base64",
+                  "schema_version": 2,
+                  "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                  "type_ref": "synny://type/public-identity-descriptor"
+                },
+                "profile": "syn-agent-account-v1",
+                "schema_version": 1,
+                "signature": "IymWlCZkDPwAb+nGZbNoXrU7HU/F7pdJXDrtVy2dV6slYmG+rOjY78uzxIqO5imdeOyfCkvhDmPVcEzknOfbAw=="
+              },
+              "payload_sha256": "3691c15c61ff87e32bf02e47f470e2ac29a548954df12164153135daf1ac4131",
+              "profile": "syn-agent-proof-v1",
+              "request_id": "00000000-0000-4000-8000-000000000003",
+              "schema_version": 1,
+              "signature": "/4Ycpw+6wyfucFVh+yPBJpspvlXcbhK+zEixhkVtSV1VaK+6ll6Ud73uES6R2EvGokeIvuezJlriXpIkiIF2Ag=="
+            }
+          ]
+        },
+        "type_governance": [
+          {
+            "expires_at": 1792800300,
+            "issued_at": 1792800000,
+            "membership": {
+              "account_number": 6,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "iodf/x6zhFFXes1a/uQFRWVo3XyJ4JCGOgVXvHr0nxc=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "72456720412037a6b339f884ce6d91bb4cc163a7dc3e4c58c658e6c2097b92a2",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000006",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "5CeW+4latk/LEFfM7iLq0hGOjEw4Dj7YLeN6ezRJijq04K/vHoEr7Wn9QwDskTu3+E6eXfT3FYEvB1m/zD6AAA=="
+            },
+            "payload_sha256": "0ba2f773202c42c35375a564b2146fae28e19fc6eb0005a8b5044375b1855f0d",
+            "profile": "syn-agent-proof-v1",
+            "request_id": "00000000-0000-4000-8000-000000000006",
+            "schema_version": 1,
+            "signature": "3NGArQ7BVNs6WjFSkExsE2LWTBRAdjX3K2mSncZHnUBMXAaxiBiYnybxPzXPkDtvC7JapuEZ/zucYOvliGoWDQ=="
+          },
+          {
+            "expires_at": 1792800300,
+            "issued_at": 1792800000,
+            "membership": {
+              "account_number": 5,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "bnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/E=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "7599776c3085e3f9da0d13071eb0b4ab50fd2bf64c06dd92c2365af3a328eca3",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000005",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "v+HYfx3RVMZEAUNAweJCUhZroRdZzjJWxz3l7E+gfLCgTEcpy6S0j8xWl8xaFq2GNTFneiDPMd1qj7zagQyPBA=="
+            },
+            "payload_sha256": "0ba2f773202c42c35375a564b2146fae28e19fc6eb0005a8b5044375b1855f0d",
+            "profile": "syn-agent-proof-v1",
+            "request_id": "00000000-0000-4000-8000-000000000005",
+            "schema_version": 1,
+            "signature": "I0SEuLLZDpJtZzaCgijm/mJcQ2geZZBuK+dxmJ/7Sv9jKLLuY0Xf43VsGaFawVmcr31W7v4zILph1ymtRf87Bg=="
+          },
+          {
+            "expires_at": 1792800300,
+            "issued_at": 1792800000,
+            "membership": {
+              "account_number": 4,
+              "agent": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "ypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnw=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "c5b940ed3f65c391965de8295fc5d25f474fa57b48d36eb10ad363b8539c1b79",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "group_epoch": 0,
+              "group_id": "22222222-2222-4222-8222-222222222222",
+              "instance_id": "00000000-0000-4000-8000-000000000004",
+              "operator": {
+                "hash_algorithm": "SHA-256",
+                "profile_id": "potbot-identity-v1",
+                "public_key": "l//Ig8gL7nI375XZubcD1K1j5goh5gWGdoK3W4s/QwM=",
+                "public_key_algorithm": "Ed25519",
+                "public_key_encoding": "base64",
+                "schema_version": 2,
+                "signer_hash": "e97dafa7b0198ac217d4302150f38734759b66af6894f0696c8d1fa9fa20084d",
+                "type_ref": "synny://type/public-identity-descriptor"
+              },
+              "profile": "syn-agent-account-v1",
+              "schema_version": 1,
+              "signature": "N1cEeYPMG1MwchMJ8joOuBUMnCgSjDjtHaDOlglnEz2o9WGx4NgJWqfTZupdn3NiBN0lk2QTMH+8NEvOCTUQDw=="
+            },
+            "payload_sha256": "0ba2f773202c42c35375a564b2146fae28e19fc6eb0005a8b5044375b1855f0d",
+            "profile": "syn-agent-proof-v1",
+            "request_id": "00000000-0000-4000-8000-000000000004",
+            "schema_version": 1,
+            "signature": "lEOSQMfBsRn+ylVsMSJzVrIGfeNDJWhGfwAPL30kRucwUSj6RkSXKJWqvFT+sqWAnt2kqXpJYMYLLQNRNX3uBQ=="
+          }
+        ]
+      }
+    }
+  ]
+}

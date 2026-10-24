@@ -8,3 +8,6 @@ version = "0.1.0"
 description = "Dependency-free client and receipt verification for the Syn communication service"
 requires-python = ">=3.12"
 
+[project.optional-dependencies]
+governance = ["cryptography==50.0.2"]
+

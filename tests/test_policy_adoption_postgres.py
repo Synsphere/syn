@@ -135,8 +135,11 @@ def test_postgres_refuses_update_delete_and_truncate(database, table, operation)
 def test_migration_can_downgrade_and_reupgrade_only_owned_schema(database):
     _store, engine = database
     migration = importlib.import_module("syn.alembic.versions.20261023_0014_policy_genesis")
+    successor = importlib.import_module("syn.alembic.versions.20261024_0015_signed_governance")
     with engine.begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
+            successor.downgrade()
             migration.downgrade()
             migration.upgrade()
+            successor.upgrade()
         assert connection.scalar(text("SELECT count(*) FROM syn_policy_adoptions")) == 0

@@ -68,7 +68,10 @@ There is no force-replace flag or HTTP adoption mutation. A new local pin cannot
 replace an adopted catalog. Governed transitions require an explicit append-only
 successor format, previous adoption/epoch binding, old-policy proof and Type
 governance verification, with atomic ownership transfer and replay protection.
-Those gates are not implemented. Do not clear the tables, mint another catalog
+The separate [signed-governance format](signed-governance.md) implements local
+successors authorized by existing operator quorums and Type governance. It cannot
+silently promote this legacy unsigned format. Federated replacement remains held.
+Do not clear the tables, mint another catalog
 for the same namespace, or label a new genesis as a policy upgrade.
 
 ## Explicit administrative initialization
@@ -123,7 +126,8 @@ The PostgreSQL lane runs clean upgrades, concurrent exact retries and competing
 catalog/domain/namespace attempts, all twelve rewrite/truncate refusals and a
 downgrade/re-upgrade in a uniquely owned disposable schema.
 
-Remaining: signed genesis/governance proofs, native canonical/signature parity,
+Remaining for this legacy format: explicitly authorized signed migration/recovery.
+The new format reuses frozen native signatures; new ledger parity,
 Agent/instance/peer binding, roster and independent-custody admission, encrypted
 private transport, consensus adapters and independently verifiable finality.
 No consensus interface exists to capture a relevant UI screenshot or video.
