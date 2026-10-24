@@ -496,7 +496,7 @@ def test_signed_namespace_cannot_be_taken_by_unsigned_catalog(rig):
         initialize(PolicyAdoptionStore(sessionmaker(engine)), other)
 
 
-@pytest.mark.parametrize("federated", [False, True])
+@pytest.mark.parametrize("federated", [False, True, "protected"])
 def test_authenticated_chain_read_and_actual_shared_parser(rig, federated):
     from io import BytesIO
     from unittest.mock import patch
@@ -508,7 +508,15 @@ def test_authenticated_chain_read_and_actual_shared_parser(rig, federated):
     from syn.communication import communicationRouter
 
     store, _ = rig
-    if federated:
+    if federated == "protected":
+        data = json.loads(
+            (
+                Path(__file__).parents[1]
+                / "packages/syn-client/tests/fixtures/protected-governed-chain.json"
+            ).read_bytes()
+        )
+        root, next_record = (GovernedPolicyRecord.from_dict(r) for r in data["records"])
+    elif federated:
         from test_dag_finality import valid_pair
 
         root, next_record = valid_pair()

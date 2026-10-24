@@ -28,10 +28,18 @@ def governance_database():
     yield from _owned_database.__wrapped__()
 
 
-def test_federated_replay_is_verified_before_postgres_append(governance_database):
+@pytest.mark.parametrize("protected", [False, True])
+def test_federated_replay_is_verified_before_postgres_append(governance_database, protected):
     legacy, engine = governance_database
     store = GovernedPolicyStore(legacy.sessions)
-    root, one = valid_pair()
+    if protected:
+        from test_dag_signing import protected_genesis, protected_history, candidate, attach
+
+        root = protected_genesis(str(uuid4()))
+        one = candidate(root)
+        one = attach(one, root, protected_history(root, one))
+    else:
+        root, one = valid_pair()
     approvals = load_document(one.approvals_json)
     approvals["type_governance"] = []
     bad = replace(one, approvals_json=canonical_bytes(approvals).decode())

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from .governance import ApprovalAuthority, GovernedPolicyRecord
 
 ALGORITHM = "syn.hashgraph-governance-replay/1"
+PROTECTED_ALGORITHM = "syn.hashgraph-governance-replay/2"
 MAX_EVENTS = 256
 MAX_VOTERS = 16
 MAX_ROUNDS = 32
@@ -40,12 +41,12 @@ def governance_finality_context(previous: GovernedPolicyRecord, policy_digest: s
         if t.consensus_policy
     }
     p = policies.get(policy_digest)
-    if p is None or p.protocol != "syn.bft-dag-hashgraph/1":
+    if p is None or p.protocol not in ("syn.bft-dag-hashgraph/1", "syn.bft-dag-hashgraph/2"):
         raise PolicyError("DAG finality requires an existing federated Type policy")
     return _digest(
         "syn.hashgraph-governance-context/1",
         {
-            "algorithm": ALGORITHM,
+            "algorithm": PROTECTED_ALGORITHM if p.protocol.endswith("/2") else ALGORITHM,
             "workspace_id": previous.state.workspace_id,
             "catalog_id": previous.state.release.catalog_id,
             "predecessor_digest": previous.digest,
@@ -56,11 +57,22 @@ def governance_finality_context(previous: GovernedPolicyRecord, policy_digest: s
 
 
 def event_payload_digest(body: object) -> str:
-    return _digest("syn.hashgraph-event-payload/1", body)
+    version = (
+        "2" if isinstance(body, dict) and body.get("profile") == "syn.hashgraph-event/2" else "1"
+    )
+    return _digest("syn.hashgraph-event-payload/" + version, body)
 
 
 def event_digest(event: object) -> str:
     # Parent references bind the signature envelope as well as the event body.
+    if (
+        isinstance(event, dict)
+        and isinstance(event.get("body"), dict)
+        and event["body"].get("profile") == "syn.hashgraph-event/2"
+    ):
+        from .dag_signing import protected_event_digest
+
+        return protected_event_digest(event)
     return _digest("syn.hashgraph-event/1", event)
 
 
@@ -106,6 +118,9 @@ class _Replay:
         context: str,
         roster: ApprovalAuthority,
         governance: ApprovalAuthority,
+        protected: bool = False,
+        predecessor_digest: str | None = None,
+        successor_sequence: str | None = None,
     ) -> None:
         members = {m["agent"]["signer_hash"]: m for m in roster.memberships()}
         issuers = {m["operator"]["signer_hash"] for m in members.values()}
@@ -117,6 +132,9 @@ class _Replay:
             raise PolicyError("Replay requires 4..16 equal voters with distinct admitted issuers")
         if not 1 <= len(events) <= MAX_EVENTS:
             raise PolicyError("DAG history exceeds the bounded replay window")
+        if protected:
+            digest_text(predecessor_digest)
+            _revision(successor_sequence)
         self.quorum = roster.threshold
         self.ids: list[str] = []
         self.creators: list[str] = []
@@ -135,7 +153,7 @@ class _Replay:
         global_tips: dict[str, int] = {}
         observed_forkers: set[str] = set()
         for i, raw in enumerate(events):
-            e = _fields(raw, {"body", "proof"})
+            e = _fields(raw, {"body", "proof", "reservation"} if protected else {"body", "proof"})
             b = _fields(
                 e["body"],
                 {
@@ -151,17 +169,22 @@ class _Replay:
             )
             creator = str(NodeKeyHash(b["creator"]))
             if (
-                b["profile"] != "syn.hashgraph-event/1"
+                b["profile"] != ("syn.hashgraph-event/2" if protected else "syn.hashgraph-event/1")
                 or b["context_digest"] != context
                 or creator not in members
             ):
                 raise PolicyError("DAG event is outside the existing policy context or roster")
-            verify_agent_approval(
-                e["proof"],
-                membership=members[creator],
-                payload_digest=event_payload_digest(b),
-                now=None,
-            )
+            if protected:
+                from .dag_signing import verify_protected_event
+
+                verify_protected_event(e, membership=members[creator])
+            else:
+                verify_agent_approval(
+                    e["proof"],
+                    membership=members[creator],
+                    payload_digest=event_payload_digest(b),
+                    now=None,
+                )
             identifier = event_digest(e)
             if identifier in by_id:
                 raise PolicyError("Duplicate DAG event")
@@ -220,10 +243,21 @@ class _Replay:
                 # Unauthorized application payload is a deterministic no-op,
                 # not a reason to discard an otherwise valid signed ancestor.
                 try:
-                    p = _fields(proposal, {"proposal_digest", "type_governance"})
-                    payload = _authorization(p["proposal_digest"], governance)
-                    governance.verify(p["type_governance"], payload, None)
-                    eligible = p["proposal_digest"]
+                    if protected:
+                        from .dag_signing import verify_governance_candidate
+
+                        assert predecessor_digest is not None and successor_sequence is not None
+                        eligible = verify_governance_candidate(
+                            proposal,
+                            governance=governance,
+                            previous_record_digest=predecessor_digest,
+                            successor_sequence=successor_sequence,
+                        )
+                    else:
+                        p = _fields(proposal, {"proposal_digest", "type_governance"})
+                        payload = _authorization(p["proposal_digest"], governance)
+                        governance.verify(p["type_governance"], payload, None)
+                        eligible = p["proposal_digest"]
                 except PolicyError:
                     pass
             self.proposals.append(eligible)
@@ -337,9 +371,15 @@ def verify_governance_finality(
     canonical_bytes(evidence)
     d = _fields(evidence, {"profile", "algorithm", "context_digest", "events"})
     context = governance_finality_context(previous, policy_digest)
+    policy = next(
+        t.consensus_policy
+        for t in previous.state.release.types
+        if t.consensus_policy and t.consensus_policy.digest == policy_digest
+    )
+    protected = policy.protocol.endswith("/2")
     if (
-        d["profile"] != "syn.dag-hashgraph-finality/1"
-        or d["algorithm"] != ALGORITHM
+        d["profile"] != policy.proof_profile
+        or d["algorithm"] != (PROTECTED_ALGORITHM if protected else ALGORITHM)
         or d["context_digest"] != context
         or not isinstance(d["events"], list)
     ):
@@ -351,6 +391,9 @@ def verify_governance_finality(
         context=context,
         roster=roster,
         governance=previous.state.type_governance,
+        protected=protected,
+        predecessor_digest=previous.digest,
+        successor_sequence=str(int(previous.sequence) + 1),
     ).first_proposal()
     if result.proposal_digest != expected_proposal_digest:
         raise PolicyError("Replacement is not the existing policy epoch's first finalized proposal")
