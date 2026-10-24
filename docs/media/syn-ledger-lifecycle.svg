@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1010" viewBox="0 0 1440 1010" role="img" aria-labelledby="title desc">
+  <title id="title">Proposed Syn record lifecycle and acknowledgement states</title>
+  <desc id="desc">A local signed save creates local durability. Authorised peer exchange creates replication evidence. Submission does not establish acceptance. Community ordering and deterministic validation produce finalised accepted or rejected outcomes. A local query view reports its checkpoint and projection lag. External anchoring is optional.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#55738a"/></marker>
+    <style>
+      text {font-family:Arial,Helvetica,sans-serif;fill:#182d41}
+      .title {font-size:35px;font-weight:700}
+      .sub {font-size:21px;fill:#435f75}
+      .head {font-size:25px;font-weight:700}
+      .body {font-size:21px}
+      .state {font-family:Consolas,monospace;font-size:20px;fill:#244c68}
+      .box {fill:#fff;stroke:#a1b5c4;stroke-width:2;rx:16}
+      .line {stroke:#55738a;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1440" height="1010" fill="#f4f7fa"/>
+  <text x="55" y="64" class="title">A save, a receipt and finality are different facts</text>
+  <text x="55" y="100" class="sub">Proposed Syn lifecycle · illustrative states, not a running demonstration</text>
+  <rect x="55" y="145" width="610" height="135" class="box"/>
+  <text x="85" y="185" class="head">1. Sign and save locally</text>
+  <text x="85" y="223" class="body">Canonical bytes, signature and durable outbox</text>
+  <text x="85" y="257" class="state">local_durable</text>
+  <rect x="775" y="145" width="610" height="135" class="box"/>
+  <text x="805" y="185" class="head">2. Exchange with authorised peers</text>
+  <text x="805" y="223" class="body">Verify records and retain peer acknowledgements</text>
+  <text x="805" y="257" class="state">replicated · still provisional</text>
+  <path d="M 666 210 L 772 210" class="line"/>
+  <path d="M 1080 282 L 1080 326" class="line"/>
+  <rect x="775" y="330" width="610" height="140" class="box"/>
+  <text x="805" y="370" class="head">3. Submit a bounded admission batch</text>
+  <text x="805" y="408" class="body">Current authority, exact bytes and dependencies</text>
+  <text x="805" y="444" class="state">submitted · outcome pending</text>
+  <rect x="55" y="330" width="610" height="140" class="box"/>
+  <text x="85" y="370" class="head">During a quorum outage</text>
+  <text x="85" y="408" class="body">Local authoring can continue; finality waits.</text>
+  <text x="85" y="444" class="body">A two-by-two split cannot commit with four validators.</text>
+  <path d="M 1080 472 L 1080 516" class="line"/>
+  <rect x="775" y="520" width="610" height="142" class="box"/>
+  <text x="805" y="560" class="head">4. Finalise and validate deterministically</text>
+  <text x="805" y="598" class="body">Retain backend evidence and exact outcome.</text>
+  <text x="805" y="634" class="state">finalized_accepted / finalized_rejected</text>
+  <path d="M 1080 664 L 1080 708" class="line"/>
+  <rect x="775" y="712" width="610" height="142" class="box"/>
+  <text x="805" y="752" class="head">5. Build the accepted query view</text>
+  <text x="805" y="790" class="body">Expose checkpoint, proof scope and projection lag.</text>
+  <text x="805" y="826" class="state">projected</text>
+  <rect x="55" y="520" width="610" height="142" class="box"/>
+  <text x="85" y="560" class="head">Optional external checkpoint anchor</text>
+  <text x="85" y="598" class="body">Commitment only; separate access and cost decision</text>
+  <text x="85" y="634" class="state">anchored_external</text>
+  <path d="M 773 590 L 668 590" class="line" stroke-dasharray="8 6"/>
+  <rect x="55" y="712" width="610" height="142" fill="#e4edf4" rx="16"/>
+  <text x="85" y="752" class="head">What finality does establish</text>
+  <text x="85" y="790" class="body">An accepted record under a named community policy.</text>
+  <text x="85" y="826" class="body">It cannot certify truth, understanding or external action.</text>
+  <text x="55" y="924" class="sub">States are separately retained evidence: replication counts, finality proofs and projection positions remain inspectable.</text>
+  <text x="55" y="960" class="sub">No screenshot or benchmark is implied. A real implementation demonstration belongs to a later phase.</text>
+</svg>

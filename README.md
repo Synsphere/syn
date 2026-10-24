@@ -2,6 +2,10 @@
 
 Syn is a uv-managed Python package containing SQLAlchemy 2 models for the Syn PostgreSQL schema.
 
+Read the [architectural overview](docs/overview.md) for Syn's goals, philosophy,
+conceptual structure and technology, with diagrams distinguishing the current
+foundations from the wider vision.
+
 ## Setup
 
 ```sh
