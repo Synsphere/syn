@@ -71,7 +71,8 @@ replacement under an existing BFT policy without its finality verifier.
 ## Time, ordering and durable history
 
 On first admission the local Syn clock must fall within each native proof's
-validity window, bounded to 300 seconds. Historical checks validate signatures,
+validity window, bounded to 300 seconds. Time is sampled after acquiring the
+workspace lock and rechecked before leaving the transaction. Historical checks validate signatures,
 scope and window shape without pretending old proofs are currently live. An exact
 retry after expiry returns the original record and cannot advance a head. Neither
 the record nor its claimed issue time is a trusted timestamp. Offline checks do

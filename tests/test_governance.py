@@ -562,3 +562,82 @@ def write_fixture(path):
         + "\n",
         encoding="utf-8",
     )
+
+
+@pytest.mark.parametrize("phase", ["after-lock", "before-commit"])
+def test_live_clock_rechecked_inside_lock_and_before_commit(rig, phase):
+    from unittest.mock import patch
+
+    store, engine = rig
+    root = genesis()
+    times = [NOW + 300] if phase == "after-lock" else [NOW, NOW + 300]
+    original_lock = store._lock
+    acquired = False
+
+    def tracked_lock(session, workspace):
+        nonlocal acquired
+        original_lock(session, workspace)
+        acquired = True
+
+    def clock():
+        assert acquired, "Admission time must not be sampled before the lock"
+        return times.pop(0)
+
+    with (
+        patch.object(store, "_lock", side_effect=tracked_lock),
+        patch("syn.governance.time.time", side_effect=clock),
+    ):
+        with pytest.raises(PolicyError, match="admission window"):
+            store.admit(
+                root,
+                expected_workspace=WORKSPACE,
+                expected_catalog=CATALOG,
+                expected_genesis_digest=root.digest,
+                expected_predecessor_digest="0" * 64,
+            )
+    with engine.connect() as c:
+        assert not c.execute(select(signedRecords)).all()
+
+
+def test_governance_import_command_commits_synthetic_disk_database(tmp_path, capsys):
+    from unittest.mock import patch
+
+    from syn.governance_import import main
+
+    database_url = "sqlite:///" + (tmp_path / "governance.sqlite").as_posix()
+    engine = create_engine(database_url)
+    metadata.create_all(engine)
+    config = tmp_path / "explicit.toml"
+    config.write_text('[database]\nurl="' + database_url + '"\n', encoding="utf-8")
+    root = genesis()
+    next_record = successor(root)
+    try:
+        with patch("syn.governance.time.time", return_value=NOW):
+            for record in (root, next_record):
+                manifest = tmp_path / (record.sequence + ".json")
+                manifest.write_text(record.to_json(), encoding="utf-8")
+                assert (
+                    main(
+                        [
+                            "--config",
+                            str(config),
+                            "--record",
+                            str(manifest),
+                            "--workspace",
+                            WORKSPACE,
+                            "--catalog",
+                            CATALOG,
+                            "--genesis-digest",
+                            root.digest,
+                            "--predecessor-digest",
+                            record.previous_record_digest,
+                        ]
+                    )
+                    == 0
+                )
+        assert GovernedPolicyStore(sessionmaker(engine)).chain(
+            WORKSPACE, CATALOG, root.digest, next_record.digest
+        ) == (root, next_record)
+        assert next_record.digest in capsys.readouterr().out
+    finally:
+        engine.dispose()

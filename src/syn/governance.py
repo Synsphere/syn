@@ -70,7 +70,10 @@ class GovernedPolicyStore:
                 "Governance proposal does not match independently selected scope/predecessor"
             )
         workspace, catalog = expected_workspace, expected_catalog
-        instant = int(time.time()) if now is None else now
+
+        def instant() -> int:
+            return int(time.time()) if now is None else now
+
         try:
             with self.sessions.begin() as session:
                 self._lock(session, workspace)
@@ -97,7 +100,7 @@ class GovernedPolicyStore:
                         expected_workspace=workspace,
                         expected_catalog=catalog,
                         expected_genesis_digest=expected_genesis_digest,
-                        now=instant,
+                        now=instant(),
                     )
                     session.execute(
                         signedCatalogs.insert().values(
@@ -143,7 +146,7 @@ class GovernedPolicyStore:
                         raise PolicyError(
                             "Governance history needs a future authenticated checkpoint"
                         )
-                    verify_transition(chain[-1], record, now=instant)
+                    verify_transition(chain[-1], record, now=instant())
                 self._claim(session, record)
                 session.execute(
                     signedRecords.insert().values(
@@ -155,6 +158,18 @@ class GovernedPolicyStore:
                     )
                 )
                 self._chain(session, workspace, catalog, expected_genesis_digest, record.digest)
+                # Lock waits, registry writes and chain verification can consume
+                # the approval window. Recheck before leaving the transaction.
+                if anchor is None:
+                    verify_genesis(
+                        record,
+                        expected_workspace=workspace,
+                        expected_catalog=catalog,
+                        expected_genesis_digest=expected_genesis_digest,
+                        now=instant(),
+                    )
+                else:
+                    verify_transition(chain[-1], record, now=instant())
                 return record
         except IntegrityError:
             raise PolicyConflict(
