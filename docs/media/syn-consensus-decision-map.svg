@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1130" viewBox="0 0 1480 1130" role="img" aria-labelledby="title desc">
+  <title id="title">Choose a mechanism for each Syn operation</title>
+  <desc id="desc">Private local work uses a database transaction. Authored knowledge with merge-compatible invariants uses signed causal exchange. Shared authority requiring one outcome uses a trusted authority or crash tolerant service under one owner, or a complete Byzantine fault tolerant engine with independent operators. Open validator membership adds a separate Sybil-resistance decision. External anchoring is optional.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#527184"/></marker>
+    <style>
+      text {font-family:Arial,Helvetica,sans-serif;fill:#173248}
+      .title {font-size:36px;font-weight:700}
+      .sub {font-size:21px;fill:#456377}
+      .heading {font-size:25px;font-weight:700}
+      .body {font-size:21px}
+      .small {font-size:19px;fill:#456377}
+      .box {fill:white;stroke:#a5bac6;stroke-width:2;rx:16}
+      .arrow {fill:none;stroke:#527184;stroke-width:3;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1480" height="1130" fill="#f3f7fa"/>
+  <text x="55" y="62" class="title">Start with the promise each operation must keep</text>
+  <text x="55" y="100" class="sub">Syn consensus review · 23 October 2026 · proposed decision framework</text>
+  <rect x="55" y="145" width="1370" height="100" class="box"/>
+  <text x="85" y="185" class="heading">Is this private local work?</text>
+  <text x="85" y="220" class="body">Save drafts, observations and queued work in a local transaction. No community vote is needed.</text>
+  <path d="M740 246 L740 290" class="arrow"/>
+  <rect x="55" y="295" width="1370" height="115" class="box"/>
+  <text x="85" y="335" class="heading">If shared: can independent valid changes merge without breaking the promised rule?</text>
+  <text x="85" y="372" class="body">An authored claim can coexist with another claim. An exclusive permission or adopted ontology may need one outcome.</text>
+  <path d="M390 412 L390 463" class="arrow"/>
+  <path d="M1090 412 L1090 463" class="arrow"/>
+  <text x="414" y="446" class="small">Yes</text>
+  <text x="1114" y="446" class="small">No</text>
+  <rect x="55" y="468" width="650" height="190" fill="#e1f0e9" stroke="#99bfae" stroke-width="2" rx="16"/>
+  <text x="85" y="510" class="heading">Signed causal records</text>
+  <text x="85" y="548" class="body">Verify authorship and dependencies; preserve disagreement.</text>
+  <text x="85" y="584" class="body">Use CRDTs only for suitable, explicitly validated structures.</text>
+  <text x="85" y="630" class="small">Authentic authorship is distinct from community endorsement.</text>
+  <rect x="775" y="468" width="650" height="190" fill="#e5edf8" stroke="#9cb3d3" stroke-width="2" rx="16"/>
+  <text x="805" y="510" class="heading">Choose the authority and fault model</text>
+  <text x="805" y="548" class="body">One trusted owner: local authority or CFT availability.</text>
+  <text x="805" y="584" class="body">Independent operators: complete community BFT protocol.</text>
+  <text x="805" y="630" class="small">Permissions, adopted rules and exclusive resources.</text>
+  <path d="M1090 660 L1090 711" class="arrow"/>
+  <rect x="775" y="716" width="650" height="170" class="box"/>
+  <text x="805" y="758" class="heading">Compare implementations on the same Syn trace</text>
+  <text x="805" y="798" class="body">CometBFT reference · Hiero/Hashgraph comparison</text>
+  <text x="805" y="834" class="body">Proofs, recovery and operating cost precede speed ranking.</text>
+  <text x="805" y="866" class="small">Promote other BFT candidates when evidence warrants them.</text>
+  <rect x="55" y="716" width="650" height="170" class="box"/>
+  <text x="85" y="758" class="heading">Open validator membership is another decision</text>
+  <text x="85" y="798" class="body">Define admission and Sybil resistance explicitly.</text>
+  <text x="85" y="834" class="body">Public authors need not be validators or token holders.</text>
+  <text x="85" y="866" class="small">A peer ID alone does not create voting legitimacy.</text>
+  <rect x="55" y="945" width="1370" height="105" fill="#fff3dc" stroke="#d8bd83" stroke-width="2" rx="16"/>
+  <text x="85" y="984" class="heading">Optional external anchor</text>
+  <text x="85" y="1020" class="body">Retain independent checkpoint evidence when useful. It does not certify truth, authority or data availability.</text>
+  <text x="55" y="1092" class="small">Explanatory illustration only. This is not an implemented engine, benchmark or certification.</text>
+</svg>
