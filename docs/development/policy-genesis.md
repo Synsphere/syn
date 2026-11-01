@@ -129,7 +129,10 @@ downgrade/re-upgrade in a uniquely owned disposable schema.
 Remaining for this legacy format: explicitly authorized signed migration/recovery.
 The new format reuses frozen native signatures; new ledger parity,
 Agent/instance/peer binding, roster and independent-custody admission, encrypted
-private transport, consensus adapters and independently verifiable finality.
+private transport and consensus adapters retain their own acceptance gates.
+[Signed governance](signed-governance.md) and [bounded DAG finality](dag-finality.md)
+now implement successor authorization and finite replay verification; this does
+not establish an operating federation or general live transaction finality.
 No consensus interface exists to capture a relevant UI screenshot or video.
 The diagram explains the implemented storage boundary; real mesh/fault/recovery
 demonstrations remain separate acceptance work.

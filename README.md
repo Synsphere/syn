@@ -1,6 +1,13 @@
 # Syn
 
-Syn is a uv-managed Python package containing SQLAlchemy 2 models for the Syn PostgreSQL schema.
+Syn is a developing knowledge and communication system, with a uv-managed Python
+application, a PostgreSQL semantic core and a portable client contract.
+
+Start with the [current architecture and decision index](docs/architecture.md),
+the [conceptual overview](docs/overview.md), and the [core-model contracts](docs/core-model.md).
+The [official-release and independent-node requirements](docs/development/release-and-node-deployment.md)
+define Syn's ownership boundary with Potbot. Adopted design, branch implementation
+and qualified production behaviour are labelled separately in those guides.
 
 ## Setup
 
@@ -33,7 +40,12 @@ with sessionScope(sessions) as session:
     )
 ```
 
-Run `database/objectReferenceSchema.sql` before using the models. Missing local references used by the linking tables are silently materialized by PostgreSQL as placeholder records containing their ObjectRef and a slug-derived name. General external ObjectRefs are not materialized.
+Normal application startup installs the baseline schema through Alembic when
+automatic migration is enabled. Direct SQL installation is the separately managed
+administration route described in [the database guide](database/README.md).
+Missing local references used by linking tables are silently materialized as
+placeholder records containing their ObjectRef and a slug-derived name. General
+external ObjectRefs are not materialized.
 
 ## Migrations
 
@@ -183,6 +195,11 @@ ObjectRefs. The Type model rejects missing types, duplicates, self-parenting,
 and any list in which one selected parent is an ancestor of another selected
 parent at any depth. Omitting `parents` leaves the existing relationships intact.
 
+The [Type interface contract](docs/core-model.md#type-interfaces) also documents
+declared property CRUD/cardinality, recursive descendant trees (`depth=10`, range
+0-100), `/exploreTypes` and the parent/property editors. Canonical Type policy
+export and adoption are described in [Type policies](docs/development/type-policies.md).
+
 ### Process scheduler
 
 Create an application with an explicit allow-list of process-safe handlers. Handler
@@ -203,7 +220,7 @@ Run that module with Uvicorn, then use `POST /scheduler/start`, `POST /jobs`,
 `{"handler": "build-report", "arguments": {"reportId": "example"}}`.
 
 Syn also supplies `defaultJobHandlers`, including `witness-stale-feeds`. This
-job selects the 100 feed Things least recently witnessed, scores their stored
+job selects up to 100 feed Things with the oldest stored parsed-entry updates, scores their stored
 activity, and witnesses the most active 50 in descending score order:
 
 ```python
@@ -235,6 +252,10 @@ including X.509 metadata, fingerprints, signature algorithms, and PEM-encoded
 public keys.
 
 ### libp2p networking
+
+This section describes existing peer discovery. The required account-bound,
+encrypted private Syn mesh and per-Agent topology are specified in the
+[current architecture](docs/architecture.md); discovery is not that acceptance.
 
 The API starts a py-libp2p node with its application lifespan and closes it during
 graceful shutdown. By default it listens on ephemeral TCP ports on every IPv4 and

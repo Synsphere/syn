@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="990" viewBox="0 0 1480 990" role="img" aria-labelledby="title desc">
+  <title id="title">Syn agreement during failure and disconnection</title>
+  <desc id="desc">In a conventional equal-weight four-validator BFT committee, a connected quorum of three can progress subject to protocol conditions while one validator is unavailable. A two and two partition cannot finalise. Authors on disconnected devices can still save signed records and exchange them later, without claiming final community authority.</desc>
+  <defs>
+    <style>
+      text {font-family:Arial,Helvetica,sans-serif;fill:#173248}
+      .title {font-size:36px;font-weight:700}
+      .head {font-size:25px;font-weight:700}
+      .body {font-size:21px}
+      .sub {font-size:20px;fill:#456377}
+      .box {fill:white;stroke:#a5bac6;stroke-width:2;rx:16}
+      .live {fill:#d9eee4;stroke:#5d9a7c;stroke-width:3}
+      .lost {fill:#edf0f3;stroke:#98a4ae;stroke-width:3;stroke-dasharray:7 5}
+      .link {stroke:#64917d;stroke-width:4;fill:none}
+      .node {font-size:26px;font-weight:700;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="1480" height="990" fill="#f3f7fa"/>
+  <text x="55" y="62" class="title">Quorum finality and offline authorship have different limits</text>
+  <text x="55" y="100" class="sub">Illustrative conventional BFT committee: four equal validators, quorum three, at most one Byzantine fault</text>
+  <rect x="55" y="145" width="650" height="420" class="box"/>
+  <rect x="775" y="145" width="650" height="420" class="box"/>
+  <text x="85" y="191" class="head">Three connected, one unavailable</text>
+  <path d="M230 290 L440 290 L335 420 Z" class="link"/>
+  <circle cx="230" cy="290" r="46" class="live"/><text x="230" y="299" class="node">A</text>
+  <circle cx="440" cy="290" r="46" class="live"/><text x="440" y="299" class="node">B</text>
+  <circle cx="335" cy="420" r="46" class="live"/><text x="335" y="429" class="node">C</text>
+  <circle cx="565" cy="420" r="46" class="lost"/><text x="565" y="429" class="node">D</text>
+  <text x="85" y="510" class="body">The connected quorum can progress under engine assumptions.</text>
+  <text x="85" y="544" class="sub">The returning node verifies history before participating again.</text>
+  <text x="805" y="191" class="head">Two connected on each side</text>
+  <path d="M925 290 L925 420 M1265 290 L1265 420" class="link"/>
+  <path d="M1095 237 L1095 456" fill="none" stroke="#c08b6c" stroke-width="3" stroke-dasharray="9 7"/>
+  <circle cx="925" cy="290" r="46" class="live"/><text x="925" y="299" class="node">A</text>
+  <circle cx="925" cy="420" r="46" class="live"/><text x="925" y="429" class="node">B</text>
+  <circle cx="1265" cy="290" r="46" class="live"/><text x="1265" y="299" class="node">C</text>
+  <circle cx="1265" cy="420" r="46" class="live"/><text x="1265" y="429" class="node">D</text>
+  <text x="805" y="510" class="body">Neither side can finalise with only two votes.</text>
+  <text x="805" y="544" class="sub">A permanent partition does not gain a deadline from aBFT.</text>
+  <rect x="55" y="615" width="1370" height="205" fill="#e5edf8" stroke="#9cb3d3" stroke-width="2" rx="16"/>
+  <text x="85" y="660" class="head">People can still keep signed knowledge records</text>
+  <text x="85" y="704" class="body">Alice records an observation offline. Bob records a conflicting account. Both retain authorship and evidence.</text>
+  <text x="85" y="744" class="body">After reconnection, replicas exchange both records. A community-endorsed view applies its own explicit admission policy.</text>
+  <text x="85" y="786" class="sub">Local durability, signature verification, peer receipt and finalised endorsement are separate facts.</text>
+  <text x="55" y="887" class="sub">Quorum examples do not describe the thresholds of PoW, Snow protocols or arbitrary federated quorum systems.</text>
+  <text x="55" y="924" class="sub">Four processes sharing one administrator test the software; they do not establish four independent trust owners.</text>
+  <text x="55" y="961" class="sub">Original explanatory illustration · 23 October 2026 · no running network or benchmark is implied.</text>
+</svg>

@@ -70,10 +70,17 @@ registry identity and release approval remain separate milestones.
 
 ## Planned additions
 
-Add actual two-Agent encrypted pub-sub, protected signing and repair tests with
-SBT05–SBT08. Add Raft crash/partition and four-independent-root BFT DAG/Hashgraph
-fault suites only when their adapters exist. Neither current discovery tests nor
-policy parsing proves consensus, protected-node startup or live key possession.
+Protected DAG event verification is now implemented in Syn, with native
+reservation/recovery work in Potbot; see [protected signing](protected-dag-signing.md).
+Its exact native-host acceptance remains owned by the corresponding Potbot
+revision. Add actual encrypted two-Agent pub-sub, live admission and repair tests
+when those paths exist. Add operator-log crash/partition and independent-root
+BFT DAG/Hashgraph fault suites only when their adapters exist. The canonical
+Type selects the protocol; an optional Raft experiment is not an adopted global
+backend. Neither discovery tests nor policy parsing proves live consensus,
+protected-node startup or fresh key possession. Official release artifacts and
+installed operator/Agent qualification require the separate
+[release/deployment gates](release-and-node-deployment.md).
 Add measured resource/retention and restore limits before a pilot. Capture actual
 sanitised demonstrations then; a video of this workflow map would add no execution
 evidence.

@@ -4,6 +4,13 @@ Syn supplies durable workspace messages and an append-only SHA-256 receipt chain
 Potbot uses the lightweight `syn-client` package from its pinned Syn submodule;
 its existing job database, admission checks and signing broker retain their roles.
 
+That submodule describes the current development integration. The adopted
+production boundary requires [official Syn release packages and real independent
+operator/Agent nodes](development/release-and-node-deployment.md). All Agent-to-Agent
+traffic must use their own Syn instances and encrypted private Syn pub-sub;
+the shared HTTP service documented here is not that target topology. See the
+[current architecture](architecture.md) for ownership, identity and per-Type policy.
+
 ![Illustration of Potbot sending messages through Syn to a workspace ledger, with independent receipt verification](media/communication-flow.svg)
 
 *Generated explanatory diagram of the implemented service boundary, not a screenshot.
