@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="650" viewBox="0 0 1160 650" role="img" aria-labelledby="t d">
+<title id="t">Syn-owned CI and explicit Potbot compatibility</title>
+<desc id="d">Syn push and pull request events run Linux application tests, a disposable PostgreSQL service and a portable client wheel matrix. A manual workflow tests an exact reviewed Potbot commit with the exact Syn candidate. Potbot retains its independent full acceptance and custody checks. Configured jobs are not proof of successful execution.</desc>
+<rect width="1160" height="650" rx="18" fill="#f4f7fa"/>
+<g font-family="Arial,sans-serif" fill="#17374a">
+<text x="35" y="44" font-size="27" font-weight="bold">Syn owns its verification. Potbot verifies its consumption.</text>
+<text x="35" y="78" font-size="18">Workflow design · every result belongs to an exact source revision</text>
+<rect x="35" y="112" width="1090" height="70" rx="12" fill="#fff1d6" stroke="#9d7938"/>
+<text x="55" y="142" font-size="21" font-weight="bold">Push / pull request → read-only jobs, locked dependencies, synthetic fixtures</text>
+<text x="55" y="168" font-size="17">SHA-pinned actions · no persistent checkout credentials · no private-source cache publishing</text>
+<rect x="35" y="220" width="340" height="175" rx="12" fill="#e7eff8" stroke="#5d7996"/>
+<rect x="410" y="220" width="340" height="175" rx="12" fill="#e2f3e9" stroke="#4d866c"/>
+<rect x="785" y="220" width="340" height="175" rx="12" fill="#eeebfa" stroke="#7b70a5"/>
+<text x="55" y="254" font-size="22" font-weight="bold">Application</text>
+<text x="55" y="288" font-size="18">Ubuntu · Python 3.12 / 3.13</text>
+<text x="55" y="319" font-size="17">HTTP, discovery, scheduler</text>
+<text x="55" y="348" font-size="17">Policies, offline migrations</text>
+<text x="55" y="377" font-size="17">Build Syn wheel</text>
+<text x="430" y="254" font-size="22" font-weight="bold">Disposable PostgreSQL</text>
+<text x="430" y="288" font-size="18">Separate runner service</text>
+<text x="430" y="319" font-size="17">Full schema and constraints</text>
+<text x="430" y="348" font-size="17">Concurrent writers, rollback</text>
+<text x="430" y="377" font-size="17">Required cases cannot skip</text>
+<text x="805" y="254" font-size="22" font-weight="bold">Portable client wheel</text>
+<text x="805" y="288" font-size="18">Ubuntu / Windows · 3.12 / 3.13</text>
+<text x="805" y="319" font-size="17">Clean installed imports</text>
+<text x="805" y="348" font-size="17">Node hashes, policy pins</text>
+<text x="805" y="377" font-size="17">No application dependencies</text>
+<rect x="35" y="438" width="1090" height="115" rx="12" fill="white" stroke="#5d7996"/>
+<text x="55" y="472" font-size="22" font-weight="bold">Manual compatibility: reviewed Potbot SHA + exact Syn candidate SHA</text>
+<text x="55" y="505" font-size="18">Consumer policy, exchange and custody-evidence tests; no automatic consumer branch or gitlink change.</text>
+<text x="55" y="534" font-size="17">Potbot retains its own complete application, PostgreSQL, sandbox and native-custody checks.</text>
+<text x="35" y="594" font-size="18">Later gates: real encrypted Agent mesh → qualified agreement adapters → fault and recovery matrices</text>
+<text x="35" y="626" font-size="16">Generated configuration illustration · run status and actual acceptance evidence must be verified independently.</text>
+</g></svg>

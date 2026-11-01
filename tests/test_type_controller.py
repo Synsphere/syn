@@ -80,6 +80,7 @@ def test_get_type_resolves_local_object_reference(
         "knowledgeUpdated": None,
         "confidence": "0.75",
         "confidenceUpdated": None,
+        "consensusPolicy": None,
         "parents": [],
     }
     databaseSession.get.assert_called_once_with(Type, ObjectRef("syn://type/person"))

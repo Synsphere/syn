@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1060" viewBox="0 0 1440 1060" role="img" aria-labelledby="title desc">
+  <title id="title">Proposed Syn distributed ledger architecture</title>
+  <desc id="desc">People and agents sign knowledge records. Scoped peer replication exchanges authorised records. Community consensus finalises permissions, ontology adoption and batch admission. A deterministic reducer builds verifiable local views. Existing PostgreSQL, libp2p and receipt services are foundations; the ledger components shown are proposed.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#58768d"/></marker>
+    <style>
+      text {font-family:Arial,Helvetica,sans-serif;fill:#182d41}
+      .title {font-size:36px;font-weight:700}
+      .sub {font-size:22px;fill:#435f75}
+      .head {font-size:25px;font-weight:700}
+      .body {font-size:21px}
+      .small {font-size:19px;fill:#435f75}
+      .box {fill:#fff;stroke:#9db1c0;stroke-width:2;rx:16}
+      .planned {stroke-dasharray:9 6}
+      .line {stroke:#58768d;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1440" height="1060" fill="#f4f7fa"/>
+  <text x="55" y="65" class="title">A shared history, with room to disagree</text>
+  <text x="55" y="102" class="sub">Syn ledger proposal · 23 October 2026 · architecture illustration</text>
+  <rect x="55" y="145" width="1330" height="118" class="box planned"/>
+  <text x="85" y="183" class="head">People, communities, applications and agents</text>
+  <text x="85" y="217" class="body">Create signed records under explicit capabilities. Private drafts stay local.</text>
+  <text x="85" y="244" class="small">Human identity, application signing keys and libp2p peer identity remain distinct.</text>
+  <path d="M 425 264 L 425 315" class="line"/>
+  <path d="M 1035 264 L 1035 315" class="line"/>
+  <rect x="55" y="318" width="655" height="230" class="box planned"/>
+  <rect x="730" y="318" width="655" height="230" class="box planned"/>
+  <text x="85" y="360" class="head">Signed knowledge graph</text>
+  <text x="85" y="400" class="body">Observations · claims · evidence · amendments</text>
+  <text x="85" y="435" class="body">Author chains and causal parent digests</text>
+  <text x="85" y="470" class="body">Scoped replication through libp2p</text>
+  <text x="85" y="520" class="small">Peer receipt is provisional; it is not shared finality.</text>
+  <text x="760" y="360" class="head">Community control log</text>
+  <text x="760" y="400" class="body">Permissions · keys · ontology · batch admission</text>
+  <text x="760" y="435" class="body">One authoritative outcome within each domain</text>
+  <text x="760" y="470" class="body">Maintained BFT engine and Syn reducer</text>
+  <text x="760" y="520" class="small">CometBFT reference; Hiero/Hashgraph comparison.</text>
+  <path d="M 390 549 L 390 606 L 535 606 L 535 642" class="line"/>
+  <text x="77" y="595" class="small">Available signed records</text>
+  <path d="M 1040 549 L 1040 606 L 905 606 L 905 642" class="line"/>
+  <text x="1060" y="595" class="small">Finalised outcomes</text>
+  <rect x="235" y="645" width="970" height="125" class="box planned"/>
+  <text x="265" y="685" class="head">Deterministic admission, checkpoints and local projection</text>
+  <text x="265" y="724" class="body">Verify signatures, authority, dependencies and proofs; retain rejected outcomes.</text>
+  <text x="265" y="753" class="small">Agreement establishes the accepted record and policy, not the truth of a claim.</text>
+  <path d="M 720 771 L 720 819" class="line"/>
+  <rect x="235" y="822" width="970" height="100" class="box"/>
+  <text x="265" y="860" class="head">PostgreSQL query views and evidence storage</text>
+  <text x="265" y="895" class="body">Existing Syn objects and v1 receipts remain compatible; new ledger tables are planned.</text>
+  <text x="55" y="975" class="small">Dashed boxes: proposed ledger responsibilities. Solid storage box: an existing foundation to extend.</text>
+  <text x="55" y="1008" class="small">No global truth score · no automatic token economy · no automatic execution of messages</text>
+</svg>

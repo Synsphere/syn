@@ -1,0 +1,37 @@
+name: Syn client portability
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+        python: ["3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.23"
+          enable-cache: false
+          python-version: ${{ matrix.python }}
+      - name: Build and install client wheel without Syn application dependencies
+        run: |
+          uv build --wheel packages/syn-client --out-dir dist
+          uv venv .client-venv
+          uv pip install --python .client-venv dist/syn_client-0.1.0-py3-none-any.whl cryptography==50.0.2 pytest==9.1.1 ruff==0.17.1
+      - name: Check Python correctness without changing legacy formatting
+        run: uv run --no-project --python .client-venv ruff check --isolated --select E4,E7,E9,F src tests packages/syn-client/src packages/syn-client/tests scripts/ci_database.py
+      - name: Test installed wheel on a clean import path
+        run: uv run --no-project --python .client-venv python -I -m pytest -q packages/syn-client/tests -o cache_dir=.tmp-pytest/client-cache

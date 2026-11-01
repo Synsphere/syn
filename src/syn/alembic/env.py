@@ -5,11 +5,13 @@ from sqlalchemy import Connection, create_engine
 
 from syn.config import loadConfig
 from syn.models import Base
+from syn.communication import metadata as communicationMetadata
+from syn.policy_adoption import metadata as policyMetadata
 from syn.sqltypes import ObjectRefType, SlugType
 
 
 config = context.config
-target_metadata = Base.metadata
+target_metadata = [Base.metadata, communicationMetadata, policyMetadata]
 
 
 def compareType(context_, inspectedColumn, metadataColumn, inspectedType, metadataType):
