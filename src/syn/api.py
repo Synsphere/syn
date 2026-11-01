@@ -74,6 +74,11 @@ def createApp(
     if tokens:
         app.include_router(communicationRouter(sessions, tokens))
 
+    @app.get("/v1/capabilities")
+    async def capabilities() -> dict[str, Any]:
+        from .release import runtimeContract
+        return runtimeContract().to_dict()
+
     @app.get("/p2p/status")
     async def p2pStatus(request: Request) -> dict[str, Any]:
         return request.app.state.p2pNode.status()

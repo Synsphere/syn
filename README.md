@@ -8,6 +8,8 @@ the [conceptual overview](docs/overview.md), and the [core-model contracts](docs
 The [official-release and independent-node requirements](docs/development/release-and-node-deployment.md)
 define Syn's ownership boundary with Potbot. Adopted design, branch implementation
 and qualified production behaviour are labelled separately in those guides.
+The [SYN-R01 package and compatibility contract](docs/development/release-contracts.md)
+defines exact release assets, independent authenticity pins and installed-code reporting.
 
 ## Setup
 
@@ -152,6 +154,18 @@ Start the web server with the uv command installed by the package:
 ```sh
 uv run syn-server
 ```
+
+Inspect installed package capabilities without loading configuration, connecting
+to PostgreSQL, migrating or starting discovery:
+
+```sh
+uv run syn-server --describe-json
+```
+
+An existing service also exposes `GET /v1/capabilities`. These report installed
+code, currently `service` mode only. They do not prove enabled workspaces, host
+acceptance or operator/Agent node availability; see the
+[compatibility contract](docs/development/release-contracts.md#declared-compatibility).
 
 The equivalent direct script is `uv run python scripts/startServer.py`. Both
 load `config.toml`, apply migrations when `database.autoMigrate` is enabled,

@@ -1487,6 +1487,7 @@ dependencies = [
 dev = [
     { name = "httpx2" },
     { name = "hypothesis" },
+    { name = "packaging" },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
@@ -1511,6 +1512,7 @@ requires-dist = [
 dev = [
     { name = "httpx2", specifier = ">=2.9.1" },
     { name = "hypothesis", specifier = ">=6.163.0" },
+    { name = "packaging", specifier = ">=26.2" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
 ]

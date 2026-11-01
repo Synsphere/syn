@@ -15,6 +15,10 @@ The [conceptual overview](overview.md) explains the goals and philosophy. The
 [core-model guide](core-model.md) records the database, ontology, API, observation
 and execution decisions. The [release and node deployment contract](development/release-and-node-deployment.md)
 defines the upstream ownership and installation requirements.
+The [SYN-R01 implementation](development/release-contracts.md) now defines the
+package set, independent release-authenticity checks and compatibility reporting.
+It preserves the distinction between an unsigned candidate, an official published
+release and an accepted operator/Agent deployment.
 
 ## Purpose and interpretation
 
@@ -114,7 +118,9 @@ Potbot must install official, pinned Syn release packages from
 pin source for compatibility work; it does not satisfy production installation.
 The [deployment gates](development/release-and-node-deployment.md) preserve this
 distinction. No GitHub releases existed when queried on 1 November 2026, so the
-upstream release contract remains a concrete prerequisite.
+official signing/publication remains a concrete prerequisite. SYN-R01 now supplies
+the [package and compatibility contract](development/release-contracts.md), with
+service mode only; it does not make operator or Agent modes available.
 
 ## Identity, custody and private communication
 

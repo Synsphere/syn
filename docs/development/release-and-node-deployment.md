@@ -16,7 +16,7 @@ or a source version string does not establish an available official artifact.
 | Responsibility | Owner and boundary |
 | --- | --- |
 | Syn runtime, CLI, P2P, semantic/identity contracts, enrollment and keystore implementation | Canonical Syn project. Reconcile any existing Potbot implementation upstream before removing a working integration. |
-| Syn release builds, platform artifacts, integrity/authenticity metadata and versioned API/protocol contracts | Syn CI/release process, still to be defined and qualified. |
+| Syn release builds, platform artifacts, integrity/authenticity metadata and versioned API/protocol contracts | Syn owns the [SYN-R01 package/compatibility contract](release-contracts.md); production signing/publication and installed-node qualification remain. |
 | Version selection, verified installation, local configuration and compatibility records | Potbot package/deployment integration through supported public contracts. |
 | Operator/Agent node lifecycle, sandbox isolation, resource monitoring and authorized upgrades | Potbot operator. |
 | Agent tasks, reasoning, budgets, tools, evidence acceptance and memory | Potbot; a Syn message or valid identity does not supply these permissions. |
@@ -46,7 +46,7 @@ available installer, released artifact or running Agent node.*
 
 | Gate | Required result before production acceptance |
 | --- | --- |
-| **SYN-R01: upstream contract** | Verify the canonical repository, supported platforms, package/runtime contents, public APIs/protocol versions and release/authenticity scheme. Keep the signer roots independent of a downloaded manifest. |
+| **SYN-R01: upstream contract** | Foundation implemented: [official package set, canonical manifest/signature verification, compatibility descriptor and candidate-build checks](release-contracts.md). Linux application and Linux/Windows client are the declared matrix; current mode is `service` only. Production authority provisioning and official publication remain prerequisites for a usable release. Signer roots stay independent of downloaded metadata. |
 | **SYN-R02: release installation** | Select an exact official version and platform artifact, verify authenticity and digest, install without arbitrary source fallback, and record version, artifact digest and protocol compatibility per installation. Refuse missing, altered or incompatible releases. |
 | **SYN-R03: operator node** | Install/discover and authenticate a real operator-mode Syn, with protected custody, enrollment authority, supervised lifecycle and retained identity/state. |
 | **SYN-R04: Agent nodes** | Provision a distinct account and Syn instance inside each Agent sandbox; qualify the hardware/keystore and selected-key adoption requirements on the actual host. Preserve base-key secrecy, unique allocation and group-epoch separation. |
@@ -54,8 +54,8 @@ available installer, released artifact or running Agent node.*
 | **SYN-R06: lifecycle and recovery** | Operator-controlled upgrades, compatibility checks, migration, backup, restart, rollback/recovery and revocation. Agents cannot independently replace their executables. Rollback must not rewind protected signing/reservation state or silently downgrade a protocol; restore trusted state or explicitly retire the identity. |
 | **SYN-R07: remove duplication and qualify** | Reconcile transitional runtime/custody work upstream; remove duplicate runtime only after the released replacement passes compatibility. Run several genuine nodes concurrently through enrollment, isolation, encrypted exchange, restart, revocation, fault and recovery tests. |
 
-Syn's [existing workflows](ci.md) own application, PostgreSQL and portable-client
-verification. They are not yet a complete release/publication or installed-node
+Syn's [existing workflows](ci.md) own application, PostgreSQL, portable-client,
+release-candidate validation and installed-wheel verification. They are not yet a complete release/publication or installed-node
 qualification pipeline. Potbot should test its adapters against published
 interfaces and exact release artifacts, rather than rely on Syn internals.
 
