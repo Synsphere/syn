@@ -44,9 +44,10 @@ jobs:
           SYN_VERSION="$(uv run --locked python -c 'from importlib.metadata import version; print(version("syn"))')"
           uv export --locked --no-dev --no-emit-project --no-emit-package syn-client --no-header --output-file "dist/syn-runtime-requirements-${SYN_VERSION}.txt"
       - name: Validate unsigned release manifest against the exact clean source
-        env:
-          SYN_RELEASE_SOURCE: ${{ github.sha }}
-        run: uv run --locked python scripts/build_release_contract.py --dist-dir dist --source-commit "$SYN_RELEASE_SOURCE"
+        shell: bash
+        run: |
+          SYN_RELEASE_SOURCE="$(git rev-parse HEAD)"
+          uv run --locked python scripts/build_release_contract.py --dist-dir dist --source-commit "$SYN_RELEASE_SOURCE"
       - name: Exercise the installed runtime wheels independently of the source tree
         shell: bash
         run: |
