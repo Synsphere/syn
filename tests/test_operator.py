@@ -156,13 +156,18 @@ def test_real_socket_challenge_and_restart_preserve_synthetic_fixture_identity(i
         thread.start()
         try:
             deadline = time.monotonic() + 5
-            while not (node / "operator.sock").exists():
-                if time.monotonic() > deadline or failures:
+            while True:
+                if failures:
                     raise AssertionError("Synthetic fixture server failed")
-                time.sleep(0.01)
-            value = operator_status(socket_path=node / "operator.sock", expected_hash=base,
-                                    expected_version=runtimeContract().runtime_version,
-                                    configuration_sha256=config_sha, owner_uid=os.getuid())
+                try:
+                    value = operator_status(socket_path=node / "operator.sock", expected_hash=base,
+                                            expected_version=runtimeContract().runtime_version,
+                                            configuration_sha256=config_sha, owner_uid=os.getuid())
+                    break
+                except (OSError, SynProtocolError):
+                    if time.monotonic() > deadline:
+                        raise AssertionError("Synthetic fixture failed authenticated readiness") from None
+                    time.sleep(0.01)
             assert value["status"]["boot"] > previous_boot
             previous_boot = value["status"]["boot"]
             assert value["status"]["agent_activation_authorized"] is False
