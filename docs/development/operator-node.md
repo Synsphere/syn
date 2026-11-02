@@ -1,7 +1,7 @@
 # Native operator node
 
-SYN-R03 adds a real foreground operator process to the **0.2.0 candidate**.
-Publication and installed-release acceptance must be recorded separately.
+SYN-R03 adds a real foreground operator process in the [immutable 0.2.0 release](releases/v0.2.0.md).
+Publication and installed-release acceptance are recorded separately.
 The unchanged 0.1.0 release declares only service mode.
 
 ```mermaid
@@ -126,11 +126,20 @@ Its receipts distinguish official package acceptance from source tests and a
 persistent user deployment. It receives only repository read access and removes
 that token before native children start; no signing environment is available.
 
+An explicit `export_transfer` run also retains the Linux/Python 3.12 preparing
+package/dependency cache and an exact reviewed Potbot wheel. The archive excludes
+installed environments, admission journals and every native credential store.
+Its retained SHA-256 and dependency-cache digest must be independently selected
+before an offline deployment. This is a transfer of the documented installer
+cache, not a new release or a node identity. Downloading it does not make a
+private repository token available to the destination host.
+
 Local development acceptance passed on the managed Ubuntu 24.04 WSL2 host:
 three independent boots retained one identity, locked Secret Service refused
 readiness, and ten synthetic/socket/authority regressions passed. These used
-development code and disposable keys; official installed-release acceptance
-and a persistent user identity are still pending.
+development code and disposable keys. Official installed-release acceptance is
+evidenced by exact runs of the [separate workflow](https://github.com/Synsphere/syn/actions/workflows/operator-release.yml);
+a persistent user deployment requires its own private host receipt.
 
 There is no graphical node UI or dynamic Agent exchange in this stage.
 The architecture diagram explains the interface; sanitized native test receipts

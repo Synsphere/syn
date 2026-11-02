@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+import tarfile
 
 from potbot.domain.errors import ScopeDeniedError
 from potbot.syn_release.contracts import Policy, canonical
@@ -61,6 +63,41 @@ def main():
     result = subprocess.run(argv, env=environment, timeout=360, check=False)
     if result.returncode:
         raise AssertionError("Official operator deployment acceptance failed")
+    if (os.environ.get("R03_EXPORT_TRANSFER") == "true" and sys.platform == "linux"
+            and policy_value["python_version"] == "3.12"):
+        # Explicit transfer of the trusted preparing cache. Never include
+        # environments, admission journals, native stores or fixture identities.
+        transfer = base / "transfer"
+        transfer.mkdir(mode=0o700)
+        packages = transfer / "packages"
+        packages.mkdir(mode=0o700)
+        for name in ("objects", "bundles", "uv-cache"):
+            shutil.copytree(store.root / name, packages / name, symlinks=True)
+        shutil.copy2(store.root / "dependency-cache-inventory.json", packages / "dependency-cache-inventory.json")
+        transferred_policy = {**policy_value, "dependency_cache_sha256": installed["dependency_cache_sha256"]}
+        (transfer / "policy.json").write_bytes(canonical(transferred_policy))
+        (transfer / "policy.json").chmod(0o600)
+        controller = transfer / "controller"
+        subprocess.run(["uv", "build", "--project", str(root / "consumer"), "--wheel",
+                        "--out-dir", str(controller)], check=True, timeout=180)
+        wheels = list(controller.glob("*.whl"))
+        if len(wheels) != 1:
+            raise AssertionError("Expected exactly one reviewed consumer wheel")
+        selection = {"profile": "syn.operator-offline-transfer/1", "manifest_sha256": policy.manifest_sha256,
+                     "source_commit": policy_value["source_commit"], "consumer_sha": os.environ["R03_POTBOT_SHA"],
+                     "dependency_cache_sha256": installed["dependency_cache_sha256"],
+                     "controller_filename": wheels[0].name, "controller_sha256": hashlib.sha256(wheels[0].read_bytes()).hexdigest(),
+                     "agent_activation_authorized": False}
+        (transfer / "selection.json").write_bytes(canonical(selection))
+        archive = evidence / "linux-py312-transfer.tar.gz"
+        with tarfile.open(archive, "w:gz") as output:
+            output.add(transfer, arcname="transfer")
+        with archive.open("rb") as source_file:
+            archive_digest = hashlib.file_digest(source_file, "sha256").hexdigest()
+        receipt = {**selection, "archive_sha256": archive_digest, "archive_size": archive.stat().st_size,
+                   "scope": "authenticated package/dependency preparation only; no operator credentials or installed environment"}
+        (evidence / "transfer-archive.json").write_bytes(canonical(receipt))
+        print(canonical(receipt).decode())
 
 
 if __name__ == "__main__":

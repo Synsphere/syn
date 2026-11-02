@@ -24,7 +24,7 @@ source metadata version; its presence does not establish an official release.
 
 | Manifest role | Exact asset filename | Contents and consumer |
 | --- | --- | --- |
-| `runtime-wheel` | `syn-{version}-py3-none-any.whl` | Syn application, `syn-server`, API, discovery, scheduler, schema, Alembic migrations, templates and checksum-pinned CA bundle. Installs the existing service; future node modes belong here. |
+| `runtime-wheel` | `syn-{version}-py3-none-any.whl` | Syn application, `syn-server`, `syn-operator`, API, discovery, scheduler, schema, Alembic migrations, templates and checksum-pinned CA bundle. Service and native operator implementations belong here; Agent mode remains unavailable. |
 | `client-wheel` | `syn_client-{version}-py3-none-any.whl` | Portable HTTP/receipt, identity, policy, DAG and release contracts. Base imports remain dependency-free; `governance` adds public Ed25519 verification through cryptography. It supplies no Syn process or private signing service. |
 | `dependency-lock` | `syn-runtime-requirements-{version}.txt` | Exact hashed third-party runtime requirements exported from `uv.lock`, with environment markers. Excludes Syn, syn-client, development tools and local editable sources. |
 | `runtime-sdist` | `syn-{version}.tar.gz` | Auditable source distribution built from the same source commit. Production installation uses the verified wheel. |
@@ -68,13 +68,13 @@ It is not peer authentication, runtime attestation or a health/admission check.
 
 | Descriptor field | Current value or meaning |
 | --- | --- |
-| `runtime_version`, `client_version` | Equal installed package versions, currently `0.1.0`. |
+| `runtime_version`, `client_version` | Equal installed package versions, currently `0.2.0`. |
 | `python_versions` | `3.12`, `3.13`; runtime metadata remains `>=3.12,<3.14`. Client metadata permits `>=3.12`, but the declared qualified matrix is narrower. |
-| `runtime_platforms` | `linux-x86_64`, aligned with the Ubuntu 24.04 application CI matrix. Actual host acceptance is separate. |
-| `client_platforms` | `linux-x86_64`, `windows-x86_64`, aligned with the client CI matrix. |
-| `node_modes` | `service` only. `operator` and `agent` are reserved mode names and remain unavailable. |
+| `runtime_platforms` | `darwin-arm64`, `darwin-x86_64`, `linux-x86_64`. Native source acceptance covers Ubuntu/macOS; actual installed-host acceptance is separate. Windows deploys the Linux runtime inside managed WSL2. |
+| `client_platforms` | `darwin-arm64`, `darwin-x86_64`, `linux-x86_64`, `windows-x86_64`. |
+| `node_modes` | `operator`, `service`. `agent` remains unavailable. The immutable 0.1.0 manifest retains its original service-only descriptor. |
 | `api_profiles` | Explicit versioned protocol families listed below; sorted and unique. |
-| `capabilities` | `http-workspace-messages`, `offline-governance-verification`, `offline-protected-dag-verification`, `offline-type-policy-resolution`. |
+| `capabilities` | `authenticated-operator-ipc`, `http-workspace-messages`, `native-os-operator-custody`, `offline-governance-verification`, `offline-protected-dag-verification`, `offline-type-policy-resolution`, `retained-operator-identity`. |
 | `database_revision` | Packaged Alembic head, currently `20261024_0015`. This is the expected schema revision, not an observed live database state or rollback permission. |
 
 `syn.communication/1` names the existing `/v1/communication` contract family,
@@ -83,6 +83,7 @@ existing on-wire bytes and signature domains do not change. The other declared
 families are `syn.consensus-policy/1`, `syn.governed-policy-record/1` and `/2`,
 and `syn.dag-hashgraph-finality/1` and `/2`. Their existing verification rules
 remain authoritative. A listed offline verifier does not establish live consensus.
+The 0.2.0 `syn.operator-local/1` profile adds the [native operator boundary](operator-node.md).
 
 Installed capabilities can be disabled by configuration: for example, workspace
 messaging still requires configured credentials and routes. The list does not
@@ -92,7 +93,7 @@ The client is a library, so no node mode can be requested for a client component
 Consumers specify required profiles, capabilities, mode, component, platform and
 Python version. `syn_client.releases.check_compatibility()` checks them against
 the manifest and an exactly matching descriptor. Missing capabilities, Windows
-runtime requests, Python 3.14, operator/Agent requests, unknown modes and changed
+runtime requests, Python 3.14, Agent requests, operator requests against 0.1.0, unknown modes and changed
 descriptors fail with `ReleaseError`. Empty requirement tuples deliberately ask
 for no profile/capability; Potbot must retain its own explicit acceptance policy.
 No negotiation downgrades a requirement to make a package fit.
