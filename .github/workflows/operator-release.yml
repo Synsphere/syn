@@ -43,6 +43,7 @@ jobs:
       R03_MANIFEST: ${{ inputs.manifest_sha256 }}
       R03_PYTHON: ${{ matrix.python }}
       R03_EXPORT_TRANSFER: ${{ inputs.export_transfer }}
+      UV_MANAGED_PYTHON: "true"
     steps:
       - name: Admit only canonical explicit master dispatch and exact pins
         shell: bash
@@ -78,8 +79,9 @@ jobs:
         shell: bash
         run: |
           test "$(git -C consumer rev-parse HEAD)" = "$R03_POTBOT_SHA"
+          uv python install "$R03_PYTHON"
           uv sync --locked --project consumer --dev --extra security
-          echo "R03_HOST_PYTHON=$(uv python find "$R03_PYTHON")" >> "$GITHUB_ENV"
+          echo "R03_HOST_PYTHON=$(uv python find --managed-python "$R03_PYTHON")" >> "$GITHUB_ENV"
       - name: Install actual official package and qualify real native custody and Potbot supervisor
         env:
           POTBOT_SYN_GITHUB_TOKEN: ${{ github.token }}
