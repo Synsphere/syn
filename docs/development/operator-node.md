@@ -173,6 +173,13 @@ missing-controlling-terminal refusal on Linux and macOS. Immutable 0.2.0
 remains unchanged; a new host requiring interactive unlock must use the
 qualified patch release.
 
+The Linux patch also sends the bounded unlock request to the existing GNOME
+control socket after checking ownership, socket type, connected peer UID and
+endpoint continuity. The daemon's `--unlock` startup command starts another
+daemon; it does not unlock the selected running service. Actual native CLI
+acceptance now covers new-password confirmation, no echo, wrong-password
+refusal with the collection still locked, and repeated correct unlock.
+
 There is no graphical node UI or dynamic Agent exchange in this stage.
 The architecture diagram explains the interface; sanitized native test receipts
 provide execution evidence. No screenshot/video of a production deployment is
