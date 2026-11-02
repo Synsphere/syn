@@ -95,8 +95,9 @@ def test_first_creation_returns_public_pin_and_never_recreates_existing_identity
     with pytest.raises(SynProtocolError, match="not empty"):
         initialize(node, service="syn.test", account="fixture", network_id="test-net")
     assert backend.values == before
-    text = canonical(created).decode()
-    assert not any(word in text for word in ("entropy", "xprivate", "chain", "mnemonic"))
+    assert set(created) == {"profile", "identity", "configuration_sha256", "custody", "agent_activation_authorized"}
+    assert set(created["identity"]) == {"schema_version", "type_ref", "profile", "root_path", "base_path",
+                                      "root_public_key", "base_public_key", "root_public_key_hash", "base_public_key_hash"}
 
 
 def test_anchored_state_refuses_file_rollback_missing_anchor_and_path_copy(installed):
