@@ -1,10 +1,11 @@
 # Agent nodes, selected keys and current group custody
 
-**SYN-R04 candidate, 2 November 2026.** Syn 0.3.0 adds a real Agent-mode process
-and canonical selected-key adoption. Two disposable WSL source-package nodes
-have passed native custody, isolated-identity, restart and locked-store checks.
-Signed release publication and exact official-package qualification remain
-separate gates in the dated release record.
+**Released Syn 0.3.0, 2 November 2026.** The canonical Agent runtime and
+selected-key adoption passed local official-package acceptance through Potbot's
+complete controller with two real WSL nodes. Native custody, isolated identities,
+node/full-keystore-session restarts and locked-store fencing passed. The
+[dated release record](releases/v0.3.0.md) retains immutable pins and separates
+local acceptance, independent GitHub qualification and production admission.
 
 ![Operator authority and two separate Agent sandboxes](media/syn-agent-custody.svg)
 
@@ -107,6 +108,12 @@ private temporary storage, native credential IPC and the readiness endpoint.
 Operator and peer homes/buses and Windows drive mounts are absent. Internet
 socket creation is denied. This runtime profile does not replace Potbot's
 separate Cog image, lease, monitoring, database or budget requirements.
+
+The installer store remains private and sealed. Potbot admits a separate
+root-owned execution view containing only inventory-verified runtime bytes,
+with normalized read/execute permissions for the restricted native UID. It
+mounts that view read-only and refuses changed or partial copies. Private
+installer records and Agent state are not part of the shared runtime view.
 
 Source acceptance uses actual candidate wheels and native encrypted stores; it
 is labelled separately from published-package evidence. The native CI gate must

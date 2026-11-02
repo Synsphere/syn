@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      SYN_AGENT_CONSUMER: 9022a9f3419e1c4046a5c447af1ff51a8b2cbd8e
+      SYN_AGENT_CONSUMER: 33bdf4d21f575adf48d99fcb01ee43a943c6398e
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: kieransimkin/potbot
-          ref: 9022a9f3419e1c4046a5c447af1ff51a8b2cbd8e
+          ref: 33bdf4d21f575adf48d99fcb01ee43a943c6398e
           path: consumer-agent
           persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
