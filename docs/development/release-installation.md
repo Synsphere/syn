@@ -3,6 +3,10 @@
 SYN-R02's installer belongs to Potbot. Syn owns the official package envelope,
 release authority and stable installed-code contract. The [first official
 release](releases/v0.1.0.md) is immutable and declares service mode only.
+This page retains that first package-installation milestone. The current
+[0.2.1 operator/service selection](releases/v0.2.1.md) and
+[native operator guide](operator-node.md) add macOS and managed Windows WSL2
+deployment with independent installed-node qualification.
 Installing it supplies no operator or Agent identity, enrollment authority,
 protected custody or node admission.
 

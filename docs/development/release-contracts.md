@@ -68,7 +68,7 @@ It is not peer authentication, runtime attestation or a health/admission check.
 
 | Descriptor field | Current value or meaning |
 | --- | --- |
-| `runtime_version`, `client_version` | Equal installed package versions, currently `0.2.0`. |
+| `runtime_version`, `client_version` | Equal installed package versions, currently `0.2.1`. |
 | `python_versions` | `3.12`, `3.13`; runtime metadata remains `>=3.12,<3.14`. Client metadata permits `>=3.12`, but the declared qualified matrix is narrower. |
 | `runtime_platforms` | `darwin-arm64`, `darwin-x86_64`, `linux-x86_64`. Native source acceptance covers Ubuntu/macOS; actual installed-host acceptance is separate. Windows deploys the Linux runtime inside managed WSL2. |
 | `client_platforms` | `darwin-arm64`, `darwin-x86_64`, `linux-x86_64`, `windows-x86_64`. |
