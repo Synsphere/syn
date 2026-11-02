@@ -133,6 +133,12 @@ class OperatorServer:
     def caller_allowed(self, uid):
         return uid == os.getuid()
 
+    def dispatch(self, conn, request):
+        send(conn, self.status(request))
+
+    def close_resources(self):
+        pass
+
     def serve(self):
         with _agent_key_lock(self.directory, self.config["keyring_service"], self.config["keyring_account"] + ".operator"):
             current = self.state.read(recover=True)
@@ -166,12 +172,13 @@ class OperatorServer:
                         try:
                             if not self.caller_allowed(peer_uid(conn)):
                                 raise SynProtocolError("Operator caller has the wrong native user")
-                            send(conn, self.status(receive(conn)))
+                            self.dispatch(conn, receive(conn))
                         except (SynProtocolError, OSError, ValueError):
                             # No diagnostic oracle or arbitrary signer is offered over IPC.
                             continue
             finally:
                 os.umask(previous)
+                self.close_resources()
                 listener.close()
                 if self.owned_inode is not None:
                     try:

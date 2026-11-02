@@ -17,6 +17,8 @@ retain their own admitted policy; replacing executable pins requires an explicit
 upgrade contract. The [0.3.1 release](releases/v0.3.1.md) adds the corrected Agent
 custody selection and its separate official-package evidence.
 Package publication does not establish installed operator or Agent qualification.
+The [SYN-R05 candidate](private-pubsub.md) adds native private pub-sub and the
+separate identity-bound Cog admission boundary; it does not enable general rollout.
 
 ## Ownership and topology
 

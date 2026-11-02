@@ -38,6 +38,10 @@ def main():
         required_capabilities=["authenticated-agent-ipc", "confidential-selected-key-adoption", "host-bound-virtual-device",
             "native-os-agent-custody", "native-os-group-custody", "retained-agent-identity"])
     policy = Policy.parse(canonical(value))
+    if tuple(map(int, value["version"].split("."))) >= (0, 4, 0):
+        value["required_profiles"].append("syn.private-pubsub/1")
+        value["required_capabilities"].append("authenticated-private-pubsub")
+        policy = Policy.parse(canonical(value))
     policy_path = base / "policy.json"
     policy_path.write_bytes(canonical(value))
     policy_path.chmod(0o600)
