@@ -1,6 +1,7 @@
 # Native operator node
 
-SYN-R03 adds a real foreground operator process in the [immutable 0.2.0 release](releases/v0.2.0.md).
+SYN-R03 adds a real foreground operator process; use the [immutable 0.2.1 release](releases/v0.2.1.md)
+with its private-terminal/native-unlock correction.
 Publication and installed-release acceptance are recorded separately.
 The unchanged 0.1.0 release declares only service mode.
 
@@ -118,7 +119,7 @@ interrupted transitions, rollback, unauthorized allocation and foreign sockets.
 Only completed workflow results establish platform acceptance.
 
 The separate manual `Official Syn operator deployment` workflow accepts an exact
-reviewed Potbot SHA and independently retained 0.2.0 source/manifest pins. It
+reviewed Potbot SHA and independently retained version/source/manifest pins. It
 installs the actual immutable signed release, invokes its installed interpreter
 with a disposable native keystore, and exercises Potbot bootstrap, owned-child
 supervision, independent attachment, retained restart and locked-store fencing.
@@ -179,6 +180,14 @@ endpoint continuity. The daemon's `--unlock` startup command starts another
 daemon; it does not unlock the selected running service. Actual native CLI
 acceptance now covers new-password confirmation, no echo, wrong-password
 refusal with the collection still locked, and repeated correct unlock.
+
+The [0.2.1 installed-package run](https://github.com/Synsphere/syn/actions/runs/41433430363)
+passed all four native cases against the published source and manifest
+[pins](releases/v0.2.1.md). The initial managed WSL account's empty legacy
+collection was preserved while its default alias was explicitly reconciled
+before human first-time login-collection setup. Runtime background reads
+never create collections or rewrite aliases; an existing populated or
+different default requires separate native-keystore preparation.
 
 There is no graphical node UI or dynamic Agent exchange in this stage.
 The architecture diagram explains the interface; sanitized native test receipts
