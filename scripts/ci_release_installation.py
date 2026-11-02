@@ -78,7 +78,7 @@ def main() -> None:
         offline_root.mkdir(mode=0o700)
         for name in ("objects", "bundles", "uv-cache"):
             shutil.copytree(online.root / name, offline_root / name, symlinks=True)
-        shutil.copyfile(
+        shutil.copy2(
             online.root / "dependency-cache-inventory.json",
             offline_root / "dependency-cache-inventory.json",
         )
@@ -105,7 +105,13 @@ def main() -> None:
             "--uv",
             str(uv),
         ]
-        outcome = subprocess.run(argv, capture_output=True, timeout=900, check=True)
+        outcome = subprocess.run(argv, capture_output=True, timeout=900, check=False)
+        (evidence / "offline-command-output.txt").write_bytes(outcome.stdout + outcome.stderr)
+        if outcome.returncode != 0:
+            print((outcome.stdout + outcome.stderr).decode(errors="replace"))
+            raise AssertionError(
+                "Network-disabled offline installation failed; retained command output explains the refusal"
+            )
         offline = json.loads(outcome.stdout)
         assert offline["acquisition"] == "offline_retained_signature_verified"
         assert (
@@ -170,8 +176,11 @@ def main() -> None:
         )
         print((evidence / "acceptance.json").read_text())
     finally:
-        for log in (base / "online").glob("process-*.log"):
-            shutil.copyfile(log, evidence / log.name)
+        for log in [
+            *(base / "online").glob("process-*.log"),
+            *(base / "offline").glob("process-*.log"),
+        ]:
+            shutil.copyfile(log, evidence / (log.parent.name + "-" + log.name))
             print(
                 log.read_text(errors="replace")[-6000:]
             )  # Child env carries no GitHub token or signing key.
