@@ -13,7 +13,7 @@ on:
         description: Exact version tag (staging must match source package metadata)
         required: true
         type: string
-        default: v0.2.1
+        default: v0.3.0
       source_commit:
         description: Released source SHA from the retained staging receipt (verification only)
         required: false
@@ -64,8 +64,15 @@ jobs:
     permissions:
       contents: read
 
+  agent:
+    needs: source-gate
+    if: inputs.operation == 'stage'
+    uses: ./.github/workflows/agent.yml
+    permissions:
+      contents: read
+
   stage:
-    needs: [source-gate, verification, portability, operator]
+    needs: [source-gate, verification, portability, operator, agent]
     if: inputs.operation == 'stage'
     runs-on: ubuntu-24.04
     timeout-minutes: 15

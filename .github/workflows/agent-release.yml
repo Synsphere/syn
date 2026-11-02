@@ -1,0 +1,96 @@
+name: Official Syn Agent deployment
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact independently selected stable Syn version
+        required: true
+        default: "0.3.0"
+        type: string
+      potbot_sha:
+        description: Exact reviewed Potbot consumer SHA
+        required: true
+        type: string
+      source_commit:
+        description: Independently retained published Syn source SHA
+        required: true
+        type: string
+      manifest_sha256:
+        description: Independently retained signed manifest SHA-256
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  deployment:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      R04_VERSION: ${{ inputs.version }}
+      R04_POTBOT_SHA: ${{ inputs.potbot_sha }}
+      R04_RELEASE_SOURCE: ${{ inputs.source_commit }}
+      R04_MANIFEST: ${{ inputs.manifest_sha256 }}
+      R04_PYTHON: ${{ matrix.python }}
+      UV_MANAGED_PYTHON: "true"
+    steps:
+      - name: Admit canonical explicit master dispatch and immutable pins
+        shell: bash
+        run: |
+          test "$GITHUB_REPOSITORY" = Synsphere/syn
+          test "$GITHUB_REF" = refs/heads/master
+          [[ "$R04_POTBOT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$R04_RELEASE_SOURCE" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$R04_MANIFEST" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$R04_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: kieransimkin/potbot
+          ref: ${{ inputs.potbot_sha }}
+          path: consumer-agent
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.12.23"
+          python-version: ${{ matrix.python }}
+          enable-cache: false
+      - name: Install native encrypted-custody and sandbox prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gnome-keyring dbus-user-session libgmp-dev bubblewrap uidmap libseccomp2
+      - name: Install exact reviewed consumer and select trusted tools
+        shell: bash
+        run: |
+          test "$(git -C consumer-agent rev-parse HEAD)" = "$R04_POTBOT_SHA"
+          uv sync --locked --project consumer-agent --dev --extra security
+          echo "R04_HOST_PYTHON=$(uv python find --managed-python "$R04_PYTHON")" >> "$GITHUB_ENV"
+          echo "R04_UV=$(command -v uv)" >> "$GITHUB_ENV"
+      - name: Install published signed bytes and exercise the complete native controller
+        env:
+          POTBOT_SYN_GITHUB_TOKEN: ${{ github.token }}
+        run: sudo -E consumer-agent/.venv/bin/python scripts/ci_agent_release.py
+      - name: Record routine CI completion assessment
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path("artifacts/agent/assessment.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps({"Blogworthiness": "FAIL", "reason": "Repeated official-package acceptance; the milestone story is assessed by the owning delivery task.", "result": os.environ["RESULT"], "source_evidence": [os.environ["GITHUB_SERVER_URL"] + "/" + os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + os.environ["GITHUB_RUN_ID"]]}) + "\n")
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: official-agent-linux-py${{ matrix.python }}
+          path: artifacts/agent/
+          if-no-files-found: error
+          retention-days: 90

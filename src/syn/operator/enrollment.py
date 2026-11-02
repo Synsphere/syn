@@ -22,7 +22,7 @@ CANDIDATE_DOMAIN = b"syn.agent.candidates.v2\0"
 
 def pulse(config_path):
     server = OperatorServer(config_path)
-    with _agent_key_lock(server.directory, server.signer.service, server.signer.account):
+    with _agent_key_lock(server.directory, server.signer.service, server.signer.account + ".operator"):
         server.state.read(recover=True)
         now = int(time.time())
         body = {"schema_version": 1, "type_ref": "synny://type/syn-operator-pulse-v1",
@@ -74,7 +74,7 @@ def reserve(config_path, signed_pulse, signed_offer, operator_byte, *, approve):
     if type(operator_byte) is not int or not 0 <= operator_byte <= 255:
         raise SynProtocolError("Operator choice must be one unsigned byte")
     server = OperatorServer(config_path)
-    with _agent_key_lock(server.directory, server.signer.service, server.signer.account):
+    with _agent_key_lock(server.directory, server.signer.service, server.signer.account + ".operator"):
         current = server.state.read(recover=True)
         now = int(time.time())
         hardware, offer_digest, pulse_digest = _verified_offer(server, signed_pulse, signed_offer, now)

@@ -52,17 +52,16 @@ separately in the release record.*
 | Gate | Required result before production acceptance |
 | --- | --- |
 | **SYN-R01: upstream contract** | Foundation implemented: [official package set, canonical manifest/signature verification, compatibility descriptor and candidate-build checks](release-contracts.md). [v0.1.0](releases/v0.1.0.md) established protected signing and immutable service-only publication; [v0.2.1](releases/v0.2.1.md) supplies operator/service mode and the native Linux/macOS matrix with corrected private unlock. Publication does not admit an installed node. Signer roots stay independent of downloaded metadata. |
-| **SYN-R02: release installation** | Potbot owns the [verified package installer and official-release acceptance lane](release-installation.md): independently pinned signature/payload checks, private cache, permanent environments with atomic admission, installed-code compatibility and retained provenance. Actual official-package online/fresh network-disabled offline acceptance passed on Python 3.12/3.13; the [dated execution record](release-installation.md#executed-package-acceptance-2-november-2026) identifies its initial service-only 0.1.0 consumer, workflow and release pins. The later 0.2.1 selection includes operator mode; Agent mode remains unavailable. Full consumer CI and host gates remain distinct. |
+| **SYN-R02: release installation** | Potbot owns the [verified package installer and official-release acceptance lane](release-installation.md): independently pinned signature/payload checks, private cache, permanent environments with atomic admission, installed-code compatibility and retained provenance. Actual official-package online/fresh network-disabled offline acceptance passed on Python 3.12/3.13; the [dated execution record](release-installation.md#executed-package-acceptance-2-november-2026) identifies its initial service-only 0.1.0 consumer, workflow and release pins. The released 0.2.1 selection includes operator mode; the [0.3.0 Agent candidate](agent-nodes.md) has separate source and official-package gates. Full consumer CI and host gates remain distinct. |
 | **SYN-R03: operator node** | [Released native operator](operator-node.md): protected HD custody and append-only allocation, exclusive enrollment permission, fresh signed attach and retained restart state. Potbot supervises the official process in managed WSL2 on Windows or the native Linux/macOS OS. The exact [0.2.1 release record](releases/v0.2.1.md) links successful protected publication and all four actual installed-package gates. A persistent user host retains its own private identity/service/restart receipt; publication and disposable-store qualification do not replace that admission. |
-| **SYN-R04: Agent nodes** | Provision a distinct account and Syn instance inside each Agent sandbox; qualify the hardware/keystore and selected-key adoption requirements on the actual host. Preserve base-key secrecy, unique allocation and group-epoch separation. |
+| **SYN-R04: Agent provisioning** | [Canonical Agent candidate](agent-nodes.md): one real process per Agent under a distinct native UID, owner-approved host-bound virtual-device IDs, independently selected leaf adoption and separate current-group custody. Two-node native source-package acceptance passed; signed publication and exact official-package acceptance remain separately recorded gates. |
 | **SYN-R05: Cog integration** | Require live Syn identity and authorized execution context for Agent Cog dispatch; preserve discovery/read-only defaults and operator grants. Route Agent traffic exclusively through Syn, including monitoring/heartbeat messages between participants. |
 | **SYN-R06: lifecycle and recovery** | Operator-controlled upgrades, compatibility checks, migration, backup, restart, rollback/recovery and revocation. Agents cannot independently replace their executables. Rollback must not rewind protected signing/reservation state or silently downgrade a protocol; restore trusted state or explicitly retire the identity. |
 | **SYN-R07: remove duplication and qualify** | Reconcile transitional runtime/custody work upstream; remove duplicate runtime only after the released replacement passes compatibility. Run several genuine nodes concurrently through enrollment, isolation, encrypted exchange, restart, revocation, fault and recovery tests. |
 
 Syn's [existing workflows](ci.md) own application, PostgreSQL, portable-client,
 release-candidate validation, installed-wheel verification, protected signing and
-independent published-byte verification. Installed-node qualification remains
-open. Potbot should test its adapters against published
+independent published-byte verification. The released native operator has its dated acceptance record. Agent official-package qualification remains separately gated. Potbot should test its adapters against published
 interfaces and exact release artifacts, rather than rely on Syn internals.
 
 Until these gates qualify, retain the explicit development integration and its
@@ -71,6 +70,4 @@ copied service or unverified package. Do not delete transitional source, migrate
 live keys, rotate credentials or publish a software release as part of a
 documentation reconciliation.
 
-There is no qualified installed-node UI or multi-node runtime demonstration to
-capture for these outstanding gates. The diagram explains the intended flow;
-actual host and network evidence belongs with implementation acceptance.
+The Agent profile has no GUI. Its source-package check now runs two genuine nodes with native custody and retained identity; actual CI captures and official-package evidence belong in the dated release record. General networking and Cog admission remain later gates.
