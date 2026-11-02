@@ -329,14 +329,15 @@ def main():
             evidence=SYN/'artifacts/agent'
             evidence.mkdir(parents=True,exist_ok=True)
             wheelroot=ARGS.source_wheels
-            receipt={'profile':'syn.agent-source-native-acceptance/1','result':'passed',
+            receipt={'profile':('syn.agent-official-native-acceptance/1' if ARGS.official_policy else 'syn.agent-source-native-acceptance/1'),'result':'passed',
                 'qualification':('official_released_native_software_custody_and_two_real_sandboxed_agents' if ARGS.official_policy else 'source_wheels_disposable_native_software_custody_and_two_real_sandboxed_agents'),
                 'official_release_qualified':ARGS.official_policy is not None,'hardware_attested':False,'cog_execution_authorized':False,
                 'operator':operator_proof,'exclusive_operator_maintenance_fenced':True,
                 'consumer_sha':ARGS.consumer_sha,'runtime':runtimeContract().to_dict(), 'wheels':({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in wheelroot.glob('*.whl')} if wheelroot else {}),
+                'official_release_pins':({'source_commit':policy.value['source_commit'],'manifest_sha256':policy.manifest_sha256} if ARGS.official_policy else None),
                 'agents':complete}
             (evidence/'native.json').write_text(json.dumps(receipt,indent=2)+'\n')
-            print('PASS: two simultaneous canonical source-wheel Agent processes; distinct native UID, selected key, private keyring and namespaces; stable identities across restart. See the retained receipt for the source or official release qualification tier.',flush=True)
+            print('PASS: two simultaneous canonical Agent processes; distinct native UID, selected key, private keyring and namespaces; stable identities across restart. See the retained receipt for the source or official release qualification tier.',flush=True)
     finally:
         for host in reversed(hosts):
             cleanup(host)

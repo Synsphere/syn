@@ -1,6 +1,7 @@
 """Install exact signed upstream bytes and qualify the complete Potbot controller."""
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -17,9 +18,18 @@ from potbot.syn_release.store import SynReleaseStore
 
 
 def main():
-    if sys.platform != "linux" or os.getuid() != 0 or os.environ.get("GITHUB_ACTIONS") != "true":
-        raise SystemExit("Official native Agent qualification requires disposable Linux CI root")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--local-disposable-fixture", action="store_true")
+    parser.add_argument("--consumer-dir", type=Path)
+    args = parser.parse_args()
+    if sys.platform != "linux" or os.getuid() != 0:
+        raise SystemExit("Official native Agent qualification requires disposable Linux root")
+    if os.environ.get("GITHUB_ACTIONS") != "true" and not args.local_disposable_fixture:
+        raise SystemExit("Explicit disposable-fixture scope is required outside CI")
+    if args.local_disposable_fixture and args.consumer_dir is None:
+        raise SystemExit("Local qualification requires the exact reviewed consumer checkout")
     root = Path(__file__).resolve().parents[1]
+    consumer = (args.consumer_dir or root / "consumer-agent").resolve(strict=True)
     base = Path(tempfile.mkdtemp(prefix="syn-official-agent-", dir="/tmp")).resolve()
     value = json.loads((root / "release/install-policies/v0.1.0-service.json").read_text())
     value.update(version=os.environ["R04_VERSION"], minimum_version=os.environ["R04_VERSION"],
@@ -56,9 +66,11 @@ def main():
     runtime = store.root / "installs" / installed["directory"] / "venv"
     argv = ["/usr/bin/env", "-u", "DISPLAY", "-u", "WAYLAND_DISPLAY", "/usr/bin/dbus-run-session", "--",
         str(runtime / "bin/python"), "-I", "-B", str(root / "scripts/ci_agent_native.py"),
-        "--consumer-dir", str(root / "consumer-agent"), "--consumer-sha", os.environ["R04_POTBOT_SHA"],
+        "--consumer-dir", str(consumer), "--consumer-sha", os.environ["R04_POTBOT_SHA"],
         "--consumer-python", sys.executable, "--runtime-root", str(runtime),
         "--official-store", str(store.root), "--official-policy", str(policy_path)]
+    if args.local_disposable_fixture:
+        argv.append("--local-disposable-fixture")
     environment = {name: item for name, item in os.environ.items() if name not in {"PYTHONPATH", "PYTHONHOME", "POTBOT_SYN_GITHUB_TOKEN"}}
     result = subprocess.run(argv, env=environment, timeout=420, check=False)
     if result.returncode:
