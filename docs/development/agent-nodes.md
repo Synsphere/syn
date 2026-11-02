@@ -123,6 +123,13 @@ the complete controller against those bytes. It exercises two simultaneous
 nodes, node and full-keystore-session restarts, wrong/locked custody, retained
 identity and process isolation. Fixtures never authorize a production Agent.
 
+For sustained native custody, select the [0.3.1 connection-lifetime patch](releases/v0.3.1.md)
+or a later qualified release using independent source, manifest and authority
+pins. The initial 0.3.0 local qualification exposed a later reproducible resource
+leak. Native acceptance now requires repeated real credential operations with
+garbage collection disabled at the unchanged Agent descriptor limit, in addition
+to the two-node official-package restart and isolation checks.
+
 The initial journal is intentionally bounded to 64 transitions and 48 KiB.
 Capacity exhaustion refuses further enrollment before mutation. General
 recovery, upgrades, epoch changes and rollout remain SYN-R06/R07 work. SYN-R05

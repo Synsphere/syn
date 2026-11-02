@@ -99,10 +99,11 @@ the tag resolves directly to the selected source commit. It retains a separate
 published-release receipt. The public client verifier still requires callers to
 supply their own version, source, manifest and key pins.
 
-The current package descriptor advertises `service` mode only. Official package
-publication does not qualify a Windows runtime, an operator/Agent process,
-hardware custody, encrypted peer exchange or rollback of protected state. Keep
-SYN-R02 through SYN-R07 and Potbot's release dependency gate open until their
-actual acceptance evidence exists. Key rotation, revocation and recovery must
+The first 0.1.0 descriptor advertised `service` mode only. Later signed releases
+add native operator and Agent profiles; consumers must check the exact selected
+descriptor and its dated qualification record. Package publication alone does
+not qualify a Windows runtime, an installed process, hardware custody, encrypted
+peer exchange or rollback of protected state. Each SYN-R02 through SYN-R07 gate
+requires its own actual acceptance evidence. Key rotation, revocation and recovery must
 update independently trusted consumer policy explicitly; they never reuse an
 operator or Agent identity as a replacement release root.

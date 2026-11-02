@@ -13,15 +13,16 @@ defines exact release assets, independent authenticity pins and installed-code r
 
 ## Official release
 
-[Syn v0.2.1](https://github.com/Synsphere/syn/releases/tag/v0.2.1) is the signed,
-immutable operator/service package release. See its [release record and
-independent verification pins](docs/development/releases/v0.2.1.md) and
+[Syn v0.3.1](https://github.com/Synsphere/syn/releases/tag/v0.3.1) is the signed,
+immutable package release with Agent, operator and service profiles. See its
+[release record and independent verification pins](docs/development/releases/v0.3.1.md) and
 [native operator guide](docs/development/operator-node.md). Windows uses a managed
 Ubuntu WSL2 installation; Linux and macOS run natively. Installed-host acceptance
-and Agent deployment remain separate gates. The first service-only
+and Agent deployment retain their own measured gates. The first service-only
 [v0.1.0 record](docs/development/releases/v0.1.0.md) remains historical evidence.
 
-The 0.2.1 patch repairs private-terminal and existing native-keystore unlock.
+The 0.3.1 patch bounds native credential connection lifetime without raising
+sandbox resource limits. The earlier 0.2.1 patch repairs private-terminal and existing native-keystore unlock.
 The persistent WSL handoff exposed that interaction gap in the historical
 [0.2.0 release](docs/development/releases/v0.2.0.md).
 
@@ -177,7 +178,7 @@ uv run syn-server --describe-json
 ```
 
 An existing service also exposes `GET /v1/capabilities`. These report installed
-code, with `operator` and `service` modes in 0.2.1. They do not prove enabled workspaces, host
+code, with `agent`, `operator` and `service` modes in 0.3.1. They do not prove enabled workspaces, host
 acceptance or operator/Agent node availability; see the
 [compatibility contract](docs/development/release-contracts.md#declared-compatibility).
 
@@ -337,9 +338,9 @@ process exit code are the verification evidence.
 ## Canonical Agent deployment
 
 The [SYN-R04 Agent node guide](docs/development/agent-nodes.md) describes the
-released 0.3.0 profile: real Linux/WSL Agent processes, selected-leaf adoption, distinct
+released 0.3.1 profile: real Linux/WSL Agent processes, selected-leaf adoption, distinct
 native custody and separately provisioned current-group keys. Native source-wheel
 and local official-package acceptance ran two nodes through node and full-keystore
-session restarts. The [dated release record](docs/development/releases/v0.3.0.md)
+session restarts. The [dated release record](docs/development/releases/v0.3.1.md)
 retains published pins and the independent qualification gates. Cog execution
 remains SYN-R05 work.
