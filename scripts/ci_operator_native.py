@@ -20,10 +20,9 @@ import tempfile
 import time
 
 from syn.operator.custody import _native_backend, backend_profile
-from syn.operator.hd_keys import SLOTS
 from syn.operator.service import initialize
 from syn_client.operator import operator_status
-from syn_client.operator_protocol import SynProtocolError, canonical
+from syn_client.operator_protocol import SynProtocolError
 from syn.release import runtimeContract
 
 
