@@ -1,0 +1,80 @@
+# Verified package installation for Potbot
+
+SYN-R02's installer belongs to Potbot. Syn owns the official package envelope,
+release authority and stable installed-code contract. The [first official
+release](releases/v0.1.0.md) is immutable and declares service mode only.
+Installing it supplies no operator or Agent identity, enrollment authority,
+protected custody or node admission.
+
+![Actual first official Syn release with signed package assets](../media/syn-v0.1.0-release.jpg)
+
+*Actual publication capture from the v0.1.0 release milestone. Automatically
+generated GitHub source archives and release attestations are separate from the
+seven manifest/signature/payload assets used for installation. The image proves
+publication, not successful installation or a running node.*
+
+```mermaid
+flowchart LR
+    P[Operator independently selects release and authority] --> V[Potbot authenticates exact retained bytes]
+    V --> I[Private permanent package environment]
+    I --> C[Official client checks and installed runtime descriptor]
+    C --> J[Atomic package admission journal]
+    J --> N[Separate operator and Agent host qualification]
+```
+
+*Conceptual admission boundary. A virtual environment stays at its permanent
+path; a durable atomic journal entry admits it only after successful verification
+and file sealing. An interrupted directory is never a qualified installation.*
+
+The [example policy](../../release/install-policies/v0.1.0-service.json) combines
+the independently retained v0.1.0 release pins and selected public authority with
+explicit service requirements. Operators must approve and provision it through
+their trusted configuration channel, supply current revocations and retain a
+version floor. Copying a policy from the same untrusted download as the packages
+does not establish independent trust. No private signing key is an installer input.
+
+The operator provisions a private Linux x86-64 store outside Agent homes and a
+private policy file, then invokes Potbot's explicit `syn-release fetch`, `install`
+and `verify` commands. Potbot verifies the canonical signature and all five
+payloads before installation. It consumes only official wheels, retains the
+source distributions as verified inputs and uses the signed hashed third-party
+lock with binary-only dependency resolution. It must refuse a missing compatible
+wheel instead of building Syn or silently changing dependency policy.
+
+The installed official client repeats the closed contract and compatibility
+checks. The runtime also repeats signature verification and must expose an exact
+matching descriptor through `python -I -B -m syn.server --describe-json`. This
+existing interface loads no configuration, opens no database and starts no node.
+A client-only environment is a library and makes no runtime descriptor claim.
+
+The [manual official-package acceptance workflow](../../.github/workflows/release-installation.yml)
+executes only on canonical `master` with an explicitly reviewed full Potbot SHA.
+It checks both Python 3.12 and 3.13 against the exact official release. Its narrow
+read token accesses the private release API and is removed before child processes;
+no signing environment, authority seed or production node state is available.
+
+Required results are online installation, complete descriptor/installed-file
+verification, a fresh environment installed from retained bytes and dependency
+cache in a network-disabled namespace, a client-only offline install, and refusal
+of tampered cache data, revoked authority and unsupported operator/Agent modes.
+The public Potbot suite separately tests archive/redirect failures, interruption,
+concurrency, retained history and installed-file tampering with disposable keys
+and synthetic packages. Neither a saved workflow nor its synthetic fixtures
+establish actual official-package acceptance: retain the exact successful run
+and consumer SHA in the delivery handoff.
+
+A fresh offline runtime also requires an explicit dependency-cache digest retained
+from the trusted preparing installation receipt. Potbot checks every cache file
+against its retained inventory before uv can consume it; the official local
+wheels bypass unpacked wheel caches.
+
+Offline verification authenticates retained bytes against the current operator
+policy. It does not claim fresh network metadata or discover external revocation.
+Version floors and retained package history are not protected identity-state
+rollback resistance. Upgrade, migration, recovery and revocation refresh remain
+SYN-R06 responsibilities; operator/Agent host acceptance remains SYN-R03 onward.
+
+There is no installed-node UI or live mesh to record for this package boundary.
+The publication screenshot, conceptual flow and actual CI receipts supply relevant
+media. A multi-node demonstration belongs with implementation of the supported
+node modes and host gates.

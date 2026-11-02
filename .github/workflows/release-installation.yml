@@ -1,0 +1,61 @@
+name: Official Syn package installation
+on:
+  workflow_dispatch:
+    inputs:
+      potbot_sha:
+        description: Reviewed full Potbot commit containing the SYN-R02 installer
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  installation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    env:
+      R02_PYTHON: ${{ matrix.python }}
+      R02_POTBOT_SHA: ${{ inputs.potbot_sha }}
+    steps:
+      - name: Admit only an explicit canonical master dispatch and reviewed consumer
+        shell: bash
+        run: |
+          test "$GITHUB_REPOSITORY" = Synsphere/syn
+          test "$GITHUB_REF" = refs/heads/master
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+          [[ "$R02_POTBOT_SHA" =~ ^[0-9a-f]{40}$ ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: kieransimkin/potbot
+          ref: ${{ inputs.potbot_sha }}
+          path: consumer
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.23"
+          python-version: ${{ matrix.python }}
+          enable-cache: false
+      - name: Install the reviewed consumer without models or a copied Syn runtime
+        run: |
+          test "$(git -C consumer rev-parse HEAD)" = "$R02_POTBOT_SHA"
+          uv sync --locked --project consumer --dev --extra security
+          echo "R02_HOST_PYTHON=$(uv python find "$R02_PYTHON")" >> "$GITHUB_ENV"
+      - name: Verify real online and network-disabled offline package installation
+        env:
+          POTBOT_SYN_GITHUB_TOKEN: ${{ github.token }}
+        run: consumer/.venv/bin/python scripts/ci_release_installation.py
+      - name: Retain narrow package evidence without caches, environments or credentials
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: syn-r02-installation-py${{ matrix.python }}-${{ inputs.potbot_sha }}
+          path: artifacts/r02/
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: false
