@@ -83,3 +83,29 @@ There is no installed-node UI or live mesh to record for this package boundary.
 The publication screenshot, conceptual flow and actual CI receipts supply relevant
 media. A multi-node demonstration belongs with implementation of the supported
 node modes and host gates.
+
+## Executed package acceptance, 2 November 2026
+
+[Official-package run 41396634946](https://github.com/Synsphere/syn/actions/runs/41396634946)
+passed on Linux x86-64 for Python 3.12 and 3.13, using reviewed Potbot source
+`5c740b4cf73105a28d308863c06340a7aba75eb3` and verifier workflow source
+`dd794e2e08c58183fb4f04a35f027ecffb2fb6fd`. The installed package selection remains
+immutable Syn v0.1.0 from `e08c1eeb0dc2a57f326f4d69a9f630e7eb082638`, with manifest
+SHA-256 `5a4c2c2949be3b47610f4823a1aa47047ed68bdb2c3edf18ac3a7d71f04e936c`.
+
+![Actual official-package acceptance passes both Python versions](../media/syn-r02-official-installation.jpg)
+
+*Actual private upstream CI result for that reviewed consumer. Each job installed
+and verified the runtime online, installed a fresh environment with networking
+disabled from retained payloads and an independently selected dependency-cache
+inventory, and installed the client library offline. It also refused cache
+changes, revoked authority and unsupported node modes. Full installation and
+verification records are retained as narrow Actions artifacts; environments,
+caches, tokens and private keys are excluded.*
+
+This result establishes package installation and verification. Potbot's complete
+application/database/source-inventory/native/browser checks are separately
+required at its exact merged consumer revision. It does not qualify an operator
+or Agent node, hardware custody, live mesh, enrollment, migration or protected
+state recovery. SYN-R03 through SYN-R07 remain separate implementation and host
+acceptance gates; no installed process or identity is created by this result.
