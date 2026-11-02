@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import select
 import signal
 import subprocess
 import sys
@@ -36,6 +37,64 @@ def checked(argv, *, input=None, timeout=20):
     if result.returncode:
         raise AssertionError("Native fixture setup command failed")
     return result.stdout
+
+
+def private_linux_unlock_fixture(password, environment, *, expect_refusal=False):
+    """Exercise the actual installed human CLI with an ephemeral fixture only."""
+    import errno
+    import fcntl
+    import pty
+    import termios
+    master, slave = pty.openpty()
+    def foreground_terminal():
+        os.setsid()
+        fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
+        os.tcsetpgrp(slave, os.getpgrp())
+    process = subprocess.Popen([sys.executable, "-I", "-B", "-m", "syn.operator", "unlock"],
+                               stdin=slave, stdout=slave, stderr=slave, env=environment,
+                               preexec_fn=foreground_terminal)
+    os.close(slave)
+    output = bytearray()
+    answered = set()
+    prompts = (b"Native keystore password (private, no echo): ",
+               b"Confirm new native keystore password: ")
+    deadline = time.monotonic() + 20
+    try:
+        while time.monotonic() < deadline:
+            if select.select([master], [], [], 0.1)[0]:
+                try:
+                    part = os.read(master, 4096)
+                except OSError as error:
+                    if error.errno == errno.EIO:
+                        break
+                    raise
+                if not part:
+                    break
+                output.extend(part)
+                if len(output) > 16384:
+                    raise AssertionError("Native unlock fixture output exceeded its bound")
+                for index, prompt in enumerate(prompts):
+                    if index not in answered and prompt in output:
+                        os.write(master, password.encode() + b"\n")
+                        answered.add(index)
+            elif process.poll() is not None:
+                break
+        code = process.wait(timeout=2)
+        ready = b'"ready":true' in output
+        expected_result = (code == 2 and not ready) if expect_refusal else (code == 0 and ready)
+        if not expected_result or password.encode() in output:
+            # Never include the password, argv or terminal capture in diagnostics.
+            raise AssertionError("Actual private native unlock fixture failed: "
+                                 f"exit={code}, prompts={sorted(answered)}, "
+                                 f"echoed={password.encode() in output}, "
+                                 f"ready={ready}")
+        return {"password_prompt": 0 in answered, "new_password_confirmed": 1 in answered,
+                "password_echoed": False, "refused": code != 0}
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=5)
+        os.close(master)
 
 
 @contextmanager
@@ -62,14 +121,12 @@ def native_fixture(directory: Path):
     data.mkdir(mode=0o700)
     environment = dict(os.environ)
     environment["XDG_DATA_HOME"] = str(data)
+    environment["XDG_RUNTIME_DIR"] = str(directory)
     control = directory / "keyring"
     control.mkdir(mode=0o700)
-    daemon = subprocess.Popen(["/usr/bin/gnome-keyring-daemon", "--foreground", "--unlock", "--components=secrets",
-                               "--control-directory", str(control)], stdin=subprocess.PIPE,
+    daemon = subprocess.Popen(["/usr/bin/gnome-keyring-daemon", "--foreground", "--components=secrets",
+                               "--control-directory", str(control)], stdin=subprocess.DEVNULL,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=environment, start_new_session=True)
-    assert daemon.stdin is not None
-    daemon.stdin.write(password.encode())
-    daemon.stdin.close()
     try:
         deadline = time.monotonic() + 10
         while True:
@@ -81,17 +138,28 @@ def native_fixture(directory: Path):
                                  "org.freedesktop.DBus.NameHasOwner", "string:org.freedesktop.secrets"])
                 if b"boolean true" not in reply:
                     raise ValueError("owned native service is starting")
-                _native_backend().get_password("syn.fixture.probe", "absent")
                 break
             except Exception:
                 if time.monotonic() >= deadline or daemon.poll() is not None:
                     raise AssertionError("Real native Secret Service did not become ready") from None
                 time.sleep(0.1)
+        first_unlock = private_linux_unlock_fixture(password, environment)
+        assert first_unlock["new_password_confirmed"], "Fresh native store must confirm its password"
+        _native_backend().get_password("syn.fixture.probe", "absent")
         assert (data / "keyrings").is_dir(), "Native fixture did not use its isolated data directory"
         def lock():
             import secretstorage
             connection = secretstorage.dbus_init()
             secretstorage.Collection(connection).lock()
+        lock()
+        refused = private_linux_unlock_fixture(secrets.token_urlsafe(32), environment, expect_refusal=True)
+        assert refused["password_prompt"] and refused["refused"]
+        import secretstorage
+        assert secretstorage.Collection(secretstorage.dbus_init()).is_locked()
+        repeat_unlock = private_linux_unlock_fixture(password, environment)
+        assert repeat_unlock["password_prompt"] and not repeat_unlock["new_password_confirmed"]
+        _native_backend().get_password("syn.fixture.probe", "absent")
+        print("Native private-terminal creation, no-echo, wrong-password refusal and repeated unlock passed", flush=True)
         yield lock
     finally:
         if daemon.poll() is None:

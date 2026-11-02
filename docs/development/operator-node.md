@@ -17,9 +17,9 @@ flowchart LR
   C[Installed public Syn client] -->|fresh signed challenge + peer UID| O
 ```
 
-*Conceptual ownership diagram. The native Linux process has been exercised with
-a disposable Secret Service collection; this is not a production deployment
-receipt or evidence of macOS acceptance.*
+*Conceptual ownership diagram. Official-package acceptance covers native Linux
+and macOS with disposable credential stores. A persistent user deployment has
+its own private receipt.*
 
 Windows uses a dedicated Ubuntu 24.04 WSL2 distribution in the base operating
 system. Linux and macOS run natively. Potbot owns host/package preparation and
@@ -150,6 +150,35 @@ harness now selects managed Python and protects only a byte-checked private
 copy of that prefix; it never changes hosted executables or relaxes the
 installer's ownership checks. Native platform acceptance still requires a
 completed successful installed-package result for that platform.
+
+[Run 41426683673](https://github.com/Synsphere/syn/actions/runs/41426683673)
+subsequently passed all four official-package cases with the same reviewed
+Potbot SHA and the published 0.2.0 source/manifest pins. Its authenticated
+Linux preparing-cache transfer was installed and independently verified in
+the dedicated WSL account.
+
+![Actual successful four-platform official-package acceptance](../media/syn-operator-official-acceptance.png)
+
+*Actual GitHub Actions result for immutable Syn 0.2.0 and reviewed Potbot
+`eefd32ee42d9a9d1b55d9364d820705ca3c949d9`. These disposable-store tests
+exercise custody and supervision; they did not exercise first-time human
+password entry.*
+
+The persistent WSL handoff found that 0.2.0's interactive terminal opener
+required a seekable stream and refused a real terminal before the password
+prompt. The 0.2.1 patch uses an unbuffered native duplex descriptor wrapped
+as text, retaining foreground-group checks. New real pseudo-terminal tests
+cover successful opening, password no-echo, background-group refusal and
+missing-controlling-terminal refusal on Linux and macOS. Immutable 0.2.0
+remains unchanged; a new host requiring interactive unlock must use the
+qualified patch release.
+
+The Linux patch also sends the bounded unlock request to the existing GNOME
+control socket after checking ownership, socket type, connected peer UID and
+endpoint continuity. The daemon's `--unlock` startup command starts another
+daemon; it does not unlock the selected running service. Actual native CLI
+acceptance now covers new-password confirmation, no echo, wrong-password
+refusal with the collection still locked, and repeated correct unlock.
 
 There is no graphical node UI or dynamic Agent exchange in this stage.
 The architecture diagram explains the interface; sanitized native test receipts

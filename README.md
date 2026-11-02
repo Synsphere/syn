@@ -21,6 +21,11 @@ Ubuntu WSL2 installation; Linux and macOS run natively. Installed-host acceptanc
 and Agent deployment remain separate gates. The first service-only
 [v0.1.0 record](docs/development/releases/v0.1.0.md) remains historical evidence.
 
+New installations requiring interactive native-keystore unlock need the
+[0.2.1 terminal patch](docs/development/releases/v0.2.1.md), currently awaiting
+its signed release gates. The persistent WSL handoff exposed an interaction
+gap that the earlier disposable-store tests did not cover.
+
 ## Setup
 
 ```sh
