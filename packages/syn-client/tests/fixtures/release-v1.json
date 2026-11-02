@@ -1,0 +1,80 @@
+{
+  "context": "Synthetic interoperability fixture; RFC 8032 public test key; never production trust.",
+  "manifest": {
+    "profile": "syn.release-manifest/1",
+    "repository": "Synsphere/syn",
+    "version": "0.1.0",
+    "tag": "v0.1.0",
+    "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runtime": {
+      "profile": "syn.runtime-contract/1",
+      "runtime_version": "0.1.0",
+      "client_version": "0.1.0",
+      "python_versions": [
+        "3.12",
+        "3.13"
+      ],
+      "runtime_platforms": [
+        "linux-x86_64"
+      ],
+      "client_platforms": [
+        "linux-x86_64",
+        "windows-x86_64"
+      ],
+      "node_modes": [
+        "service"
+      ],
+      "api_profiles": [
+        "syn.communication/1",
+        "syn.consensus-policy/1"
+      ],
+      "capabilities": [
+        "http-workspace-messages",
+        "offline-type-policy-resolution"
+      ],
+      "database_revision": "20261024_0015"
+    },
+    "artifacts": [
+      {
+        "role": "client-sdist",
+        "filename": "syn_client-0.1.0.tar.gz",
+        "sha256": "f24747ff6a71dd5e8598874bef8a950c7fc798f2b0932bf8f61241beaad1879b",
+        "size": 23
+      },
+      {
+        "role": "client-wheel",
+        "filename": "syn_client-0.1.0-py3-none-any.whl",
+        "sha256": "4c2b8447f262ef19f338ce7cbf9be17b26c3e1eea88171e42ed36d88b6d22378",
+        "size": 33
+      },
+      {
+        "role": "dependency-lock",
+        "filename": "syn-runtime-requirements-0.1.0.txt",
+        "sha256": "07caf56673cf7e11f0f2e22e9504e808432c05ef63f9a1ac161e5a86e17a7565",
+        "size": 34
+      },
+      {
+        "role": "runtime-sdist",
+        "filename": "syn-0.1.0.tar.gz",
+        "sha256": "124bc09931765e008df26d0bb7d5c731e1341eeaf32ed2e87686968c664e5984",
+        "size": 16
+      },
+      {
+        "role": "runtime-wheel",
+        "filename": "syn-0.1.0-py3-none-any.whl",
+        "sha256": "975d08556f3eb1532756812a0a18d129e973e34faf8d8a1d80b8bca8a1666feb",
+        "size": 26
+      }
+    ]
+  },
+  "canonical_manifest_utf8": "{\"artifacts\":[{\"filename\":\"syn_client-0.1.0.tar.gz\",\"role\":\"client-sdist\",\"sha256\":\"f24747ff6a71dd5e8598874bef8a950c7fc798f2b0932bf8f61241beaad1879b\",\"size\":23},{\"filename\":\"syn_client-0.1.0-py3-none-any.whl\",\"role\":\"client-wheel\",\"sha256\":\"4c2b8447f262ef19f338ce7cbf9be17b26c3e1eea88171e42ed36d88b6d22378\",\"size\":33},{\"filename\":\"syn-runtime-requirements-0.1.0.txt\",\"role\":\"dependency-lock\",\"sha256\":\"07caf56673cf7e11f0f2e22e9504e808432c05ef63f9a1ac161e5a86e17a7565\",\"size\":34},{\"filename\":\"syn-0.1.0.tar.gz\",\"role\":\"runtime-sdist\",\"sha256\":\"124bc09931765e008df26d0bb7d5c731e1341eeaf32ed2e87686968c664e5984\",\"size\":16},{\"filename\":\"syn-0.1.0-py3-none-any.whl\",\"role\":\"runtime-wheel\",\"sha256\":\"975d08556f3eb1532756812a0a18d129e973e34faf8d8a1d80b8bca8a1666feb\",\"size\":26}],\"profile\":\"syn.release-manifest/1\",\"repository\":\"Synsphere/syn\",\"runtime\":{\"api_profiles\":[\"syn.communication/1\",\"syn.consensus-policy/1\"],\"capabilities\":[\"http-workspace-messages\",\"offline-type-policy-resolution\"],\"client_platforms\":[\"linux-x86_64\",\"windows-x86_64\"],\"client_version\":\"0.1.0\",\"database_revision\":\"20261024_0015\",\"node_modes\":[\"service\"],\"profile\":\"syn.runtime-contract/1\",\"python_versions\":[\"3.12\",\"3.13\"],\"runtime_platforms\":[\"linux-x86_64\"],\"runtime_version\":\"0.1.0\"},\"source_commit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"tag\":\"v0.1.0\",\"version\":\"0.1.0\"}",
+  "manifest_sha256": "4bf4b746e4c1f98b3e326786c124c00b1d23b41c7338f89a94090b304bd5e118",
+  "public_key": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+  "release_key_sha256": "21fe31dfa154a261626bf854046fd2271b7bed4b6abe45aa58877ef47f9721b9",
+  "signature_envelope": {
+    "manifest_sha256": "4bf4b746e4c1f98b3e326786c124c00b1d23b41c7338f89a94090b304bd5e118",
+    "profile": "syn.release-signature/1",
+    "release_key_sha256": "21fe31dfa154a261626bf854046fd2271b7bed4b6abe45aa58877ef47f9721b9",
+    "signature": "879456f30abca0d9fb96cd44c1020a4b63f544f5a717141f861f83b627ed3936b9dec5962b55497458b5212b4bd759fc8a3c001b96e89ba9382b4b89107a670d"
+  }
+}

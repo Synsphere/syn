@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -21,6 +22,10 @@ def serverPort(value: str) -> int:
 
 def parseArguments(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the Syn API server.")
+    parser.add_argument(
+        "--describe-json", action="store_true",
+        help="Print the installed runtime contract without reading config or starting services",
+    )
     parser.add_argument(
         "--config",
         type=Path,
@@ -50,6 +55,10 @@ def parseArguments(arguments: Sequence[str] | None = None) -> argparse.Namespace
 
 def main(arguments: Sequence[str] | None = None) -> None:
     options = parseArguments(arguments)
+    if options.describe_json:
+        from .release import runtimeContract
+        print(json.dumps(runtimeContract().to_dict(), sort_keys=True, separators=(",", ":")))
+        return
     config = loadConfig(options.config)
     engine = createEngine(
         config.database.url,

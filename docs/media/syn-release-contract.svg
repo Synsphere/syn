@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="550" viewBox="0 0 1000 550" role="img" aria-labelledby="title desc">
+  <title id="title">Syn release trust and compatibility boundary</title>
+  <desc id="desc">Syn owns five payloads and signed metadata. Potbot supplies independent pins, verifies bytes and compatibility, then proceeds to separate installation and host acceptance gates. Current packages support service mode only.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#a9c6ef"/></marker>
+  </defs>
+  <rect width="1000" height="550" rx="20" fill="#101c30"/>
+  <g font-family="Arial, sans-serif" fill="#edf3ff">
+    <text x="40" y="48" font-size="27" font-weight="700">Syn release contracts · SYN-R01</text>
+    <text x="40" y="78" font-size="16" fill="#afc4e1">Generated contract illustration · package claims precede host acceptance</text>
+    <rect x="40" y="110" width="425" height="150" rx="12" fill="#203552" stroke="#8baedc"/>
+    <text x="62" y="142" font-size="21" font-weight="650">Syn owns the release</text>
+    <text x="62" y="174" font-size="17">Runtime + client wheels and source archives</text>
+    <text x="62" y="202" font-size="17">Hashed third-party dependency export</text>
+    <text x="62" y="232" font-size="17">Canonical manifest + detached signature</text>
+    <rect x="535" y="110" width="425" height="150" rx="12" fill="#254242" stroke="#85c8b9"/>
+    <text x="557" y="142" font-size="21" font-weight="650">Potbot supplies independent trust</text>
+    <text x="557" y="174" font-size="17">Exact version, source commit, manifest digest</text>
+    <text x="557" y="202" font-size="17">Release public key + pinned fingerprint</text>
+    <text x="557" y="232" font-size="17">Required platform, profiles and capabilities</text>
+    <path d="M252 260V295H430V320M748 260V295H570V320" fill="none" stroke="#a9c6ef" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="195" y="325" width="610" height="82" rx="12" fill="#293c64" stroke="#8baedc"/>
+    <text x="500" y="356" text-anchor="middle" font-size="21" font-weight="650">Verify authenticity, bytes and declared compatibility</text>
+    <text x="500" y="385" text-anchor="middle" font-size="17">Mismatch or unavailable mode → stop</text>
+    <path d="M500 407V436" stroke="#a9c6ef" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="195" y="442" width="610" height="65" rx="12" fill="#353544" stroke="#b8adc3" stroke-dasharray="6 4"/>
+    <text x="500" y="469" text-anchor="middle" font-size="17">Next gates: installation → host, custody and live-node acceptance</text>
+    <text x="500" y="493" text-anchor="middle" font-size="16" fill="#d5c4b0">Current mode: service · operator and Agent remain unavailable</text>
+  </g>
+</svg>

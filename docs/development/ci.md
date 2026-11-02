@@ -11,7 +11,7 @@ than a screenshot of successful runs. Actual run URLs belong in the PR handoff.*
 
 | Workflow | Trigger and environment | Checks and limits |
 | --- | --- | --- |
-| `ci.yml` — Syn verification | Push, PR, manual; Ubuntu 24.04, Python 3.12/3.13 | Locked full application, HTTP/discovery/scheduler tests, shared policy tests, compilation, offline Alembic and Syn wheel build |
+| `ci.yml` — Syn verification | Push, PR, manual; Ubuntu 24.04, Python 3.12/3.13 | Locked application and shared-contract tests, compilation/offline Alembic, both wheels/sdists, hashed third-party export, unsigned candidate validation and isolated installed-runtime descriptor comparison |
 | `ci.yml` — postgres job | Same triggers; Ubuntu, Python 3.13, separate PostgreSQL 17.11 service | Full schema upgrade, all database tests, isolated communication/Type migration tests; fail on skipped required database cases |
 | `client.yml` — Syn client portability | Push, PR, manual; Ubuntu/Windows, Python 3.12/3.13 | Install the built dependency-free client wheel in a separate environment; isolated imports, canonical/identity/resolution contracts and minimal Python correctness lint |
 | `potbot-compatibility.yml` | Manual, with a reviewed full 40-character Potbot commit | Test that exact public consumer with this exact private Syn candidate, selected policy/exchange/custody tests; no branch guessing or changing Potbot's gitlink |
@@ -65,8 +65,31 @@ Require application jobs for both Python versions, postgres and all four client
 matrix jobs when configuring branch protection. Workflow files do not alter
 repository settings or make checks required automatically. Keep both integration
 PRs as drafts until their exact source revisions and mandatory checks qualify.
-No release/upload/deploy workflow is introduced here: production packaging,
-registry identity and release approval remain separate milestones.
+No release/upload/deploy workflow is introduced here: production signing,
+publication and installed-node acceptance remain separate milestones.
+
+## SYN-R01 release candidates
+
+The application matrix builds the five payloads defined by the
+[release contract](release-contracts.md), then constructs an unsigned canonical
+manifest against the exact clean checkout commit. Archive checks reject unsafe
+paths, private configuration, model weights and unexpected/missing package
+resources. Metadata versions, runtime/client dependency, CA checksum and hashed
+third-party requirements must match the contract.
+
+![Syn release payloads, independent trust and separate host acceptance](../media/syn-release-contract.svg)
+
+*Generated trust-boundary illustration. No production signature or published
+release is produced by the candidate lane.*
+
+CI installs the hashed third-party export in a separate environment, installs
+both local wheels with dependency resolution disabled, and invokes
+`python -I -m syn.server --describe-json`. The installed descriptor must exactly
+match the manifest and report only `service` mode. This exercises packaged
+runtime resources and entry code independently of editable source imports.
+The client matrix also runs release-verifier tests against the installed wheel.
+None of these checks provisions release keys, accesses live node state or
+qualifies the full Windows runtime, operator mode or Agent mode.
 
 ## Planned additions
 

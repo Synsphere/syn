@@ -15,7 +15,7 @@
 <text x="55" y="288" font-size="18">Ubuntu · Python 3.12 / 3.13</text>
 <text x="55" y="319" font-size="17">HTTP, discovery, scheduler</text>
 <text x="55" y="348" font-size="17">Policies, offline migrations</text>
-<text x="55" y="377" font-size="17">Build Syn wheel</text>
+<text x="55" y="377" font-size="17">Release candidates + installed probe</text>
 <text x="430" y="254" font-size="22" font-weight="bold">Disposable PostgreSQL</text>
 <text x="430" y="288" font-size="18">Separate runner service</text>
 <text x="430" y="319" font-size="17">Full schema and constraints</text>

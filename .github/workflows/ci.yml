@@ -35,8 +35,35 @@ jobs:
         run: uv run --locked python -m compileall -q src packages/syn-client/src
       - name: Test application, HTTP and shared contracts
         run: uv run --locked python -m pytest -q tests packages/syn-client/tests -m 'not database' -o cache_dir=.tmp-pytest/cache
-      - name: Build Syn wheel
-        run: uv build --wheel --out-dir dist
+      - name: Build official package candidates and hashed third-party lock
+        shell: bash
+        run: |
+          uv build --out-dir dist
+          uv build packages/syn-client --out-dir dist
+          SYN_VERSION="$(uv run --locked python -c 'from importlib.metadata import version; print(version("syn"))')"
+          uv export --locked --no-dev --no-emit-project --no-emit-package syn-client --no-header --output-file "dist/syn-runtime-requirements-${SYN_VERSION}.txt"
+      - name: Validate unsigned release manifest against the exact clean source
+        env:
+          SYN_RELEASE_SOURCE: ${{ github.sha }}
+        run: uv run --locked python scripts/build_release_contract.py --dist-dir dist --source-commit "$SYN_RELEASE_SOURCE"
+      - name: Exercise the installed runtime wheels independently of the source tree
+        shell: bash
+        run: |
+          uv venv dist/runtime-venv
+          SYN_VERSION="$(uv run --locked python -c 'from importlib.metadata import version; print(version("syn"))')"
+          uv pip install --python dist/runtime-venv --require-hashes -r "dist/syn-runtime-requirements-${SYN_VERSION}.txt"
+          uv pip install --python dist/runtime-venv --no-deps dist/syn-*-py3-none-any.whl dist/syn_client-*-py3-none-any.whl
+          uv run --no-project --python dist/runtime-venv python -I -m syn.server --describe-json > dist/installed-runtime.json
+          uv run --locked python - <<'PY'
+          import json
+          from pathlib import Path
+          from syn_client.releases import ReleaseManifest, RuntimeContract
+          manifest_file, = Path("dist").glob("syn-release-*.json")
+          expected = ReleaseManifest.from_bytes(manifest_file.read_bytes()).runtime
+          installed = RuntimeContract.from_dict(json.loads(Path("dist/installed-runtime.json").read_text()))
+          assert installed == expected
+          assert installed.node_modes == ("service",)
+          PY
 
   postgres:
     runs-on: ubuntu-24.04
