@@ -122,11 +122,13 @@ def independent_process(node, proof):
     assert all(value!=os.readlink(f'/proc/self/ns/{name}') for name,value in namespaces.items())
     assert not (path/'root/run/user/1000/bus').exists()
     assert not (path/'root/home/synoperator').exists()
+    assert (path/'root/tmp').stat().st_mode & 0o7777 == 0o1777
     limits=(path/'limits').read_text()
     assert '1073741824' in limits and '16777216' in limits
     return {'native_uid_verified':uid,'native_pid':int(path.name),'namespaces':namespaces,
         'no_capabilities':True,'no_new_privileges':True,'seccomp_filter_active':True,
-        'operator_home_and_bus_hidden':True,'memory_and_file_limits_measured':True}
+        'operator_home_and_bus_hidden':True,'memory_and_file_limits_measured':True,
+        'private_temporary_directory_sticky_writable':True}
 
 
 class Session:

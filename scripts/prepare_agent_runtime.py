@@ -38,7 +38,7 @@ def main():
     runtime = destination / "runtime"
     source = args.source_prefix.resolve(strict=True)
     selected = source / "bin/python"
-    metadata = json.loads(subprocess.check_output([str(selected), "-I", "-c",
+    metadata = json.loads(subprocess.check_output([str(selected), "-I", "-B", "-c",
         "import json,sys;print(json.dumps({'prefix':sys.base_prefix,'executable':sys.executable}))"], timeout=10))
     prefix = Path(metadata["prefix"]).resolve(strict=True)
     shutil.copytree(source, runtime, symlinks=True)

@@ -68,6 +68,7 @@ jobs:
         shell: bash
         run: |
           test "$(git -C consumer-agent rev-parse HEAD)" = "$R04_POTBOT_SHA"
+          mkdir -p artifacts/agent
           uv sync --locked --project consumer-agent --dev --extra security
           echo "R04_HOST_PYTHON=$(uv python find --managed-python "$R04_PYTHON")" >> "$GITHUB_ENV"
           echo "R04_UV=$(command -v uv)" >> "$GITHUB_ENV"
