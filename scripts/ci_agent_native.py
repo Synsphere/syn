@@ -21,6 +21,7 @@ import termios
 import time
 from uuid import uuid4
 from contextlib import ExitStack
+from syn_client.operator_protocol import canonical
 
 import argparse
 import importlib
@@ -288,6 +289,15 @@ def main():
             assert nodes[0][1]['status']['selected_public_key']!=nodes[1][1]['status']['selected_public_key']
             assert nodes[0][0].initial['scope']['namespaces']['net']!=nodes[1][0].initial['scope']['namespaces']['net']
             assert nodes[0][1]['status']['group_certificate']['body']['group_key_commitment']==nodes[1][1]['status']['group_certificate']['body']['group_key_commitment']
+            private_pubsub = None
+            if 'authenticated-private-pubsub' in runtimeContract().capabilities:
+                if ARGS.official_policy:
+                    from ci_potbot_private_mesh import qualify
+                    private_pubsub = qualify(nodes, base, root=ROOT, store=store, policy=policy)
+                else:
+                    from ci_potbot_private_mesh import qualify
+                    private_pubsub = qualify(nodes, base, root=ROOT, source_runtime=RUNTIME,
+                        source_contract=runtimeContract().to_dict())
             native=importlib.import_module('ci_operator_native')
             running_operator=native.start(operator)
             stack.callback(native.stop,running_operator)
@@ -330,6 +340,8 @@ def main():
                     'cross_agent_home_hidden':True,'locked_native_keystore_fenced_node':True})
             evidence=SYN/'artifacts/agent'
             evidence.mkdir(parents=True,exist_ok=True)
+            if private_pubsub is not None:
+                (evidence/'private-pubsub.json').write_bytes(canonical(private_pubsub))
             wheelroot=ARGS.source_wheels
             receipt={'profile':('syn.agent-official-native-acceptance/1' if ARGS.official_policy else 'syn.agent-source-native-acceptance/1'),'result':'passed',
                 'qualification':('official_released_native_software_custody_and_two_real_sandboxed_agents' if ARGS.official_policy else 'source_wheels_disposable_native_software_custody_and_two_real_sandboxed_agents'),

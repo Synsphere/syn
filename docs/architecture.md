@@ -19,6 +19,9 @@ The [SYN-R01 implementation](development/release-contracts.md) now defines the
 package set, independent release-authenticity checks and compatibility reporting.
 It preserves the distinction between an unsigned candidate, an official published
 release and an accepted operator/Agent deployment.
+The [SYN-R05 private pub-sub candidate](development/private-pubsub.md) adds a
+bounded native encrypted transport and separate Potbot task admission; it does
+not establish durable delivery, per-Type consensus or general host qualification.
 
 ## Purpose and interpretation
 

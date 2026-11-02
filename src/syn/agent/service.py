@@ -1,7 +1,7 @@
 """A real native Agent-mode process, using only its adopted leaf identity.
 
-The public socket offers fresh readiness proofs only. Cog execution and general
-messaging stay disabled until their separate admission and transport gates.
+The private socket supplies readiness and scoped encrypted pub-sub. Neither
+proof nor message authorizes Cog execution; Potbot retains that admission gate.
 """
 from __future__ import annotations
 
@@ -119,6 +119,23 @@ class AgentServer(OperatorServer):
         self.stopped = threading.Event()
         self.listener = None
         self.owned_inode = None
+        from .pubsub import NativePubSub
+        self.pubsub = NativePubSub(self)
+
+    def dispatch(self, conn, request):
+        from syn_client.operator_protocol import peer_uid, send
+        if request.get("profile") == "syn.private-pubsub-link/1":
+            self.status(self.health_request())
+            self.pubsub.attach(conn, request)
+        elif request.get("profile") == "syn.private-pubsub-request/1":
+            if peer_uid(conn) != 0:
+                raise SynProtocolError("Pub-sub control requires the privileged deployment controller")
+            send(conn, self.pubsub.control(request))
+        else:
+            super().dispatch(conn, request)
+
+    def close_resources(self):
+        self.pubsub.close()
 
     def health_request(self):
         return {"profile": CHALLENGE_PROFILE, "challenge": secrets.token_hex(32),
@@ -129,6 +146,8 @@ class AgentServer(OperatorServer):
         return uid in {0, os.getuid()}
 
     def status(self, request):
+        if self.pubsub.fault.is_set():
+            raise SynProtocolError("Private Syn transport failed; the Agent is fenced")
         exact(request, {"profile", "challenge", "expected_public_key_hash", "configuration_sha256"}, "Agent challenge")
         nonce = hex_bytes(request["challenge"], 32, "Agent nonce")
         if (nonce == bytes(32) or request["profile"] != CHALLENGE_PROFILE

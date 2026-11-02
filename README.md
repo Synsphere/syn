@@ -10,6 +10,9 @@ define Syn's ownership boundary with Potbot. Adopted design, branch implementati
 and qualified production behaviour are labelled separately in those guides.
 The [SYN-R01 package and compatibility contract](docs/development/release-contracts.md)
 defines exact release assets, independent authenticity pins and installed-code reporting.
+The [SYN-R05 private pub-sub candidate](docs/development/private-pubsub.md)
+connects real Agent identities to encrypted heartbeat transport and separate
+Potbot Cog admission. Publication and qualified host behavior retain their own gates.
 
 ## Official release
 

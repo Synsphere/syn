@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "syn-client"
-version = "0.3.1"
+version = "0.4.0"
 description = "Dependency-free client and receipt verification for the Syn communication service"
 requires-python = ">=3.12"
 
