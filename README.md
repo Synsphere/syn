@@ -11,6 +11,13 @@ and qualified production behaviour are labelled separately in those guides.
 The [SYN-R01 package and compatibility contract](docs/development/release-contracts.md)
 defines exact release assets, independent authenticity pins and installed-code reporting.
 
+## Official release
+
+[Syn v0.1.0](https://github.com/Synsphere/syn/releases/tag/v0.1.0) is the first
+signed, immutable package release. See its [release record and independent
+verification pins](docs/development/releases/v0.1.0.md). It declares `service`
+mode only; operator and Agent node deployment remain separate acceptance gates.
+
 ## Setup
 
 ```sh

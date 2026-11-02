@@ -10,10 +10,14 @@ on:
         options: [stage, verify-published]
         default: stage
       tag:
-        description: Exact version tag matching this source's package metadata
+        description: Exact version tag (staging must match source package metadata)
         required: true
         type: string
         default: v0.1.0
+      source_commit:
+        description: Released source SHA from the retained staging receipt (verification only)
+        required: false
+        type: string
       manifest_sha256:
         description: Independently selected digest from the staging receipt (verification only)
         required: false
@@ -107,6 +111,7 @@ jobs:
       GH_REPO: Synsphere/syn
       RELEASE_TAG: ${{ inputs.tag }}
       MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+      RELEASE_SOURCE: ${{ inputs.source_commit }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -120,7 +125,7 @@ jobs:
       - name: Verify immutable publication, exact tag, signature and all seven assets
         run: >-
           .venv/bin/python -m scripts.stage_release verify-published
-          --source-commit "$GITHUB_SHA" --tag "$RELEASE_TAG"
+          --source-commit "$RELEASE_SOURCE" --tag "$RELEASE_TAG"
           --manifest-sha256 "$MANIFEST_SHA256" --record dist/published-release-report.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
