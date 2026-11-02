@@ -19,3 +19,5 @@ __pycache__/
 .test-tmp/
 tests/reference/hd/node_modules/
 artifacts/operator/
+artifacts/agent/
+consumer-agent/
