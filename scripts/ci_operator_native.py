@@ -74,6 +74,13 @@ def native_fixture(directory: Path):
         deadline = time.monotonic() + 10
         while True:
             try:
+                # Do not let a readiness probe D-Bus-activate a competing
+                # daemon before our foreground fixture acquires its name.
+                reply = checked(["/usr/bin/dbus-send", "--session", "--dest=org.freedesktop.DBus",
+                                 "--type=method_call", "--print-reply", "/org/freedesktop/DBus",
+                                 "org.freedesktop.DBus.NameHasOwner", "string:org.freedesktop.secrets"])
+                if b"boolean true" not in reply:
+                    raise ValueError("owned native service is starting")
                 _native_backend().get_password("syn.fixture.probe", "absent")
                 break
             except Exception:
