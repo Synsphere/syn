@@ -10,7 +10,7 @@ define Syn's ownership boundary with Potbot. Adopted design, branch implementati
 and qualified production behaviour are labelled separately in those guides.
 The [SYN-R01 package and compatibility contract](docs/development/release-contracts.md)
 defines exact release assets, independent authenticity pins and installed-code reporting.
-The [SYN-R05 private pub-sub candidate](docs/development/private-pubsub.md)
+The [SYN-R05 private pub-sub contract](docs/development/private-pubsub.md)
 connects real Agent identities to encrypted heartbeat transport and separate
 Potbot Cog admission. Publication and qualified host behavior retain their own gates.
 
@@ -25,7 +25,8 @@ and Agent deployment retain their own measured gates. The first service-only
 [v0.1.0 record](docs/development/releases/v0.1.0.md) remains historical evidence.
 
 The 0.4.0 release adds native encrypted messaging for separate Potbot Cog admission.
-Official-package mesh acceptance retains its own gate in the release record.
+Official-package mesh acceptance passed both supported Python versions; the
+release record preserves its separate production Cog-host gates.
 The 0.3.1 patch bounds native credential connection lifetime without raising
 sandbox resource limits. The earlier 0.2.1 patch repairs private-terminal and existing native-keystore unlock.
 The persistent WSL handoff exposed that interaction gap in the historical
