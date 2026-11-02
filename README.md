@@ -16,14 +16,16 @@ Potbot Cog admission. Publication and qualified host behavior retain their own g
 
 ## Official release
 
-[Syn v0.3.1](https://github.com/Synsphere/syn/releases/tag/v0.3.1) is the signed,
-immutable package release with Agent, operator and service profiles. See its
-[release record and independent verification pins](docs/development/releases/v0.3.1.md) and
+[Syn v0.4.0](https://github.com/Synsphere/syn/releases/tag/v0.4.0) is the signed,
+immutable package release with Agent, operator, service and bounded private pub-sub profiles. See its
+[release record and independent verification pins](docs/development/releases/v0.4.0.md) and
 [native operator guide](docs/development/operator-node.md). Windows uses a managed
 Ubuntu WSL2 installation; Linux and macOS run natively. Installed-host acceptance
 and Agent deployment retain their own measured gates. The first service-only
 [v0.1.0 record](docs/development/releases/v0.1.0.md) remains historical evidence.
 
+The 0.4.0 release adds native encrypted messaging for separate Potbot Cog admission.
+Official-package mesh acceptance retains its own gate in the release record.
 The 0.3.1 patch bounds native credential connection lifetime without raising
 sandbox resource limits. The earlier 0.2.1 patch repairs private-terminal and existing native-keystore unlock.
 The persistent WSL handoff exposed that interaction gap in the historical

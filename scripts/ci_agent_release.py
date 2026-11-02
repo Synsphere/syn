@@ -41,6 +41,8 @@ def main():
     if tuple(map(int, value["version"].split("."))) >= (0, 4, 0):
         value["required_profiles"].append("syn.private-pubsub/1")
         value["required_capabilities"].append("authenticated-private-pubsub")
+        value["required_profiles"].sort()
+        value["required_capabilities"].sort()
         policy = Policy.parse(canonical(value))
     policy_path = base / "policy.json"
     policy_path.write_bytes(canonical(value))
