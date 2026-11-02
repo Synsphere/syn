@@ -259,7 +259,10 @@ def main() -> None:
     parser.add_argument("--manifest-sha256")
     parser.add_argument("--record", type=Path, required=True)
     options = parser.parse_args()
-    require_workflow_context(options.source_commit)
+    execution_source = os.environ.get("GITHUB_SHA", "")
+    require_workflow_context(execution_source)
+    if options.operation == "stage" and options.source_commit != execution_source:
+        raise ReleaseError("Staging source must match the admitted workflow checkout")
     authority = load_authority(options.authority)
     github = GitHub()
     if options.operation == "stage":

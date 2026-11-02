@@ -1,6 +1,6 @@
 # Syn-owned verification workflows
 
-23 October 2026. Workflow definitions accompany the Type-policy foundation.
+Updated 2 November 2026. Workflows cover the Type-policy and release foundations.
 Execution results must be read from the exact candidate's Actions runs; saved
 YAML does not establish a passing platform or database result.
 
@@ -11,10 +11,11 @@ than a screenshot of successful runs. Actual run URLs belong in the PR handoff.*
 
 | Workflow | Trigger and environment | Checks and limits |
 | --- | --- | --- |
-| `ci.yml` — Syn verification | Push, PR, manual; Ubuntu 24.04, Python 3.12/3.13 | Locked application and shared-contract tests, compilation/offline Alembic, both wheels/sdists, hashed third-party export, unsigned candidate validation and isolated installed-runtime descriptor comparison |
+| `ci.yml` — Syn verification | Push, PR, manual, reusable call; Ubuntu 24.04, Python 3.12/3.13 | Locked application and shared-contract tests, compilation/offline Alembic, both wheels/sdists, hashed third-party export, unsigned candidate validation and isolated installed-runtime descriptor comparison |
 | `ci.yml` — postgres job | Same triggers; Ubuntu, Python 3.13, separate PostgreSQL 17.11 service | Full schema upgrade, all database tests, isolated communication/Type migration tests; fail on skipped required database cases |
-| `client.yml` — Syn client portability | Push, PR, manual; Ubuntu/Windows, Python 3.12/3.13 | Install the built dependency-free client wheel in a separate environment; isolated imports, canonical/identity/resolution contracts and minimal Python correctness lint |
+| `client.yml` — Syn client portability | Push, PR, manual, reusable call; Ubuntu/Windows, Python 3.12/3.13 | Install the built dependency-free client wheel in a separate environment; isolated imports, canonical/identity/resolution contracts and minimal Python correctness lint |
 | `potbot-compatibility.yml` | Manual, with a reviewed full 40-character Potbot commit | Test that exact public consumer with this exact private Syn candidate, selected policy/exchange/custody tests; no branch guessing or changing Potbot's gitlink |
+| `release.yml` — Syn signed release staging | Manual on canonical `master`; protected `syn-release` environment for staging | Reuses application/database/client checks; signs the exact retained candidate bytes, creates and verifies a draft; a separate read-only operation verifies an independently pinned immutable publication |
 
 The application matrix qualifies Linux application execution. The client matrix
 qualifies the small shared wheel on Windows; it does not qualify the complete
@@ -24,9 +25,12 @@ consumer test, not a substitute for either repository's complete checks.
 
 ## Execution and security boundaries
 
-All workflows use `contents: read`, SHA-pinned actions, disabled checkout
-credential persistence and disabled dependency caches. No production operator
-keys, live credentials, publishing token or deployment environment is required.
+Verification jobs use `contents: read`, SHA-pinned actions, disabled checkout
+credential persistence and disabled dependency caches. They need no production
+operator keys or live node credentials. The dedicated release staging job alone
+uses `contents: write`, Actions artifact read access and the `syn-release`
+environment's release-signing secret. The independent published-byte operation
+receives no signing seed and cannot write release assets.
 The PostgreSQL password is an openly declared disposable fixture value. PRs
 execute under `pull_request`, never `pull_request_target`. No script interpolates
 the manual commit input as shell code; validate it through an environment variable
@@ -65,8 +69,10 @@ Require application jobs for both Python versions, postgres and all four client
 matrix jobs when configuring branch protection. Workflow files do not alter
 repository settings or make checks required automatically. Keep both integration
 PRs as drafts until their exact source revisions and mandatory checks qualify.
-No release/upload/deploy workflow is introduced here: production signing,
-publication and installed-node acceptance remain separate milestones.
+The [release authority workflow](release-authority-and-publication.md) adds
+protected signed-draft staging and independent immutable-publication verification.
+The [first official package release](releases/v0.1.0.md) is now published;
+installed-node acceptance remains a separate milestone.
 
 ## SYN-R01 release candidates
 
@@ -101,8 +107,8 @@ when those paths exist. Add operator-log crash/partition and independent-root
 BFT DAG/Hashgraph fault suites only when their adapters exist. The canonical
 Type selects the protocol; an optional Raft experiment is not an adopted global
 backend. Neither discovery tests nor policy parsing proves live consensus,
-protected-node startup or fresh key possession. Official release artifacts and
-installed operator/Agent qualification require the separate
+protected-node startup or fresh key possession. The published service package
+does not complete installed operator/Agent qualification; see the separate
 [release/deployment gates](release-and-node-deployment.md).
 Add measured resource/retention and restore limits before a pilot. Capture actual
 sanitised demonstrations then; a video of this workflow map would add no execution

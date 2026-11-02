@@ -5,6 +5,7 @@ import base64
 from copy import deepcopy
 import hashlib
 import json
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -210,3 +211,35 @@ def test_asset_metadata_rejects_duplicate_names(bundle):
     remote["assets"][0]["name"] = remote["assets"][1]["name"]
     with pytest.raises(ReleaseError, match="names or duplicates"):
         release.metadata(remote, bundle.manifest, draft=True)
+
+
+def test_readonly_workflow_verifies_an_older_released_source_from_new_master(bundle, monkeypatch, capsys):
+    stage(bundle)
+    bundle.github.remote.update(draft=False, immutable=True)
+    bundle.github.reference = {"object": {"type": "commit", "sha": SOURCE}}
+    execution_source = "2" * 40
+    for name, value in {"GITHUB_REPOSITORY": "Synsphere/syn", "GITHUB_REF": "refs/heads/master", "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_SHA": execution_source}.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setattr(release.subprocess, "check_output", lambda args, **kw: execution_source if "rev-parse" in args else "")
+    monkeypatch.setattr(release, "load_authority", lambda path: bundle.authority)
+    monkeypatch.setattr(release, "GitHub", lambda: bundle.github)
+    record = bundle.path / "published-receipt.json"
+    monkeypatch.setattr(sys, "argv", ["stage_release", "verify-published", "--source-commit", SOURCE, "--tag", "v0.1.0", "--manifest-sha256", bundle.manifest.digest, "--record", str(record)])
+    release.main()
+    evidence = json.loads(record.read_text())
+    assert evidence["source_commit"] == SOURCE
+    assert evidence["published"] is True and evidence["immutable"] is True
+    assert bundle.github.created == 1
+    assert bundle.manifest.digest in capsys.readouterr().out
+
+
+def test_signing_workflow_cannot_substitute_an_older_source_pin(bundle, monkeypatch):
+    execution_source = "2" * 40
+    for name, value in {"GITHUB_REPOSITORY": "Synsphere/syn", "GITHUB_REF": "refs/heads/master", "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_SHA": execution_source}.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setattr(release.subprocess, "check_output", lambda args, **kw: execution_source if "rev-parse" in args else "")
+    monkeypatch.setattr(release, "GitHub", lambda: pytest.fail("unadmitted signing write"))
+    monkeypatch.setattr(sys, "argv", ["stage_release", "stage", "--source-commit", SOURCE, "--tag", "v0.1.0", "--record", str(bundle.path / "receipt.json")])
+    with pytest.raises(ReleaseError, match="Staging source"):
+        release.main()
+    assert bundle.github.created == 0

@@ -1,6 +1,6 @@
 # Official Syn releases and independent node deployment
 
-**Adopted requirement, reconciled 1 November 2026; implementation gates remain.**
+**Adopted requirement, updated 2 November 2026; node implementation gates remain.**
 Potbot installs released Syn packages from the canonical
 [`Synsphere/syn`](https://github.com/Synsphere/syn) repository. Syn implements
 Syn; Potbot manages its installations. A copied runtime, floating source branch,
@@ -8,15 +8,16 @@ vendored implementation or development submodule is not a production release.
 
 The [architecture](../architecture.md) defines the private per-Agent mesh and
 per-Type consensus requirements. Installation does not weaken those contracts.
-The GitHub Releases API returned no releases during this audit. Package metadata
-or a source version string does not establish an available official artifact.
+The 1 November audit found no releases. The subsequent [v0.1.0 release](releases/v0.1.0.md)
+is now published with signed, immutable assets and declares only `service` mode.
+Package publication does not establish installed operator or Agent qualification.
 
 ## Ownership and topology
 
 | Responsibility | Owner and boundary |
 | --- | --- |
 | Syn runtime, CLI, P2P, semantic/identity contracts, enrollment and keystore implementation | Canonical Syn project. Reconcile any existing Potbot implementation upstream before removing a working integration. |
-| Syn release builds, platform artifacts, integrity/authenticity metadata and versioned API/protocol contracts | Syn owns the [SYN-R01 package/compatibility contract](release-contracts.md); production signing/publication and installed-node qualification remain. |
+| Syn release builds, platform artifacts, integrity/authenticity metadata and versioned API/protocol contracts | Syn owns the [SYN-R01 package/compatibility contract](release-contracts.md); the [first signed package release](releases/v0.1.0.md) is published; installed-node qualification remains. |
 | Version selection, verified installation, local configuration and compatibility records | Potbot package/deployment integration through supported public contracts. |
 | Operator/Agent node lifecycle, sandbox isolation, resource monitoring and authorized upgrades | Potbot operator. |
 | Agent tasks, reasoning, budgets, tools, evidence acceptance and memory | Potbot; a Syn message or valid identity does not supply these permissions. |
@@ -40,13 +41,14 @@ flowchart LR
 ```
 
 *Generated required deployment sequence. It is a contract, not a screenshot of an
-available installer, released artifact or running Agent node.*
+available installer or running Agent node. Package publication is evidenced
+separately in the release record.*
 
 ## Required implementation and acceptance sequence
 
 | Gate | Required result before production acceptance |
 | --- | --- |
-| **SYN-R01: upstream contract** | Foundation implemented: [official package set, canonical manifest/signature verification, compatibility descriptor and candidate-build checks](release-contracts.md). Linux application and Linux/Windows client are the declared matrix; current mode is `service` only. Production authority provisioning and official publication remain prerequisites for a usable release. Signer roots stay independent of downloaded metadata. |
+| **SYN-R01: upstream contract** | Foundation implemented: [official package set, canonical manifest/signature verification, compatibility descriptor and candidate-build checks](release-contracts.md). Linux application and Linux/Windows client are the declared matrix; current mode is `service` only. [v0.1.0](releases/v0.1.0.md) now supplies protected signing and immutable publication; this does not admit an installed node. Signer roots stay independent of downloaded metadata. |
 | **SYN-R02: release installation** | Select an exact official version and platform artifact, verify authenticity and digest, install without arbitrary source fallback, and record version, artifact digest and protocol compatibility per installation. Refuse missing, altered or incompatible releases. |
 | **SYN-R03: operator node** | Install/discover and authenticate a real operator-mode Syn, with protected custody, enrollment authority, supervised lifecycle and retained identity/state. |
 | **SYN-R04: Agent nodes** | Provision a distinct account and Syn instance inside each Agent sandbox; qualify the hardware/keystore and selected-key adoption requirements on the actual host. Preserve base-key secrecy, unique allocation and group-epoch separation. |
@@ -55,8 +57,9 @@ available installer, released artifact or running Agent node.*
 | **SYN-R07: remove duplication and qualify** | Reconcile transitional runtime/custody work upstream; remove duplicate runtime only after the released replacement passes compatibility. Run several genuine nodes concurrently through enrollment, isolation, encrypted exchange, restart, revocation, fault and recovery tests. |
 
 Syn's [existing workflows](ci.md) own application, PostgreSQL, portable-client,
-release-candidate validation and installed-wheel verification. They are not yet a complete release/publication or installed-node
-qualification pipeline. Potbot should test its adapters against published
+release-candidate validation, installed-wheel verification, protected signing and
+independent published-byte verification. Installed-node qualification remains
+open. Potbot should test its adapters against published
 interfaces and exact release artifacts, rather than rely on Syn internals.
 
 Until these gates qualify, retain the explicit development integration and its

@@ -89,9 +89,11 @@ immutability setting have been checked under the existing software-release
 authority. An authorized software release needs no additional human confirmation.
 
 Then dispatch the same workflow with operation `verify-published`, the same tag
-and the manifest digest from the retained staging receipt. Keep the source
-revision fixed for this initial release. This read-only job receives no signing
-seed. It downloads all seven assets afresh, verifies the independent digest/key
+and the released source commit plus manifest digest from the retained staging
+receipt. The workflow still executes reviewed code from current `master`; the
+release source pin is independent and can name an older qualified commit. This
+read-only job receives no signing seed. It downloads all seven assets afresh,
+verifies the independent digest/key
 pin and payload hashes, requires a non-draft immutable release, and checks that
 the tag resolves directly to the selected source commit. It retains a separate
 published-release receipt. The public client verifier still requires callers to
