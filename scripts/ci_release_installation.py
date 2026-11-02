@@ -21,7 +21,9 @@ from potbot.domain.errors import ScopeDeniedError, StateMismatchError
 
 
 def main() -> None:
-    base = Path(os.environ["RUNNER_TEMP"]) / ("syn-r02-" + os.environ["R02_PYTHON"])
+    base = Path("/tmp") / (
+        "syn-r02-" + os.environ["GITHUB_RUN_ID"] + "-" + os.environ["R02_PYTHON"]
+    )
     base.mkdir(mode=0o700)
     evidence = Path("artifacts/r02")
     evidence.mkdir(parents=True)
@@ -31,8 +33,33 @@ def main() -> None:
     # Consume the GitHub token only in the acquisition client, never in children.
     source = GitHubSource(os.environ.pop("POTBOT_SYN_GITHUB_TOKEN"))
     python = Path(os.environ["R02_HOST_PYTHON"])
-    uv = Path(shutil.which("uv") or "missing")
+    tools = base / "tools"
+    tools.mkdir(mode=0o700)
+    # setup-uv is reviewed and SHA-pinned, but the hosted tool-cache ancestors
+    # are writable. Provision a private copy rather than weaken the installer.
+    uv = tools / "uv"
+    shutil.copy2(Path(shutil.which("uv") or "missing").resolve(strict=True), uv)
+    uv.chmod(0o500)
     online = SynReleaseStore(base / "online")
+    try:
+        online._tool(python)
+    except ScopeDeniedError:
+        # uv's standalone CPython distribution is relocatable. Copy only that
+        # exact interpreter prefix; never enumerate/copy /usr or a whole cache.
+        prefix = Path(
+            subprocess.check_output(
+                [str(python), "-I", "-B", "-c", "import sys;print(sys.base_prefix)"],
+                text=True,
+                timeout=20,
+            ).strip()
+        ).resolve()
+        if len(prefix.parts) < 4 or not python.resolve().is_relative_to(prefix):
+            raise AssertionError("Refusing an ambiguous interpreter-prefix copy") from None
+        private_python = tools / "python"
+        shutil.copytree(prefix, private_python, symlinks=True)
+        python = private_python / python.resolve().relative_to(prefix)
+        online._tool(python)
+    online._tool(uv)
     try:
         first = online.install(policy, python=python, uv=uv, source=source)
         assert first["node_qualified"] is False
