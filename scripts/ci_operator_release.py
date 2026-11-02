@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import tarfile
+from private_interpreter import copy_private_python
 
 from potbot.domain.errors import ScopeDeniedError
 from potbot.syn_release.contracts import Policy, canonical
@@ -43,10 +44,8 @@ def main():
     except ScopeDeniedError:
         prefix = Path(subprocess.check_output([str(python), "-I", "-B", "-c", "import sys;print(sys.base_prefix)"],
                                              text=True, timeout=20).strip()).resolve()
-        if len(prefix.parts) < 4 or not python.resolve().is_relative_to(prefix):
-            raise AssertionError("Ambiguous interpreter prefix") from None
-        shutil.copytree(prefix, tools / "python", symlinks=True)
-        python = tools / "python" / python.resolve().relative_to(prefix)
+        python = copy_private_python(python, prefix, tools / "python")
+        store._tool(python)
     installed = store.install(policy, python=python, uv=uv, source=source)
     verified = store.verify(policy)
     evidence = root / "artifacts/operator"

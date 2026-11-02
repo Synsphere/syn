@@ -141,6 +141,16 @@ development code and disposable keys. Official installed-release acceptance is
 evidenced by exact runs of the [separate workflow](https://github.com/Synsphere/syn/actions/workflows/operator-release.yml);
 a persistent user deployment requires its own private host receipt.
 
+The first official-package run
+[41424371694](https://github.com/Synsphere/syn/actions/runs/41424371694)
+passed Linux/Python 3.12 with reviewed Potbot
+`eefd32ee42d9a9d1b55d9364d820705ca3c949d9`. Its macOS preparation correctly
+refused a hosted interpreter writable by another principal. The qualification
+harness now selects managed Python and protects only a byte-checked private
+copy of that prefix; it never changes hosted executables or relaxes the
+installer's ownership checks. Native platform acceptance still requires a
+completed successful installed-package result for that platform.
+
 There is no graphical node UI or dynamic Agent exchange in this stage.
 The architecture diagram explains the interface; sanitized native test receipts
 provide execution evidence. No screenshot/video of a production deployment is
