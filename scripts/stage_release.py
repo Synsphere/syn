@@ -209,7 +209,8 @@ def stage(directory: Path, source: str, tag: str, seed: bytes, authority: Author
     verify_bundle(directory, pin, authority)
     with tempfile.TemporaryDirectory(prefix="syn-release-notes-") as scratch:
         notes = Path(scratch) / "notes.md"
-        notes.write_text(f"Syn {manifest.version}\n\nOfficial service-mode package set. Operator and Agent node modes remain unavailable.\n\nSource: `{source}`\nManifest SHA-256: `{manifest.digest}`\nRelease authority SHA-256: `{authority.fingerprint}`\n\nThe two wheels, two source distributions, hashed dependency lock, canonical manifest and detached signature form the seven-asset release. Consumers must supply independent trusted pins and verify all bytes before installation. No installed-node or private-mesh qualification is implied.\n", encoding="utf-8")
+        modes = ", ".join(manifest.runtime.node_modes)
+        notes.write_text(f"Syn {manifest.version}\n\nOfficial package set. Declared node modes: {modes}. Consult the signed runtime contract for exact API and platform requirements; undeclared modes remain unavailable.\n\nSource: `{source}`\nManifest SHA-256: `{manifest.digest}`\nRelease authority SHA-256: `{authority.fingerprint}`\n\nThe two wheels, two source distributions, hashed dependency lock, canonical manifest and detached signature form the seven-asset release. Consumers must supply independent trusted pins and verify all bytes before installation. No installed-node or private-mesh qualification is implied.\n", encoding="utf-8")
         github.create_draft(tag, source, [directory / name for name in sorted(names(manifest))], notes)
     remote = metadata(github.release(tag), manifest, draft=True)
     with tempfile.TemporaryDirectory(prefix="syn-release-readback-") as scratch:
