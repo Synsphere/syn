@@ -58,7 +58,8 @@ def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None, 
             deployment.root, deployment.agent_id, deployment.uid = root, agent, session.host["uid"]
             deployment.expected_operator, deployment.network_id = body["operator_public_key_hash"], body["network_id"]
             deployment.group_id, deployment.group_epoch = UUID(body["group_id"]), body["group_epoch"]
-            deployment.policy = SimpleNamespace(manifest_sha256="0" * 64)
+            deployment.policy = SimpleNamespace(manifest_sha256="0" * 64, fingerprint="0" * 64,
+                value={"source_commit": "0" * 40, "version": source_contract["runtime_version"]})
             deployment.source_proof = second
         participants[agent] = (deployment, session.api)
 
