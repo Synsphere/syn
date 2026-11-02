@@ -119,10 +119,14 @@ General restart/recovery and membership rotation remain SYN-R06 work.
 ## Qualification and media
 
 `tests/test_pubsub.py` uses real signatures/encryption with explicitly synthetic
-custody for protocol/fault tests. `scripts/ci_private_pubsub.py` uses two real
-isolated native Agent nodes and encrypted OS stores from the source-wheel lane.
-The official-package lane instead runs `scripts/ci_potbot_private_mesh.py` with
-the exact reviewed Potbot controller and independently pinned signed packages.
+custody for protocol/fault tests. `scripts/ci_private_pubsub.py` retains the
+lower-level two-native-node delivery fixture. The source-wheel lane now runs
+`scripts/ci_potbot_private_mesh.py` with actual encrypted stores and real
+restricted processes, substituting only the package/assignment registry in an
+explicit source-only deployment fixture. It cannot prove official installation.
+The official-package lane runs the same complete adapter with the actual
+installer/deployment registry, exact reviewed Potbot controller and independently
+pinned signed packages; no registry is substituted there.
 It exercises the complete public adapter, real heartbeat exchange, one-use task
 grant rejection and relay-loss fencing. It explicitly records that no Cog
 process is dispatched; qualified Cog images, cgroups, syscall/TASKSTATS evidence,

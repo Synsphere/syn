@@ -295,8 +295,9 @@ def main():
                     from ci_potbot_private_mesh import qualify
                     private_pubsub = qualify(nodes, base, root=ROOT, store=store, policy=policy)
                 else:
-                    from ci_private_pubsub import qualify
-                    private_pubsub = qualify(nodes, base)
+                    from ci_potbot_private_mesh import qualify
+                    private_pubsub = qualify(nodes, base, root=ROOT, source_runtime=RUNTIME,
+                        source_contract=runtimeContract().to_dict())
             native=importlib.import_module('ci_operator_native')
             running_operator=native.start(operator)
             stack.callback(native.stop,running_operator)

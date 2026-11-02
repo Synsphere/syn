@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
+import hashlib
 import time
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 from potbot.cogs.contracts import CogRunContext, TypedCogValue
@@ -18,18 +20,46 @@ from potbot.syn_release.mesh import SynPrivateMesh
 from potbot.tools.execution_contracts import ExecutionPolicy, WorkBinding
 from potbot.tools.released_syn_nodes import ReleasedSynWorkerNodeMesh
 from potbot.tools.sandbox_cog_worker import SandboxedCogExecutor, SandboxedCogOperation
+from syn_client.agent import agent_status
 
 
-def qualify(nodes, base, *, root, store, policy):
+def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None, source_contract=None):
     certificates = [item[2]["status"]["group_certificate"] for item in nodes]
     body = certificates[0]["body"]
     participants = {}
+
+    class SourceWheelDeployment(SynAgentDeployment):
+        """Only package/assignment registry is substituted in the SOURCE fixture.
+
+        No identity, signature, native custody or process check is substituted.
+        Official acceptance always uses the actual installer/deployment class.
+        """
+        def _installation(self):
+            return {"observed": {"runtime": source_contract}}, source_runtime / "bin/python"
+
+        def attach(self):
+            known = self.source_proof["status"]
+            return agent_status(socket_path=self.root / self.agent_id.hex / "home/syn/agent.sock",
+                owner_uid=self.uid, expected_hash=hashlib.sha256(bytes.fromhex(known["selected_public_key"])).hexdigest(),
+                expected_operator=self.expected_operator, expected_version=source_contract["runtime_version"],
+                configuration_sha256=known["configuration_sha256"], assignment_sha256=known["assignment_sha256"],
+                expected_group=str(self.group_id), expected_epoch=self.group_epoch)
+
     for session, first, second, outside in nodes:
         agent = UUID(session.host["agent_id"])
-        deployment = SynAgentDeployment(store, policy, root, agent_id=agent, uid=session.host["uid"],
-            expected_operator=body["operator_public_key_hash"], network_id=body["network_id"],
-            group_id=UUID(body["group_id"]), group_epoch=body["group_epoch"],
-            device_profile="syn.host-bound-virtual-device/1")
+        if store is not None:
+            deployment = SynAgentDeployment(store, policy, root, agent_id=agent, uid=session.host["uid"],
+                expected_operator=body["operator_public_key_hash"], network_id=body["network_id"],
+                group_id=UUID(body["group_id"]), group_epoch=body["group_epoch"],
+                device_profile="syn.host-bound-virtual-device/1")
+        else:
+            assert source_runtime is not None and source_contract is not None
+            deployment = SourceWheelDeployment.__new__(SourceWheelDeployment)
+            deployment.root, deployment.agent_id, deployment.uid = root, agent, session.host["uid"]
+            deployment.expected_operator, deployment.network_id = body["operator_public_key_hash"], body["network_id"]
+            deployment.group_id, deployment.group_epoch = UUID(body["group_id"]), body["group_epoch"]
+            deployment.policy = SimpleNamespace(manifest_sha256="0" * 64)
+            deployment.source_proof = second
         participants[agent] = (deployment, session.api)
 
     class RecordedTransport(SynPrivateMesh):
@@ -103,8 +133,11 @@ def qualify(nodes, base, *, root, store, policy):
     for session, *_ in nodes:
         assert session.process.wait(timeout=15) == 2, "Native Syn process did not fence after relay loss"
         assert not (root / UUID(session.host["agent_id"]).hex / "home/syn/agent.sock").exists()
+    print("Real Potbot public mesh adapter, signed native heartbeats, task-grant rejection and relay-loss fencing passed", flush=True)
     return {"profile": "syn.potbot-private-mesh-acceptance/1", "result": "passed", "scope": transport.scope,
         "native_adapter_verified": True, "heartbeat_receptions": receptions,
+        "official_release_installation_verified": store is not None,
+        "source_fixture_substitutions": ([] if store is not None else ["package installation registry", "retained assignment registry"]),
         "one_use_and_changed_task_grants_rejected": True,
         "executor_without_task_grant_rejected_before_dispatch": True,
         "relay_loss_fenced_both_native_nodes_and_cog_monitors": True,
