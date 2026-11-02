@@ -117,6 +117,15 @@ forced death and locked-store refusal. Synthetic fault tests separately cover
 interrupted transitions, rollback, unauthorized allocation and foreign sockets.
 Only completed workflow results establish platform acceptance.
 
+The separate manual `Official Syn operator deployment` workflow accepts an exact
+reviewed Potbot SHA and independently retained 0.2.0 source/manifest pins. It
+installs the actual immutable signed release, invokes its installed interpreter
+with a disposable native keystore, and exercises Potbot bootstrap, owned-child
+supervision, independent attachment, retained restart and locked-store fencing.
+Its receipts distinguish official package acceptance from source tests and a
+persistent user deployment. It receives only repository read access and removes
+that token before native children start; no signing environment is available.
+
 Local development acceptance passed on the managed Ubuntu 24.04 WSL2 host:
 three independent boots retained one identity, locked Secret Service refused
 readiness, and ten synthetic/socket/authority regressions passed. These used

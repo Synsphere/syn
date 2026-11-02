@@ -1,0 +1,99 @@
+name: Official Syn operator deployment
+on:
+  workflow_dispatch:
+    inputs:
+      potbot_sha:
+        description: Reviewed full Potbot consumer SHA
+        required: true
+        type: string
+      source_commit:
+        description: Independently retained published Syn 0.2.0 source SHA
+        required: true
+        type: string
+      manifest_sha256:
+        description: Independently retained signed 0.2.0 manifest SHA-256
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  deployment:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: ubuntu-24.04
+            python: "3.12"
+          - host: ubuntu-24.04
+            python: "3.13"
+          - host: macos-15
+            python: "3.12"
+          - host: macos-15-intel
+            python: "3.13"
+    runs-on: ${{ matrix.host }}
+    timeout-minutes: 30
+    env:
+      R03_POTBOT_SHA: ${{ inputs.potbot_sha }}
+      R03_RELEASE_SOURCE: ${{ inputs.source_commit }}
+      R03_MANIFEST: ${{ inputs.manifest_sha256 }}
+      R03_PYTHON: ${{ matrix.python }}
+    steps:
+      - name: Admit only canonical explicit master dispatch and exact pins
+        shell: bash
+        run: |
+          test "$GITHUB_REPOSITORY" = Synsphere/syn
+          test "$GITHUB_REF" = refs/heads/master
+          [[ "$R03_POTBOT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$R03_RELEASE_SOURCE" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$R03_MANIFEST" =~ ^[0-9a-f]{64}$ ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: kieransimkin/potbot
+          ref: ${{ inputs.potbot_sha }}
+          path: consumer
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.12.23"
+          python-version: ${{ matrix.python }}
+          enable-cache: false
+      - name: Install native Linux prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gnome-keyring dbus-user-session libgmp-dev
+      - name: Require macOS native build prerequisite
+        if: runner.os == 'macOS'
+        run: brew list gmp >/dev/null || brew install gmp
+      - name: Install exact reviewed consumer
+        shell: bash
+        run: |
+          test "$(git -C consumer rev-parse HEAD)" = "$R03_POTBOT_SHA"
+          uv sync --locked --project consumer --dev --extra security
+          echo "R03_HOST_PYTHON=$(uv python find "$R03_PYTHON")" >> "$GITHUB_ENV"
+      - name: Install actual official package and qualify real native custody and Potbot supervisor
+        env:
+          POTBOT_SYN_GITHUB_TOKEN: ${{ github.token }}
+        run: consumer/.venv/bin/python scripts/ci_operator_release.py
+      - name: Record routine completion assessment
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path("artifacts/operator/assessment.json")
+          p.parent.mkdir(parents=True, exist_ok=True)
+          p.write_text(json.dumps({"Blogworthiness": "FAIL", "reason": "Repeated private official-package acceptance; the feature story is assessed in the owning task.", "result": os.environ["RESULT"], "source_evidence": [os.environ["GITHUB_SERVER_URL"] + "/" + os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + os.environ["GITHUB_RUN_ID"]]}) + "\n")
+          PY
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: official-operator-${{ matrix.host }}-py${{ matrix.python }}-${{ inputs.potbot_sha }}
+          path: artifacts/operator/
+          if-no-files-found: error
+          retention-days: 30

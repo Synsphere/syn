@@ -145,6 +145,9 @@ def ready(process, directory, created):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local-disposable-fixture", action="store_true")
+    parser.add_argument("--consumer-python", type=Path)
+    parser.add_argument("--store", type=Path)
+    parser.add_argument("--policy", type=Path)
     args = parser.parse_args()
     if os.environ.get("GITHUB_ACTIONS") != "true" and not args.local_disposable_fixture:
         raise SystemExit("Explicit disposable-fixture scope is required outside CI")
@@ -154,6 +157,26 @@ def main():
         base = Path(name).resolve()
         base.chmod(0o700)
         with native_fixture(base) as lock:
+            if args.consumer_python:
+                if args.store is None or args.policy is None:
+                    raise AssertionError("Explicit official installation/policy required")
+                helper = root / "scripts/ci_operator_consumer.py"
+                command = [str(args.consumer_python), "-I", "-B", str(helper),
+                           "--store", str(args.store), "--policy", str(args.policy),
+                           "--root", str(base / "deployment")]
+                accepted = json.loads(checked(command, timeout=180))
+                lock()
+                locked = json.loads(checked(command + ["--expect-locked"], timeout=60))
+                output = root / "artifacts/operator/official-deployment.json"
+                output.parent.mkdir(parents=True, exist_ok=True)
+                receipt = {"profile": "syn.official-operator-deployment-acceptance/1",
+                           "result": "passed", "custody": backend_profile(),
+                           "qualification": "official_package_and_reviewed_potbot_supervisor_with_disposable_native_store",
+                           "deployment": accepted, "locked_store": locked,
+                           "agent_activation_authorized": False}
+                output.write_text(json.dumps(receipt, sort_keys=True) + "\n")
+                print(json.dumps({"result": "passed", "qualification": receipt["qualification"]}))
+                return
             node = base / "node"
             node.mkdir(mode=0o700)
             created = initialize(node, service=service, account=account, network_id="ci-native")
