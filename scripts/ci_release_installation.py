@@ -40,13 +40,21 @@ def main() -> None:
         verified = online.verify(policy)
         (evidence / "verified.json").write_bytes(canonical(verified))
         private_policy = base / "policy.json"
-        private_policy.write_bytes(canonical(policy_value))
+        offline_policy_value = {
+            **policy_value,
+            "dependency_cache_sha256": first["dependency_cache_sha256"],
+        }
+        private_policy.write_bytes(canonical(offline_policy_value))
         private_policy.chmod(0o600)
         # A fresh environment and empty admission history, with retained payloads/dependencies.
         offline_root = base / "offline"
         offline_root.mkdir(mode=0o700)
         for name in ("objects", "bundles", "uv-cache"):
             shutil.copytree(online.root / name, offline_root / name, symlinks=True)
+        shutil.copyfile(
+            online.root / "dependency-cache-inventory.json",
+            offline_root / "dependency-cache-inventory.json",
+        )
         argv = [
             "sudo",
             "unshare",
@@ -137,6 +145,9 @@ def main() -> None:
     finally:
         for log in (base / "online").glob("process-*.log"):
             shutil.copyfile(log, evidence / log.name)
+            print(
+                log.read_text(errors="replace")[-6000:]
+            )  # Child env carries no GitHub token or signing key.
 
 
 if __name__ == "__main__":

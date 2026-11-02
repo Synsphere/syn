@@ -63,6 +63,11 @@ and synthetic packages. Neither a saved workflow nor its synthetic fixtures
 establish actual official-package acceptance: retain the exact successful run
 and consumer SHA in the delivery handoff.
 
+A fresh offline runtime also requires an explicit dependency-cache digest retained
+from the trusted preparing installation receipt. Potbot checks every cache file
+against its retained inventory before uv can consume it; the official local
+wheels bypass unpacked wheel caches.
+
 Offline verification authenticates retained bytes against the current operator
 policy. It does not claim fresh network metadata or discover external revocation.
 Version floors and retained package history are not protected identity-state
