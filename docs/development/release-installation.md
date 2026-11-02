@@ -37,9 +37,13 @@ The operator provisions a private Linux x86-64 store outside Agent homes and a
 private policy file, then invokes Potbot's explicit `syn-release fetch`, `install`
 and `verify` commands. Potbot verifies the canonical signature and all five
 payloads before installation. It consumes only official wheels, retains the
-source distributions as verified inputs and uses the signed hashed third-party
-lock with binary-only dependency resolution. It must refuse a missing compatible
-wheel instead of building Syn or silently changing dependency policy.
+source distributions as verified inputs and uses the signed hashed third-party lock. Binary-only preparation is Potbot's default.
+The selected v0.1.0 policy explicitly approves third-party source builds because
+its signed lock pins `fastecdsa 2.3.2`, which has no Linux wheel. These dependencies
+build on the trusted preparation host after their signed source hashes match;
+Syn itself still installs only from its authenticated official wheel. Missing
+build prerequisites or unapproved source builds must fail, without changing the
+selected version or dependency policy.
 
 The installed official client repeats the closed contract and compatibility
 checks. The runtime also repeats signature verification and must expose an exact
@@ -64,7 +68,8 @@ establish actual official-package acceptance: retain the exact successful run
 and consumer SHA in the delivery handoff.
 
 A fresh offline runtime also requires an explicit dependency-cache digest retained
-from the trusted preparing installation receipt. Potbot checks every cache file
+from the trusted preparing installation receipt, including prepared source-built
+third-party dependencies when explicitly approved. Potbot checks every cache file
 against its retained inventory before uv can consume it; the official local
 wheels bypass unpacked wheel caches.
 

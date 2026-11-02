@@ -18,5 +18,6 @@
   "required_capabilities": [
     "http-workspace-messages"
   ],
-  "dependency_cache_sha256": null
+  "dependency_cache_sha256": null,
+  "dependency_source_builds": true
 }
