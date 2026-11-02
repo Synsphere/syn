@@ -334,11 +334,12 @@ This is a command-line environment-isolation contract, so screenshots or video
 would not add reliable evidence. The probe messages, selected test output and
 process exit code are the verification evidence.
 
-## Canonical Agent deployment candidate
+## Canonical Agent deployment
 
 The [SYN-R04 Agent node guide](docs/development/agent-nodes.md) describes the
-0.3.0 candidate: real Linux/WSL Agent processes, selected-leaf adoption, distinct
+released 0.3.0 profile: real Linux/WSL Agent processes, selected-leaf adoption, distinct
 native custody and separately provisioned current-group keys. Native source-wheel
-acceptance has run two nodes through node and full-keystore-session restarts.
-Signed publication, official-package acceptance and Cog execution are separate
-gates; this source update does not claim a completed 0.3.0 release.
+and local official-package acceptance ran two nodes through node and full-keystore
+session restarts. The [dated release record](docs/development/releases/v0.3.0.md)
+retains published pins and the independent qualification gates. Cog execution
+remains SYN-R05 work.

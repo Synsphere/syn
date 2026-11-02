@@ -1,4 +1,4 @@
-"""Disposable SOURCE wheel qualification; not an official release receipt.
+"""Disposable source-wheel or exact published-package native qualification.
 
 The test owns its random passwords and native accounts, and never retains them.
 Operator crypto stays in canonical Syn; Potbot supplies the sandbox primitive.
@@ -65,7 +65,7 @@ agent_status=importlib.import_module('syn_client.agent').agent_status
 
 ROOT = Path('/var/lib/potbot/syn-agent-qualification')
 RUNTIME = ARGS.runtime_root.resolve(strict=True)
-PYTHON_PREFIX=Path(subprocess.check_output([str(RUNTIME/'bin/python'),'-I','-c','import sys;print(sys.base_prefix)'],text=True,timeout=10).strip()).resolve(strict=True)
+PYTHON_PREFIX=Path(subprocess.check_output([str(RUNTIME/'bin/python'),'-I','-B','-c','import sys;print(sys.base_prefix)'],text=True,timeout=10).strip()).resolve(strict=True)
 GROUP_ID = 'be31002b-b7a6-4e46-bd29-4e39fb04e31e'
 
 

@@ -1,0 +1,29 @@
+{
+  "profile": "potbot.syn-install-policy/1",
+  "repository": "Synsphere/syn",
+  "version": "0.3.0",
+  "source_commit": "93623e52b0d782673365f3090a53dded0cef2f46",
+  "manifest_sha256": "98aeccdbb3081c6afecf935639440bfd9e54dafd03796ee8794f566280514fbc",
+  "release_key_sha256": "a47f15e010613c0a839a48f2035b8f71d6f9e46ee3df07ed58487079d56ae216",
+  "public_key": "945786a5587110a061a6b73a02057b327f1ce819db4b0b5850201fbca41149cb",
+  "minimum_version": "0.3.0",
+  "revoked_keys": [],
+  "revoked_manifests": [],
+  "component": "runtime",
+  "mode": "agent",
+  "python_version": "3.12",
+  "required_profiles": [
+    "syn.agent-group/1",
+    "syn.agent-local/1"
+  ],
+  "required_capabilities": [
+    "authenticated-agent-ipc",
+    "confidential-selected-key-adoption",
+    "host-bound-virtual-device",
+    "native-os-agent-custody",
+    "native-os-group-custody",
+    "retained-agent-identity"
+  ],
+  "dependency_cache_sha256": null,
+  "dependency_source_builds": true
+}
