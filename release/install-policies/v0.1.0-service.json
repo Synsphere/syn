@@ -1,0 +1,21 @@
+{
+  "profile": "potbot.syn-install-policy/1",
+  "repository": "Synsphere/syn",
+  "version": "0.1.0",
+  "source_commit": "e08c1eeb0dc2a57f326f4d69a9f630e7eb082638",
+  "manifest_sha256": "5a4c2c2949be3b47610f4823a1aa47047ed68bdb2c3edf18ac3a7d71f04e936c",
+  "release_key_sha256": "a47f15e010613c0a839a48f2035b8f71d6f9e46ee3df07ed58487079d56ae216",
+  "public_key": "945786a5587110a061a6b73a02057b327f1ce819db4b0b5850201fbca41149cb",
+  "minimum_version": "0.1.0",
+  "revoked_keys": [],
+  "revoked_manifests": [],
+  "component": "runtime",
+  "mode": "service",
+  "python_version": "3.12",
+  "required_profiles": [
+    "syn.communication/1"
+  ],
+  "required_capabilities": [
+    "http-workspace-messages"
+  ]
+}

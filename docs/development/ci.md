@@ -17,6 +17,8 @@ than a screenshot of successful runs. Actual run URLs belong in the PR handoff.*
 | `potbot-compatibility.yml` | Manual, with a reviewed full 40-character Potbot commit | Test that exact public consumer with this exact private Syn candidate, selected policy/exchange/custody tests; no branch guessing or changing Potbot's gitlink |
 | `release.yml` — Syn signed release staging | Manual on canonical `master`; protected `syn-release` environment for staging | Reuses application/database/client checks; signs the exact retained candidate bytes, creates and verifies a draft; a separate read-only operation verifies an independently pinned immutable publication |
 
+| `release-installation.yml` | Manual on canonical `master`, reviewed full Potbot SHA; Linux Python 3.12/3.13 | Actual official release online and fresh network-disabled offline installation, installed-client/runtime contracts, cache tamper/revocation and unsupported-mode refusal; no node launch |
+
 The application matrix qualifies Linux application execution. The client matrix
 qualifies the small shared wheel on Windows; it does not qualify the complete
 Windows Syn host or native custody. Potbot retains its own full application,
