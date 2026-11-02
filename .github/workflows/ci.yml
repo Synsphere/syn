@@ -65,6 +65,23 @@ jobs:
           assert installed.node_modes == ("service",)
           PY
 
+      - name: Retain verified unsigned release candidates for signing review
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: syn-unsigned-candidate-${{ github.sha }}-py${{ matrix.python }}
+          # Only the five payloads and canonical unsigned manifest belong here.
+          # Never upload dist/runtime-venv or treat this CI archive as a release.
+          path: |
+            dist/syn-*-py3-none-any.whl
+            dist/syn_client-*-py3-none-any.whl
+            dist/syn-*.tar.gz
+            dist/syn_client-*.tar.gz
+            dist/syn-runtime-requirements-*.txt
+            dist/syn-release-*.json
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: false
+
   postgres:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
