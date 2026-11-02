@@ -1,10 +1,11 @@
 # Private Syn pub-sub and Cog admission
 
-**SYN-R05 candidate, 2 November 2026.** Syn 0.4.0 adds an authenticated,
+**Published Syn 0.4.0, 2 November 2026; official-package acceptance in progress.** Syn 0.4.0 adds an authenticated,
 encrypted, volatile local transport between independently enrolled Agent nodes.
 The source-wheel native WSL fixture passed two-node delivery, signed decrypted
-reception and relay-loss fencing. Publication and exact official-package
-acceptance are separate gates; the existing 0.3.1 release remains unchanged.
+reception and relay-loss fencing. The [release record](releases/v0.4.0.md)
+retains verified publication and the separate exact official-package gate;
+the existing 0.3.1 release remains unchanged.
 
 ![Architecture illustration: task authorization and native Syn transport are separate gates](media/syn-private-pubsub.svg)
 
