@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -32,6 +33,6 @@ jobs:
           uv venv .client-venv
           uv pip install --python .client-venv dist/syn_client-0.1.0-py3-none-any.whl cryptography==50.0.2 pytest==9.1.1 ruff==0.17.1
       - name: Check Python correctness without changing legacy formatting
-        run: uv run --no-project --python .client-venv ruff check --isolated --select E4,E7,E9,F src tests packages/syn-client/src packages/syn-client/tests scripts/ci_database.py scripts/build_release_contract.py
+        run: uv run --no-project --python .client-venv ruff check --isolated --select E4,E7,E9,F src tests packages/syn-client/src packages/syn-client/tests scripts/ci_database.py scripts/build_release_contract.py scripts/stage_release.py
       - name: Test installed wheel on a clean import path
         run: uv run --no-project --python .client-venv python -I -m pytest -q packages/syn-client/tests -o cache_dir=.tmp-pytest/client-cache
