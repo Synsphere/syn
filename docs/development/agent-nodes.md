@@ -132,9 +132,11 @@ to the two-node official-package restart and isolation checks.
 
 The initial journal is intentionally bounded to 64 transitions and 48 KiB.
 Capacity exhaustion refuses further enrollment before mutation. General
-recovery, upgrades, epoch changes and rollout remain SYN-R06/R07 work. SYN-R05
-must bind real node identity to Cog admission and supported Syn messaging before
-execution is enabled.
+recovery, upgrades, epoch changes and rollout remain SYN-R06/R07 work. The
+[SYN-R05 integration](private-pubsub.md) now binds real node identity to separate
+Cog admission and supported Syn messaging. Released native-mesh acceptance is
+recorded for [0.4.0](releases/v0.4.0.md); production execution still requires its
+independent qualified image, resource/audit and host gates.
 
 There is no Agent GUI. Relevant CI captures belong in the dated release record;
 passwords, keystore contents and private enrollment metadata are excluded from
