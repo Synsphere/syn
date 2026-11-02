@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 from copy import deepcopy
+from dataclasses import replace
 import hashlib
 import json
 import sys
@@ -58,7 +59,11 @@ def bundle(tmp_path, monkeypatch):
         raw = ("synthetic package " + role).encode()
         (tmp_path / filename).write_bytes(raw)
         artifacts.append(ReleaseArtifact(role, filename, hashlib.sha256(raw).hexdigest(), len(raw)))
-    manifest = ReleaseManifest("0.1.0", SOURCE, runtimeContract(), tuple(artifacts))
+    # This historical synthetic release remains fixed when the installed
+    # candidate version advances; do not couple old-release readback to HEAD.
+    historical = replace(runtimeContract(), runtime_version="0.1.0", client_version="0.1.0",
+                         node_modes=("service",))
+    manifest = ReleaseManifest("0.1.0", SOURCE, historical, tuple(artifacts))
     (tmp_path / "syn-release-0.1.0.json").write_bytes(manifest.canonical)
     monkeypatch.setattr(release, "build_manifest", lambda directory, source: manifest)
     return SimpleNamespace(path=tmp_path, manifest=manifest, seed=seed, authority=authority, github=FakeGitHub())

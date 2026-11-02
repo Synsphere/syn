@@ -1,0 +1,80 @@
+name: Syn native operator acceptance
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  native-operator:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: ubuntu-24.04
+            python: "3.12"
+          - host: ubuntu-24.04
+            python: "3.13"
+          - host: macos-15
+            python: "3.12"
+          - host: macos-15-intel
+            python: "3.13"
+    runs-on: ${{ matrix.host }}
+    timeout-minutes: 25
+    env:
+      CFLAGS: -I/opt/homebrew/include -I/usr/local/include
+      LDFLAGS: -L/opt/homebrew/lib -L/usr/local/lib
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.23"
+          python-version: ${{ matrix.python }}
+          enable-cache: false
+      - name: Install native Linux credential-service prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gnome-keyring dbus-user-session libgmp-dev
+      - name: Require native macOS GMP build prerequisite
+        if: runner.os == 'macOS'
+        run: brew list gmp >/dev/null || brew install gmp
+      - run: uv sync --locked --dev
+      - name: Synthetic fault and native socket regressions
+        run: uv run --locked python -m pytest -q tests/test_operator.py --junitxml=artifacts/operator/unit.xml
+      - name: Install exact independent Rust/WASM test reference
+        working-directory: tests/reference/hd
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compare actual Python HD derivation and signing with independent Rust/WASM
+        run: uv run --locked python scripts/check_operator_hd_reference.py
+      - name: Real Linux Secret Service and independently restarted operator process
+        if: runner.os == 'Linux'
+        run: env -u DISPLAY -u WAYLAND_DISPLAY dbus-run-session -- uv run --locked python scripts/ci_operator_native.py
+      - name: Real native macOS Keychain and independently restarted operator process
+        if: runner.os == 'macOS'
+        run: uv run --locked python scripts/ci_operator_native.py
+      - name: Record routine CI completion assessment
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path("artifacts/operator/assessment.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps({"Blogworthiness": "FAIL", "reason": "Repeated native acceptance; the operator feature story is assessed in the owning delivery task.", "result": os.environ["RESULT"], "source_evidence": [os.environ["GITHUB_SERVER_URL"] + "/" + os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + os.environ["GITHUB_RUN_ID"]]}) + "\n")
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: native-operator-${{ matrix.host }}-py${{ matrix.python }}
+          path: artifacts/operator/
+          if-no-files-found: error
+          retention-days: 14

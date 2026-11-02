@@ -64,7 +64,8 @@ jobs:
           expected = ReleaseManifest.from_bytes(manifest_file.read_bytes()).runtime
           installed = RuntimeContract.from_dict(json.loads(Path("dist/installed-runtime.json").read_text()))
           assert installed == expected
-          assert installed.node_modes == ("service",)
+          assert installed.node_modes == ("operator", "service")
+          assert "agent" not in installed.node_modes
           PY
 
       - name: Retain verified unsigned release candidates for signing review

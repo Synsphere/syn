@@ -16,7 +16,9 @@ def test_installed_package_contract_has_current_profiles_and_no_node_activation(
     contract = runtimeContract()
     assert contract.runtime_version == version("syn")
     assert contract.client_version == version("syn-client")
-    assert contract.node_modes == ("service",)
+    assert contract.node_modes == ("operator", "service")
+    assert "syn.operator-local/1" in contract.api_profiles
+    assert "agent" not in contract.node_modes
     assert "encrypted-private-pubsub" not in contract.capabilities
     assert "live-consensus" not in contract.capabilities
     assert "syn.dag-hashgraph-finality/2" in contract.api_profiles
