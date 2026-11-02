@@ -26,6 +26,11 @@ def main(argv=None) -> int:
     reservation.add_argument("--config", type=Path, required=True)
     reservation.add_argument("--request", type=Path, required=True)
     reservation.add_argument("--operator-byte", type=int, required=True)
+    for name in ("adoption-init", "agent-pulse", "agent-reserve", "agent-grant", "agent-seal", "agent-confirm", "agent-group"):
+        sub = commands.add_parser(name)
+        sub.add_argument("--config", type=Path, required=True)
+        if name not in {"adoption-init", "agent-pulse"}:
+            sub.add_argument("--request", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.operation == "unlock":
@@ -33,7 +38,13 @@ def main(argv=None) -> int:
             print(json.dumps(unlock(), sort_keys=True, separators=(",", ":")))
             return 0
         from .service import OperatorServer, initialize, run
-        if args.operation == "init":
+        if args.operation.startswith("agent-") or args.operation == "adoption-init":
+            from .adoption_cli import operate
+            from .custody import private_read
+            from syn_client.operator_protocol import parse
+            payload = parse(private_read(args.request)) if hasattr(args, "request") else None
+            value = operate(args.config, args.operation, payload)
+        elif args.operation == "init":
             value = initialize(args.state_dir, service=args.keyring_service, account=args.keyring_account, network_id=args.network_id)
         elif args.operation in ("enrollment-pulse", "reserve"):
             from .enrollment import pulse, reserve, terminal_approval

@@ -126,6 +126,13 @@ class OperatorServer:
                 "agent_activation_authorized": False}
         return {"status": body, "signature": self.signer.sign(STATUS_DOMAIN + canonical(body)).hex()}
 
+    def health_request(self):
+        return {"profile": CHALLENGE_PROFILE, "challenge": secrets.token_hex(32),
+                "expected_base_public_key_hash": self.expected_hash, "configuration_sha256": self.config_sha}
+
+    def caller_allowed(self, uid):
+        return uid == os.getuid()
+
     def serve(self):
         with _agent_key_lock(self.directory, self.config["keyring_service"], self.config["keyring_account"] + ".operator"):
             current = self.state.read(recover=True)
@@ -148,9 +155,7 @@ class OperatorServer:
                     if time.monotonic() - last_health > 2:
                         # A missing/locked key, altered config or state fences readiness
                         # and terminates this process; supervisors never regenerate it.
-                        self.status({"profile": CHALLENGE_PROFILE, "challenge": secrets.token_hex(32),
-                                     "expected_base_public_key_hash": self.expected_hash,
-                                     "configuration_sha256": self.config_sha})
+                        self.status(self.health_request())
                         last_health = time.monotonic()
                     try:
                         conn, _ = listener.accept()
@@ -159,7 +164,7 @@ class OperatorServer:
                     with conn:
                         conn.settimeout(2)
                         try:
-                            if peer_uid(conn) != os.getuid():
+                            if not self.caller_allowed(peer_uid(conn)):
                                 raise SynProtocolError("Operator caller has the wrong native user")
                             send(conn, self.status(receive(conn)))
                         except (SynProtocolError, OSError, ValueError):

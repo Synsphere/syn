@@ -33,6 +33,6 @@ jobs:
           uv venv .client-venv
           uv run --no-project --python .client-venv python -c "from pathlib import Path; import subprocess; wheels=list(Path('dist').glob('syn_client-*.whl')); assert len(wheels)==1; subprocess.run(['uv','pip','install','--python','.client-venv',str(wheels[0]),'cryptography==50.0.2','pytest==9.1.1','ruff==0.17.1'],check=True)"
       - name: Check Python correctness without changing legacy formatting
-        run: uv run --no-project --python .client-venv ruff check --isolated --select E4,E7,E9,F src tests packages/syn-client/src packages/syn-client/tests scripts/ci_database.py scripts/build_release_contract.py scripts/stage_release.py scripts/ci_operator_native.py scripts/ci_operator_consumer.py scripts/ci_operator_release.py scripts/check_operator_hd_reference.py scripts/private_interpreter.py
+        run: uv run --no-project --python .client-venv ruff check --isolated --select E4,E7,E9,F src tests packages/syn-client/src packages/syn-client/tests scripts/ci_database.py scripts/build_release_contract.py scripts/stage_release.py scripts/ci_operator_native.py scripts/ci_operator_consumer.py scripts/ci_operator_release.py scripts/check_operator_hd_reference.py scripts/private_interpreter.py scripts/ci_agent_native.py scripts/prepare_agent_runtime.py scripts/ci_agent_release.py
       - name: Test installed wheel on a clean import path
         run: uv run --no-project --python .client-venv python -I -m pytest -q packages/syn-client/tests -o cache_dir=.tmp-pytest/client-cache
