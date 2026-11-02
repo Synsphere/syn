@@ -1,0 +1,131 @@
+name: Syn signed release staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Stage a signed draft, or verify the immutable published bytes
+        required: true
+        type: choice
+        options: [stage, verify-published]
+        default: stage
+      tag:
+        description: Exact version tag matching this source's package metadata
+        required: true
+        type: string
+        default: v0.1.0
+      manifest_sha256:
+        description: Independently selected digest from the staging receipt (verification only)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: syn-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require the canonical repository and an explicit master dispatch
+        shell: bash
+        run: |
+          test "$GITHUB_REPOSITORY" = Synsphere/syn
+          test "$GITHUB_REF" = refs/heads/master
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+
+  verification:
+    needs: source-gate
+    if: inputs.operation == 'stage'
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  portability:
+    needs: source-gate
+    if: inputs.operation == 'stage'
+    uses: ./.github/workflows/client.yml
+    permissions:
+      contents: read
+
+  stage:
+    needs: [source-gate, verification, portability]
+    if: inputs.operation == 'stage'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: syn-release
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: Synsphere/syn
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.23"
+          enable-cache: false
+          python-version: "3.12"
+      - run: uv sync --locked --dev
+      - name: Retrieve this run's exact verified candidate bytes
+        shell: bash
+        run: >-
+          gh run download "$GITHUB_RUN_ID" --repo Synsphere/syn
+          --name "syn-unsigned-candidate-${GITHUB_SHA}-py3.12" --dir dist
+      - name: Sign, stage without publishing, and independently download every asset
+        env:
+          SYN_RELEASE_SIGNING_KEY_BASE64: ${{ secrets.SYN_RELEASE_SIGNING_KEY_BASE64 }}
+        run: >-
+          .venv/bin/python -m scripts.stage_release stage
+          --dist-dir dist --source-commit "$GITHUB_SHA" --tag "$RELEASE_TAG"
+          --record dist/release-staging-report.json
+      - name: Retain public signing and draft readback evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: syn-release-staging-${{ github.sha }}
+          path: dist/release-staging-report.json
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false
+
+  verify-published:
+    needs: source-gate
+    if: inputs.operation == 'verify-published'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: Synsphere/syn
+      RELEASE_TAG: ${{ inputs.tag }}
+      MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.23"
+          enable-cache: false
+          python-version: "3.12"
+      - run: uv sync --locked --dev
+      - name: Verify immutable publication, exact tag, signature and all seven assets
+        run: >-
+          .venv/bin/python -m scripts.stage_release verify-published
+          --source-commit "$GITHUB_SHA" --tag "$RELEASE_TAG"
+          --manifest-sha256 "$MANIFEST_SHA256" --record dist/published-release-report.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: syn-published-release-${{ github.sha }}
+          path: dist/published-release-report.json
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false

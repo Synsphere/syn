@@ -245,3 +245,8 @@ test key is never a production substitute. The first official publication is
 blocked until production key custody, trusted public-key distribution and the
 signing/publication path are provisioned. Actual candidate-download evidence
 belongs to the exact successful CI run; there is no installed-node UI to record.
+
+The [release authority and signed-publication workflow](release-authority-and-publication.md)
+defines protected custody, exact-byte draft staging and independent immutable
+publication verification. A signed draft remains a separate state from an
+official published release.
