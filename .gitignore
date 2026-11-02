@@ -13,3 +13,7 @@ references/double.pdf
 __pycache__/
 *.py[cod]
 .potbot-integration/
+
+# Local test scratch is never source or release evidence.
+.pytest_cache/
+.test-tmp/
