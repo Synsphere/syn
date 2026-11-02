@@ -50,6 +50,18 @@ jobs:
         env:
           POTBOT_SYN_GITHUB_TOKEN: ${{ github.token }}
         run: consumer/.venv/bin/python scripts/ci_release_installation.py
+      - name: Record the routine CI completion assessment
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path("artifacts/r02/assessment.json")
+          p.parent.mkdir(parents=True, exist_ok=True)
+          p.write_text(json.dumps({"Blogworthiness": "FAIL", "reason": "Routine private package acceptance; public feature coverage belongs to the owning task and private upstream records remain controlled.", "result": os.environ["RESULT"], "source_evidence": [os.environ["GITHUB_SERVER_URL"] + "/" + os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + os.environ["GITHUB_RUN_ID"], "artifacts/r02/"]}) + "\n")
+          PY
       - name: Retain narrow package evidence without caches, environments or credentials
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
