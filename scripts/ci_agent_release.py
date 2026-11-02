@@ -53,7 +53,7 @@ def main():
     try:
         store._tool(python)
     except ScopeDeniedError:
-        prefix = Path(subprocess.check_output([str(python), "-I", "-c", "import sys;print(sys.base_prefix)"], text=True, timeout=10).strip()).resolve()
+        prefix = Path(subprocess.check_output([str(python), "-I", "-B", "-c", "import sys;print(sys.base_prefix)"], text=True, timeout=10).strip()).resolve()
         python = copy_private_python(python, prefix, tools / "python")
         store._tool(python)
     installed = store.install(policy, python=python, uv=uv, source=source)
@@ -72,6 +72,7 @@ def main():
     if args.local_disposable_fixture:
         argv.append("--local-disposable-fixture")
     environment = {name: item for name, item in os.environ.items() if name not in {"PYTHONPATH", "PYTHONHOME", "POTBOT_SYN_GITHUB_TOKEN"}}
+    environment["XDG_RUNTIME_DIR"] = str(base)
     result = subprocess.run(argv, env=environment, timeout=420, check=False)
     if result.returncode:
         raise AssertionError("Exact official-package Agent controller acceptance failed")
