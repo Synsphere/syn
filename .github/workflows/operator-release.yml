@@ -14,6 +14,11 @@ on:
         description: Independently retained signed 0.2.0 manifest SHA-256
         required: true
         type: string
+      export_transfer:
+        description: Retain the qualified Linux/Python3.12 package cache and reviewed controller wheel for explicit offline deployment
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 jobs:
@@ -37,6 +42,7 @@ jobs:
       R03_RELEASE_SOURCE: ${{ inputs.source_commit }}
       R03_MANIFEST: ${{ inputs.manifest_sha256 }}
       R03_PYTHON: ${{ matrix.python }}
+      R03_EXPORT_TRANSFER: ${{ inputs.export_transfer }}
     steps:
       - name: Admit only canonical explicit master dispatch and exact pins
         shell: bash

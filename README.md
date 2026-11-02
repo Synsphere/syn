@@ -13,10 +13,13 @@ defines exact release assets, independent authenticity pins and installed-code r
 
 ## Official release
 
-[Syn v0.1.0](https://github.com/Synsphere/syn/releases/tag/v0.1.0) is the first
-signed, immutable package release. See its [release record and independent
-verification pins](docs/development/releases/v0.1.0.md). It declares `service`
-mode only; operator and Agent node deployment remain separate acceptance gates.
+[Syn v0.2.0](https://github.com/Synsphere/syn/releases/tag/v0.2.0) is the signed,
+immutable operator/service package release. See its [release record and
+independent verification pins](docs/development/releases/v0.2.0.md) and
+[native operator guide](docs/development/operator-node.md). Windows uses a managed
+Ubuntu WSL2 installation; Linux and macOS run natively. Installed-host acceptance
+and Agent deployment remain separate gates. The first service-only
+[v0.1.0 record](docs/development/releases/v0.1.0.md) remains historical evidence.
 
 ## Setup
 
@@ -170,7 +173,7 @@ uv run syn-server --describe-json
 ```
 
 An existing service also exposes `GET /v1/capabilities`. These report installed
-code, currently `service` mode only. They do not prove enabled workspaces, host
+code, with `operator` and `service` modes in 0.2.0. They do not prove enabled workspaces, host
 acceptance or operator/Agent node availability; see the
 [compatibility contract](docs/development/release-contracts.md#declared-compatibility).
 

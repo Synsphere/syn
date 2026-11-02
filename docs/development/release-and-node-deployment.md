@@ -9,7 +9,8 @@ vendored implementation or development submodule is not a production release.
 The [architecture](../architecture.md) defines the private per-Agent mesh and
 per-Type consensus requirements. Installation does not weaken those contracts.
 The 1 November audit found no releases. The subsequent [v0.1.0 release](releases/v0.1.0.md)
-is now published with signed, immutable assets and declares only `service` mode.
+is published with signed, immutable assets and declares only `service` mode.
+The subsequent [0.2.0 release](releases/v0.2.0.md) adds the native operator contract.
 Package publication does not establish installed operator or Agent qualification.
 
 ## Ownership and topology
@@ -48,7 +49,7 @@ separately in the release record.*
 
 | Gate | Required result before production acceptance |
 | --- | --- |
-| **SYN-R01: upstream contract** | Foundation implemented: [official package set, canonical manifest/signature verification, compatibility descriptor and candidate-build checks](release-contracts.md). Linux application and Linux/Windows client are the declared matrix; current mode is `service` only. [v0.1.0](releases/v0.1.0.md) now supplies protected signing and immutable publication; this does not admit an installed node. Signer roots stay independent of downloaded metadata. |
+| **SYN-R01: upstream contract** | Foundation implemented: [official package set, canonical manifest/signature verification, compatibility descriptor and candidate-build checks](release-contracts.md). [v0.1.0](releases/v0.1.0.md) established protected signing and immutable service-only publication; [v0.2.0](releases/v0.2.0.md) adds operator mode and the native Linux/macOS matrix. Publication does not admit an installed node. Signer roots stay independent of downloaded metadata. |
 | **SYN-R02: release installation** | Potbot owns the [verified package installer and official-release acceptance lane](release-installation.md): independently pinned signature/payload checks, private cache, permanent environments with atomic admission, installed-code compatibility and retained provenance. Actual official-package online/fresh network-disabled offline acceptance passed on Python 3.12/3.13; the [dated execution record](release-installation.md#executed-package-acceptance-2-november-2026) identifies the exact consumer, workflow and release pins. Full consumer CI and host gates remain distinct. Operator and Agent modes remain unavailable. |
 | **SYN-R03: operator node** | [Native operator candidate](operator-node.md): protected HD custody and append-only allocation, exclusive enrollment permission, fresh signed attach and retained restart state. Potbot supervises the official process in managed WSL2 on Windows or the native Linux/macOS OS. Candidate CI, official publication and installed-host qualification remain separate evidence gates. |
 | **SYN-R04: Agent nodes** | Provision a distinct account and Syn instance inside each Agent sandbox; qualify the hardware/keystore and selected-key adoption requirements on the actual host. Preserve base-key secrecy, unique allocation and group-epoch separation. |
