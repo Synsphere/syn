@@ -17,3 +17,5 @@ __pycache__/
 # Local test scratch is never source or release evidence.
 .pytest_cache/
 .test-tmp/
+tests/reference/hd/node_modules/
+artifacts/operator/

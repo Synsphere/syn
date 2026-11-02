@@ -1,0 +1,8 @@
+{
+  "name": "syn-hd-independent-reference",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@emurgo/cardano-serialization-lib-nodejs": "15.0.3"
+  }
+}

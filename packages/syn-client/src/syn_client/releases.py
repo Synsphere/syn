@@ -25,7 +25,7 @@ _VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(
 _HASH = re.compile(r"[0-9a-f]{64}\Z")
 _COMMIT = re.compile(r"[0-9a-f]{40}\Z")
 _TOKEN = re.compile(r"[a-z][a-z0-9._/-]{0,127}\Z")
-_PLATFORMS = frozenset({"linux-x86_64", "windows-x86_64"})
+_PLATFORMS = frozenset({"darwin-arm64", "darwin-x86_64", "linux-x86_64", "windows-x86_64"})
 _PYTHONS = frozenset({"3.12", "3.13"})
 _MODES = frozenset({"service", "operator", "agent"})
 

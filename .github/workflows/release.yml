@@ -57,8 +57,15 @@ jobs:
     permissions:
       contents: read
 
+  operator:
+    needs: source-gate
+    if: inputs.operation == 'stage'
+    uses: ./.github/workflows/operator.yml
+    permissions:
+      contents: read
+
   stage:
-    needs: [source-gate, verification, portability]
+    needs: [source-gate, verification, portability, operator]
     if: inputs.operation == 'stage'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
