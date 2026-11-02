@@ -7,7 +7,7 @@ Only public receipts are retained. No mock keyring or HD provider is accepted.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import hashlib
 import json
 import os
@@ -97,6 +97,28 @@ def private_linux_unlock_fixture(password, environment, *, expect_refusal=False)
         os.close(master)
 
 
+def bounded_secret_service_connections():
+    """Real native reads/writes must fit the Agent's unchanged descriptor limit."""
+    code = """
+import gc, json, resource
+from pathlib import Path
+from syn.operator.custody import _NoninteractiveSecretService
+gc.disable()
+resource.setrlimit(resource.RLIMIT_NOFILE, (128, 128))
+before = len(list(Path('/proc/self/fd').iterdir()))
+backend = _NoninteractiveSecretService()
+for index in range(200):
+    assert backend.get_password('syn.fixture.connections', 'absent') is None
+    backend.set_password('syn.fixture.connections', 'present', 'disposable-fixture')
+    assert backend.get_password('syn.fixture.connections', 'present') == 'disposable-fixture'
+after = len(list(Path('/proc/self/fd').iterdir()))
+assert after <= before + 2, 'Native credential operations leaked owned descriptors'
+print(json.dumps({'operations': 600, 'before_fds': before, 'after_fds': after, 'limit': 128}))
+"""
+    receipt = json.loads(checked([sys.executable, "-I", "-B", "-c", code], timeout=60))
+    print("Native credential descriptor lifetime passed: " + json.dumps(receipt, sort_keys=True), flush=True)
+
+
 @contextmanager
 def native_fixture(directory: Path):
     """Actual encrypted native store with a random, ephemeral test password."""
@@ -149,17 +171,19 @@ def native_fixture(directory: Path):
         assert (data / "keyrings").is_dir(), "Native fixture did not use its isolated data directory"
         def lock():
             import secretstorage
-            connection = secretstorage.dbus_init()
-            secretstorage.Collection(connection).lock()
+            with closing(secretstorage.dbus_init()) as connection:
+                secretstorage.Collection(connection).lock()
         lock()
         refused = private_linux_unlock_fixture(secrets.token_urlsafe(32), environment, expect_refusal=True)
         assert refused["password_prompt"] and refused["refused"]
         import secretstorage
-        assert secretstorage.Collection(secretstorage.dbus_init()).is_locked()
+        with closing(secretstorage.dbus_init()) as connection:
+            assert secretstorage.Collection(connection).is_locked()
         repeat_unlock = private_linux_unlock_fixture(password, environment)
         assert repeat_unlock["password_prompt"] and not repeat_unlock["new_password_confirmed"]
         _native_backend().get_password("syn.fixture.probe", "absent")
         print("Native private-terminal creation, no-echo, wrong-password refusal and repeated unlock passed", flush=True)
+        bounded_secret_service_connections()
         yield lock
     finally:
         if daemon.poll() is None:

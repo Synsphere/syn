@@ -5,6 +5,7 @@ collection or prompt implicitly; only this human-invoked command may do so.
 """
 from __future__ import annotations
 
+from contextlib import closing
 import getpass
 import io
 import os
@@ -101,13 +102,13 @@ def unlock():
             if not (control / "control").exists():
                 raise SynProtocolError("Start the installed native keyring user service first")
             import secretstorage
-            connection = secretstorage.dbus_init()
-            try:
-                secretstorage.Collection(connection)
-            except secretstorage.exceptions.ItemNotFoundException:
-                fresh = True
-            else:
-                fresh = False
+            with closing(secretstorage.dbus_init()) as connection:
+                try:
+                    secretstorage.Collection(connection)
+                except secretstorage.exceptions.ItemNotFoundException:
+                    fresh = True
+                else:
+                    fresh = False
             password = _password("Native keystore password (private, no echo): ", terminal)
             if fresh and password != _password("Confirm new native keystore password: ", terminal):
                 raise SynProtocolError("Native keystore confirmation differed")
