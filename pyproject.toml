@@ -1,6 +1,6 @@
 [project]
 name = "syn"
-version = "0.2.0"
+version = "0.2.1"
 description = "SQLAlchemy models for the Syn object-reference database"
 readme = "README.md"
 authors = [
@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "syn-client[governance]==0.2.0",
+    "syn-client[governance]==0.2.1",
     "keyring==25.7.0",
     "pycardano==0.19.2",
     "cbor2==5.8.0",

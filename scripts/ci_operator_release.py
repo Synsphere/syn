@@ -22,7 +22,7 @@ def main():
     root = Path(__file__).resolve().parents[1]
     base = Path(tempfile.mkdtemp(prefix="syn-official-", dir=Path("/tmp").resolve())).resolve()
     policy_value = json.loads((root / "release/install-policies/v0.1.0-service.json").read_text())
-    policy_value.update(version="0.2.0", minimum_version="0.2.0",
+    policy_value.update(version=os.environ["R03_VERSION"], minimum_version=os.environ["R03_VERSION"],
                         source_commit=os.environ["R03_RELEASE_SOURCE"], manifest_sha256=os.environ["R03_MANIFEST"],
                         mode="operator", python_version=os.environ["R03_PYTHON"],
                         required_profiles=["syn.operator-local/1"],

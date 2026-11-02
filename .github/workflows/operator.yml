@@ -47,7 +47,7 @@ jobs:
         run: brew list gmp >/dev/null || brew install gmp
       - run: uv sync --locked --dev
       - name: Synthetic fault and native socket regressions
-        run: uv run --locked python -m pytest -q tests/test_operator.py --junitxml=artifacts/operator/unit.xml
+        run: uv run --locked python -m pytest -q tests/test_operator.py tests/test_operator_terminal.py --junitxml=artifacts/operator/unit.xml
       - name: Install exact independent Rust/WASM test reference
         working-directory: tests/reference/hd
         run: npm ci --ignore-scripts --no-audit --no-fund
