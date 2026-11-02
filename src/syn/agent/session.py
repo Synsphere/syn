@@ -6,6 +6,7 @@ prompt. This is not a socket, a Cog endpoint or an Agent messaging transport.
 """
 from __future__ import annotations
 
+from contextlib import closing
 import argparse
 import errno
 import os
@@ -165,7 +166,8 @@ def _run_locked(args, observed):
                     if payload is not None:
                         raise SynProtocolError("Private keystore lock takes no caller-controlled parameters")
                     import secretstorage
-                    secretstorage.Collection(secretstorage.dbus_init()).lock()
+                    with closing(secretstorage.dbus_init()) as connection:
+                        secretstorage.Collection(connection).lock()
                     value = {"profile": "syn.agent-keystore-locked/1", "locked": True}
                 elif op in {"serve", "restart"}:
                     if op == "restart" and child is None:

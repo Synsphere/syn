@@ -218,10 +218,11 @@ def test_missing_native_collection_is_a_read_only_refusal(monkeypatch):
     def forbidden(*args):
         raise AssertionError("Implicit collection creation or prompt")
     monkeypatch.setitem(sys.modules, "secretstorage", SimpleNamespace(
-        dbus_init=lambda: object(), Collection=absent, get_default_collection=forbidden))
+        dbus_init=lambda: SimpleNamespace(close=lambda: calls.append("close")),
+        Collection=absent, get_default_collection=forbidden))
     with pytest.raises(OSError, match="no native collection"):
         custody._NoninteractiveSecretService().get_password("test", "absent")
-    assert calls == ["read"]
+    assert calls == ["read", "close"]
 
 
 def pledge_fixture(signed_pulse, hardware=b"fixture-device-id"):

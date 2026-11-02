@@ -13,7 +13,7 @@ import re
 import stat
 import sys
 import time
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 
 from syn_client.operator_protocol import SynProtocolError
 
@@ -92,35 +92,38 @@ def _native_backend() -> object:
 class _NoninteractiveSecretService:
     """Native API without keyring's implicit unlock/create-collection prompts."""
     @staticmethod
+    @contextmanager
     def _collection():
         import secretstorage
-        connection = secretstorage.dbus_init()
-        # get_default_collection() CREATES a missing collection and prompts.
-        # Collection() is read-only and raises when no default exists.
-        collection = secretstorage.Collection(connection)
-        if collection.is_locked():
-            raise SynProtocolError("Native Secret Service collection is locked")
-        return collection
+        # SecretStorage connections own a socket and selector; neither is
+        # automatically closed. Bound their lifetime even when custody fails.
+        with closing(secretstorage.dbus_init()) as connection:
+            # get_default_collection() CREATES a missing collection and prompts.
+            # Collection() is read-only and raises when no default exists.
+            collection = secretstorage.Collection(connection)
+            if collection.is_locked():
+                raise SynProtocolError("Native Secret Service collection is locked")
+            yield collection
 
     def get_password(self, service: str, account: str) -> str | None:
-        collection = self._collection()
-        matches = list(collection.search_items({"service": service, "username": account}))
-        if len(matches) > 1:
-            raise SynProtocolError("Native credential account has ambiguous duplicate entries")
-        if not matches:
-            return None
-        if matches[0].is_locked():
-            raise SynProtocolError("Native credential entry is locked")
-        return matches[0].get_secret().decode("utf-8")
+        with self._collection() as collection:
+            matches = list(collection.search_items({"service": service, "username": account}))
+            if len(matches) > 1:
+                raise SynProtocolError("Native credential account has ambiguous duplicate entries")
+            if not matches:
+                return None
+            if matches[0].is_locked():
+                raise SynProtocolError("Native credential entry is locked")
+            return matches[0].get_secret().decode("utf-8")
 
     def set_password(self, service: str, account: str, value: str) -> None:
-        collection = self._collection()
-        matches = list(collection.search_items({"service": service, "username": account}))
-        if len(matches) > 1:
-            raise SynProtocolError("Native credential account has ambiguous duplicate entries")
-        collection.create_item("Syn operator " + service + "/" + account,
-                               {"service": service, "username": account}, value.encode("utf-8"),
-                               replace=True, content_type="text/plain; charset=utf-8")
+        with self._collection() as collection:
+            matches = list(collection.search_items({"service": service, "username": account}))
+            if len(matches) > 1:
+                raise SynProtocolError("Native credential account has ambiguous duplicate entries")
+            collection.create_item("Syn operator " + service + "/" + account,
+                                   {"service": service, "username": account}, value.encode("utf-8"),
+                                   replace=True, content_type="text/plain; charset=utf-8")
 
 
 def _entry(service: str, account: str) -> None:
