@@ -230,7 +230,9 @@ def apply_rollover(config_path, payload):
         if retained:
             load_group(config, node)
         legacy_slot = account + ".agent.group-key.v1"
-        if backend.get_password(service, legacy_slot) is not None:
-            backend.delete_password(service, legacy_slot)
+        if backend.get_password(service, legacy_slot) != "retired":
+            backend.set_password(service, legacy_slot, "retired")
+            if backend.get_password(service, legacy_slot) != "retired":
+                raise SynProtocolError("Legacy group key retirement readback failed")
         return {"profile": PROFILE, "node": node, "group_id": config["group_id"], "group_epoch": policy["epoch"],
                 "retained": retained, "transition_sha256": _digest(canonical(transition))}
