@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--local-disposable-fixture", action="store_true")
     parser.add_argument("--consumer-dir", type=Path)
     parser.add_argument("--lan-enrollment", action="store_true")
+    parser.add_argument("--group-rollover", action="store_true")
     args = parser.parse_args()
     if sys.platform != "linux" or os.getuid() != 0:
         raise SystemExit("Official native Agent qualification requires disposable Linux root")
@@ -44,6 +45,9 @@ def main():
     if args.lan_enrollment:
         value["required_profiles"].append("syn.lan-enrollment-request/1")
         value["required_capabilities"].append("authenticated-lan-enrollment")
+    if args.group_rollover:
+        value["required_profiles"].append("syn.agent-group-rollover/1")
+        value["required_capabilities"].append("group-member-revocation")
     value["required_profiles"].sort()
     value["required_capabilities"].sort()
     policy = Policy.parse(canonical(value))
@@ -80,6 +84,8 @@ def main():
         "--official-store", str(store.root), "--official-policy", str(policy_path)]
     if args.lan_enrollment:
         argv = ["/usr/bin/unshare", "--net", "--", *argv, "--lan-enrollment"]
+    if args.group_rollover:
+        argv.append("--group-rollover")
     if args.local_disposable_fixture:
         argv.append("--local-disposable-fixture")
     environment = {name: item for name, item in os.environ.items() if name not in {"PYTHONPATH", "PYTHONHOME", "POTBOT_SYN_GITHUB_TOKEN"}}
