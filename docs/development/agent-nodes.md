@@ -119,12 +119,45 @@ to use its existing header and ciphertext format.
 
 Validation returns the offer digest with `pending_persisted=false` and
 `agent_activation_authorized=false`. It leaves the operator allocation and
-adoption journals untouched. UDP discovery, authenticated TCP transport,
-bounded durable pending intake and replay handling are separate increments.
+adoption journals untouched.
+
+### Persist a pending pledge
+
+Initialize the inbox explicitly after `adoption-init`. Run these commands
+under the operator's native account with enrollment maintenance quiesced.
+
+```sh
+syn-operator lan-inbox-init --config /operator/operator.json
+syn-operator lan-intake --config /operator/operator.json --request submission.json \
+  --host 192.168.1.7 --port 45121
+syn-operator lan-pending --config /operator/operator.json
+```
+
+Intake validates the route and pledge before recording the encrypted
+submission. The existing native state protocol seals the transition in the
+operator keystore and then replaces the private inbox file atomically. An
+exact retry of a live entry returns the same pending receipt. A different
+pledge from the same device, or a device with an existing allocation, is
+refused. Separate Agents may submit under the same advertisement.
+
+The pending list exposes only offer digests and expiry times. An operator
+can retrieve a selected encrypted submission with `lan-pending-read
+--config /operator/operator.json --offer-sha256 DIGEST`. When the inbox
+observes expiry, it drops the retained ciphertext and preserves the offer
+digest and keyed device commitment as replay records. Expiry and later
+admissions are protected by a retained clock checkpoint. The inbox is
+bounded to eight pending entries, 128 replay records and the existing
+48,000-byte anchored journal limit. Capacity exhaustion requires explicit
+reconciliation.
+
+A pending receipt carries no authority to select a leaf or activate an Agent.
+UDP discovery, authenticated TCP transport and the bridge from a pending
+record into explicit operator reservation remain separate increments.
 The signed LAN retirement gate still requires official-package acceptance
 with two disposable Agents. The source test exercises the real cryptographic
-path and CLI with fixture custody. This headless check uses a diagram and
-canonical command outputs. Private terminal or keystore footage is excluded.
+path and CLI with fixture custody, including restart, expiry and stale-state
+refusal. This headless check uses a diagram and canonical command outputs.
+Private terminal or keystore footage is excluded.
 
 ## Group membership is a separate authority
 

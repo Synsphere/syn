@@ -186,6 +186,94 @@ def test_signed_lan_pledge_cli_checks_route_without_admitting_agent(scenario, ca
     assert (authority.read_bytes(), adoptions.read_bytes()) == original
 
 
+def test_lan_pending_inbox_recovers_and_fences_replays(scenario, monkeypatch, capsysbinary):
+    import json
+    import time
+
+    from syn.agent import lan_enrollment
+    from syn.operator import lan_inbox
+    from syn.operator.__main__ import main as operator_cli
+
+    operator_config = scenario["operator"]
+    route = {"host": "192.168.1.7", "port": 45121}
+    advertisement = lan_enrollment.advertise(operator_config, **route)
+    expires_at = advertisement["advertisement"]["pulse"]["body"]["signed_pulse"]["pulse"]["expires_at"]
+    operator = operator_service.OperatorServer(operator_config)
+    inbox = lan_inbox.LanInbox(operator)
+
+    def agent_offer(name, selected=advertisement):
+        directory = scenario["root"] / name
+        directory.mkdir(mode=0o700)
+        device.initialize(directory, service="syn.fixture.agent", account=name,
+            expected_operator=scenario["config"]["expected_operator"], network_id="fixture", group_id=GROUP_ID,
+            group_epoch=1, approved_profile=device.PROFILE)
+        config, _ = device.load_config(directory / "agent.json")
+        return lan_enrollment.submit_offer(config, directory, selected, **route), device.device_id(config)
+
+    packet, device_id = agent_offer("first-lan")
+    with pytest.raises(SynProtocolError, match="anchor is absent"):
+        lan_inbox.intake(operator_config, packet, **route)
+    assert operator_cli(["lan-inbox-init", "--config", str(operator_config)]) == 0
+    assert json.loads(capsysbinary.readouterr().out)["initialized"] is True
+    empty = inbox.path.read_bytes()
+    with monkeypatch.context() as fault:
+        def interrupted(*_):
+            raise OSError("interrupted after anchoring the pending transition")
+        fault.setattr(lan_inbox.LanInbox, "_replace", interrupted)
+        with pytest.raises(OSError, match="interrupted"):
+            lan_inbox.intake(operator_config, packet, **route)
+    assert inbox.path.read_bytes() == empty
+    receipt = lan_inbox.intake(operator_config, packet, **route)
+    assert receipt["pending_persisted"] is True and receipt["agent_activation_authorized"] is False
+    request = operator_config.parent / "pending-request.json"
+    request.write_bytes(canonical(packet))
+    request.chmod(0o600)
+    assert operator_cli(["lan-intake", "--config", str(operator_config), "--request", str(request),
+        "--host", route["host"], "--port", str(route["port"])]) == 0
+    assert json.loads(capsysbinary.readouterr().out) == receipt
+    digest = receipt["pledge_offer_sha256"]
+    assert operator_cli(["lan-pending-read", "--config", str(operator_config), "--offer-sha256", digest]) == 0
+    assert capsysbinary.readouterr().out == canonical(packet)
+    assert lan_inbox.pending(operator_config)["pending"] == [
+        {"pledge_offer_sha256": digest, "expires_at": expires_at}
+    ]
+    assert device_id.hex().encode() not in inbox.path.read_bytes()
+    with monkeypatch.context() as cloned:
+        cloned.setattr(enrollment, "device_id", lambda _: device_id)
+        replay, _ = agent_offer("rotated-lan")
+        with pytest.raises(SynProtocolError, match="already has a protected record"):
+            lan_inbox.intake(operator_config, replay, **route)
+
+    # A second independent Agent may answer the same signed advertisement.
+    second, _ = agent_offer("second-lan")
+    assert lan_inbox.intake(operator_config, second, **route)["pledge_offer_sha256"] != digest
+    retained = inbox.path.read_bytes()
+    inbox.path.write_bytes(empty)
+    try:
+        with pytest.raises(SynProtocolError, match="altered or rolled back"):
+            lan_inbox.pending(operator_config)
+    finally:
+        inbox.path.write_bytes(retained)
+
+    with monkeypatch.context() as expired:
+        expired.setattr(time, "time", lambda: expires_at + 1)
+        assert lan_inbox.pending(operator_config)["pending"] == []
+        with pytest.raises(SynProtocolError, match="No unexpired"):
+            lan_inbox.pending(operator_config, offer=digest)
+        rows = inbox.read()["records"]
+        assert len(rows) == 2 and all(row["packet"] is None for row in rows)
+        assert packet["offer"]["ciphertext"].encode() not in inbox.path.read_bytes()
+        fresh = lan_enrollment.advertise(operator_config, **route)
+        expired.setattr(enrollment, "device_id", lambda _: device_id)
+        replay, _ = agent_offer("after-expiry-lan", fresh)
+        with pytest.raises(SynProtocolError, match="already has a protected record"):
+            lan_inbox.intake(operator_config, replay, **route)
+    with monkeypatch.context() as backwards:
+        backwards.setattr(time, "time", lambda: expires_at)
+        with pytest.raises(SynProtocolError, match="clock moved backwards"):
+            lan_inbox.intake(operator_config, packet, **route)
+
+
 def test_hardware_stays_encrypted_and_temporary_hash_is_not_inheritance(scenario):
     hardware = device.device_id(scenario["config"])
     assert hardware.hex().encode() not in canonical(scenario["offer"])

@@ -58,36 +58,42 @@ def submit_offer(config, directory, advertisement, *, host, port):
 
 
 def validate_submission(config_path, value, *, host, port):
-    submission = exact(value, {"profile", "route", "offer"}, "LAN pledge submission")
-    if submission["profile"] != SUBMISSION_PROFILE:
-        raise SynProtocolError("Unknown LAN pledge submission profile")
     server = OperatorServer(config_path)
     with _agent_key_lock(
         server.directory, server.signer.service, server.signer.account + ".operator"
     ):
-        now = int(time.time())
-        advertisement = submission["route"]
-        route = verify_advertisement(
-            advertisement,
-            expected_operator=server.expected_hash,
-            network_id=server.config["network_id"],
-            host=host,
-            port=port,
-            now=now,
-        )
-        offer = exact(submission["offer"], {"pulse", "header", "ciphertext"}, "LAN pledge offer")
-        if canonical(offer["pulse"]) != canonical(route["pulse"]):
-            raise SynProtocolError("LAN pledge substitutes the advertised pulse")
-        server.state.read()
-        EnrollmentJournal(
-            server.directory, server.signer.service, server.signer.account, server.expected_hash
-        ).read()
-        _, pledge = open_offer(server, offer, now=now, advertisement_sha256=_digest(advertisement))
+        _, pledge, _ = _checked_submission(server, value, host=host, port=port, now=int(time.time()))
         return {
             "profile": "syn.lan-pledge-validation/1",
-            "pledge_offer_sha256": hashlib.sha256(
-                OFFER_DOMAIN + canonical(pledge["offer"])
-            ).hexdigest(),
+            "pledge_offer_sha256": offer_digest(pledge),
             "pending_persisted": False,
             "agent_activation_authorized": False,
         }
+
+
+def offer_digest(pledge):
+    return hashlib.sha256(OFFER_DOMAIN + canonical(pledge["offer"])).hexdigest()
+
+
+def _checked_submission(server, value, *, host, port, now):
+    submission = exact(value, {"profile", "route", "offer"}, "LAN pledge submission")
+    if submission["profile"] != SUBMISSION_PROFILE:
+        raise SynProtocolError("Unknown LAN pledge submission profile")
+    advertisement = submission["route"]
+    route = verify_advertisement(
+        advertisement,
+        expected_operator=server.expected_hash,
+        network_id=server.config["network_id"],
+        host=host,
+        port=port,
+        now=now,
+    )
+    offer = exact(submission["offer"], {"pulse", "header", "ciphertext"}, "LAN pledge offer")
+    if canonical(offer["pulse"]) != canonical(route["pulse"]):
+        raise SynProtocolError("LAN pledge substitutes the advertised pulse")
+    authority = server.state.read()
+    EnrollmentJournal(
+        server.directory, server.signer.service, server.signer.account, server.expected_hash
+    ).read()
+    pulse, pledge = open_offer(server, offer, now=now, advertisement_sha256=_digest(advertisement))
+    return pulse, pledge, authority
