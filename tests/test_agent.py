@@ -201,14 +201,14 @@ def test_lan_pending_inbox_recovers_and_fences_replays(scenario, monkeypatch, ca
     operator = operator_service.OperatorServer(operator_config)
     inbox = lan_inbox.LanInbox(operator)
 
-    def agent_offer(name):
+    def agent_offer(name, selected=advertisement):
         directory = scenario["root"] / name
         directory.mkdir(mode=0o700)
         device.initialize(directory, service="syn.fixture.agent", account=name,
             expected_operator=scenario["config"]["expected_operator"], network_id="fixture", group_id=GROUP_ID,
             group_epoch=1, approved_profile=device.PROFILE)
         config, _ = device.load_config(directory / "agent.json")
-        return lan_enrollment.submit_offer(config, directory, advertisement, **route), device.device_id(config)
+        return lan_enrollment.submit_offer(config, directory, selected, **route), device.device_id(config)
 
     packet, device_id = agent_offer("first-lan")
     with pytest.raises(SynProtocolError, match="anchor is absent"):
@@ -225,9 +225,15 @@ def test_lan_pending_inbox_recovers_and_fences_replays(scenario, monkeypatch, ca
     assert inbox.path.read_bytes() == empty
     receipt = lan_inbox.intake(operator_config, packet, **route)
     assert receipt["pending_persisted"] is True and receipt["agent_activation_authorized"] is False
-    assert lan_inbox.intake(operator_config, packet, **route) == receipt
+    request = operator_config.parent / "pending-request.json"
+    request.write_bytes(canonical(packet))
+    request.chmod(0o600)
+    assert operator_cli(["lan-intake", "--config", str(operator_config), "--request", str(request),
+        "--host", route["host"], "--port", str(route["port"])]) == 0
+    assert json.loads(capsysbinary.readouterr().out) == receipt
     digest = receipt["pledge_offer_sha256"]
-    assert lan_inbox.pending(operator_config, offer=digest) == packet
+    assert operator_cli(["lan-pending-read", "--config", str(operator_config), "--offer-sha256", digest]) == 0
+    assert capsysbinary.readouterr().out == canonical(packet)
     assert lan_inbox.pending(operator_config)["pending"] == [
         {"pledge_offer_sha256": digest, "expires_at": expires_at}
     ]
@@ -257,6 +263,11 @@ def test_lan_pending_inbox_recovers_and_fences_replays(scenario, monkeypatch, ca
         rows = inbox.read()["records"]
         assert len(rows) == 2 and all(row["packet"] is None for row in rows)
         assert packet["offer"]["ciphertext"].encode() not in inbox.path.read_bytes()
+        fresh = lan_enrollment.advertise(operator_config, **route)
+        expired.setattr(enrollment, "device_id", lambda _: device_id)
+        replay, _ = agent_offer("after-expiry-lan", fresh)
+        with pytest.raises(SynProtocolError, match="already has a protected record"):
+            lan_inbox.intake(operator_config, replay, **route)
     with monkeypatch.context() as backwards:
         backwards.setattr(time, "time", lambda: expires_at)
         with pytest.raises(SynProtocolError, match="clock moved backwards"):
