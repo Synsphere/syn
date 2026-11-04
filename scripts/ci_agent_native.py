@@ -38,7 +38,10 @@ parser.add_argument('--consumer-python',type=Path)
 parser.add_argument('--local-disposable-fixture',action='store_true')
 parser.add_argument('--lan-enrollment',action='store_true')
 parser.add_argument('--group-rollover',action='store_true')
+parser.add_argument('--monitored-worker',action='store_true')
 ARGS=parser.parse_args()
+if ARGS.monitored_worker and not ARGS.official_policy:
+    parser.error('Monitored worker authorization requires the official release policy')
 if os.getuid()!=0 or sys.platform!='linux':
     raise SystemExit('Actual restricted native Agent qualification requires disposable Linux root')
 if os.environ.get('GITHUB_ACTIONS')!='true' and not ARGS.local_disposable_fixture:
@@ -314,7 +317,16 @@ def main():
             if 'authenticated-private-pubsub' in runtimeContract().capabilities:
                 if ARGS.official_policy:
                     from ci_potbot_private_mesh import qualify
-                    private_pubsub = qualify(nodes, base, root=ROOT, store=store, policy=policy)
+                    worker_probe = None
+                    if ARGS.monitored_worker:
+                        # The consumer checkout and its clean commit were verified above.
+                        sys.path.insert(0, str(POTBOT))
+                        from scripts.qualify_released_syn_workers import qualify_monitored_workers
+                        worker_probe = qualify_monitored_workers
+                    private_pubsub = qualify(
+                        nodes, base, root=ROOT, store=store, policy=policy,
+                        monitored_worker_probe=worker_probe,
+                    )
                 else:
                     from ci_potbot_private_mesh import qualify
                     private_pubsub = qualify(nodes, base, root=ROOT, source_runtime=RUNTIME,
@@ -383,7 +395,8 @@ def main():
             wheelroot=ARGS.source_wheels
             receipt={'profile':('syn.agent-official-native-acceptance/1' if ARGS.official_policy else 'syn.agent-source-native-acceptance/1'),'result':'passed',
                 'qualification':('official_released_native_software_custody_and_two_real_sandboxed_agents' if ARGS.official_policy else 'source_wheels_disposable_native_software_custody_and_two_real_sandboxed_agents'),
-                'official_release_qualified':ARGS.official_policy is not None,'hardware_attested':False,'cog_execution_authorized':False,
+                'official_release_qualified':ARGS.official_policy is not None,'hardware_attested':False,
+                'cog_execution_authorized':bool(private_pubsub and private_pubsub['cog_process_dispatched']),
                 'operator':operator_proof,'exclusive_operator_maintenance_fenced':True,
                 'consumer_sha':ARGS.consumer_sha,'runtime':runtimeContract().to_dict(), 'wheels':({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in wheelroot.glob('*.whl')} if wheelroot else {}),
                 'official_release_pins':({'source_commit':policy.value['source_commit'],'manifest_sha256':policy.manifest_sha256} if ARGS.official_policy else None),
