@@ -405,7 +405,7 @@ def test_lan_pending_inbox_recovers_and_fences_replays(scenario, monkeypatch, ca
     advertisement = lan_enrollment.advertise(operator_config, **route)
     expires_at = advertisement["advertisement"]["pulse"]["body"]["signed_pulse"]["pulse"]["expires_at"]
     operator = operator_service.OperatorServer(operator_config)
-    inbox = lan_inbox.LanInbox(operator)
+    inbox = lan_inbox.LanInbox(operator.directory, operator.signer.service, operator.signer.account, operator.expected_hash)
 
     def agent_offer(name, selected=advertisement):
         directory = scenario["root"] / name

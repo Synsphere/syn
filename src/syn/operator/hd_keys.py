@@ -167,11 +167,16 @@ def _install_operator_entropy(
             bytes.fromhex(str(public["base_public_key_hash"])), expected_base_hash
         ):
             raise SynProtocolError("SYN recovery does not match the independently pinned identity")
-        for name in SLOTS:
-            if name != "manifest":
-                _write(backend, service, account, name, values[name].hex())
-        _write(backend, service, account, "manifest", _manifest(public))
+        _write_identity(backend, service, account, values, public)
         return public
+
+
+def _write_identity(backend, service, account, values, public):
+    """Write an already checked identity to an empty store under its authority lock."""
+    for name in SLOTS:
+        if name != "manifest":
+            _write(backend, service, account, name, values[name].hex())
+    _write(backend, service, account, "manifest", _manifest(public))
 
 
 def create_operator_identity(*, service: str, account: str, lock_dir: Path) -> dict[str, object]:

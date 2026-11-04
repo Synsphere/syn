@@ -22,12 +22,10 @@ MAX_PACKET_BYTES = 16_384
 
 
 class LanInbox(OperatorState):
-    def __init__(self, server):
-        super().__init__(
-            server.directory, server.signer.service, server.signer.account, server.expected_hash
-        )
-        self.path = server.directory / "lan-pledges.json"
-        self.slot = server.signer.account + ".operator.lan-inbox.v1"
+    def __init__(self, directory, service, account, base_hash):
+        super().__init__(directory, service, account, base_hash)
+        self.path = directory / "lan-pledges.json"
+        self.slot = account + ".operator.lan-inbox.v1"
 
     def create(self):
         self._create(
@@ -123,7 +121,8 @@ def _locked(config_path):
     with _agent_key_lock(
         server.directory, server.signer.service, server.signer.account + ".operator"
     ):
-        yield server, LanInbox(server)
+        inbox = LanInbox(server.directory, server.signer.service, server.signer.account, server.expected_hash)
+        yield server, inbox
 
 
 def initialize(config_path):
