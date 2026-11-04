@@ -11,11 +11,11 @@ import secrets
 import time
 
 from syn_client.custody import verify_ed25519
+from syn_client.lan_enrollment import OPERATOR_PULSE_DOMAIN as PULSE_DOMAIN
 from syn_client.operator_protocol import SynProtocolError, canonical, exact, hex_bytes
 from .custody import _agent_key_lock
 from .service import OperatorServer
 
-PULSE_DOMAIN = b"syn.operator.pulse.v1\0"
 OFFER_DOMAIN = b"syn.agent.pledge.offer.v2\0"
 CANDIDATE_DOMAIN = b"syn.agent.candidates.v2\0"
 
@@ -24,12 +24,15 @@ def pulse(config_path):
     server = OperatorServer(config_path)
     with _agent_key_lock(server.directory, server.signer.service, server.signer.account + ".operator"):
         server.state.read(recover=True)
-        now = int(time.time())
-        body = {"schema_version": 1, "type_ref": "synny://type/syn-operator-pulse-v1",
-                "network_id": server.config["network_id"], "master_public_key_hash": server.expected_hash,
-                "challenge": secrets.token_hex(32), "issued_at": now, "expires_at": now + 120}
-        return {"pulse": body, "operator_public_key": server.signer.public_key.hex(),
-                "signature": server.signer.sign(PULSE_DOMAIN + canonical(body)).hex()}
+        return _signed_pulse(server, now=int(time.time()))
+
+
+def _signed_pulse(server, *, now):
+    body = {"schema_version": 1, "type_ref": "synny://type/syn-operator-pulse-v1",
+            "network_id": server.config["network_id"], "master_public_key_hash": server.expected_hash,
+            "challenge": secrets.token_hex(32), "issued_at": now, "expires_at": now + 120}
+    return {"pulse": body, "operator_public_key": server.signer.public_key.hex(),
+            "signature": server.signer.sign(PULSE_DOMAIN + canonical(body)).hex()}
 
 
 def _verified_offer(server, signed_pulse, signed_offer, now):

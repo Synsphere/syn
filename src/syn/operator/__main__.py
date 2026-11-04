@@ -31,6 +31,13 @@ def main(argv=None) -> int:
         sub.add_argument("--config", type=Path, required=True)
         if name not in {"adoption-init", "agent-pulse"}:
             sub.add_argument("--request", type=Path, required=True)
+    for name in ("lan-advertise", "lan-validate"):
+        sub = commands.add_parser(name)
+        sub.add_argument("--config", type=Path, required=True)
+        sub.add_argument("--host", required=True)
+        sub.add_argument("--port", type=int, required=True)
+        if name == "lan-validate":
+            sub.add_argument("--request", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.operation == "unlock":
@@ -44,6 +51,17 @@ def main(argv=None) -> int:
             from syn_client.operator_protocol import parse
             payload = parse(private_read(args.request)) if hasattr(args, "request") else None
             value = operate(args.config, args.operation, payload)
+        elif args.operation == "lan-advertise":
+            from syn.agent.lan_enrollment import advertise
+            from syn_client.operator_protocol import canonical
+            value = advertise(args.config, host=args.host, port=args.port)
+            sys.stdout.buffer.write(canonical(value))
+            return 0
+        elif args.operation == "lan-validate":
+            from syn.agent.lan_enrollment import validate_submission
+            from .custody import private_read
+            from syn_client.operator_protocol import parse
+            value = validate_submission(args.config, parse(private_read(args.request)), host=args.host, port=args.port)
         elif args.operation == "init":
             value = initialize(args.state_dir, service=args.keyring_service, account=args.keyring_account, network_id=args.network_id)
         elif args.operation in ("enrollment-pulse", "reserve"):
