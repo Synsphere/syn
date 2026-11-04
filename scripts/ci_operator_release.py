@@ -27,6 +27,11 @@ def main():
                         mode="operator", python_version=os.environ["R03_PYTHON"],
                         required_profiles=["syn.operator-local/1"],
                         required_capabilities=["authenticated-operator-ipc", "native-os-operator-custody", "retained-operator-identity"])
+    verify_recovery = os.environ.get("R03_VERIFY_RECOVERY") == "true"
+    if verify_recovery:
+        policy_value["required_profiles"].append("syn.operator-recovery/1")
+        policy_value["required_capabilities"].append("native-operator-recovery")
+        policy_value["required_capabilities"].sort()
     policy = Policy.parse(canonical(policy_value))
     policy_path = base / "policy.json"
     policy_path.write_bytes(canonical(policy_value))
@@ -52,7 +57,8 @@ def main():
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / "official-installation.json").write_bytes(canonical({
         "consumer_sha": os.environ["R03_POTBOT_SHA"], "installed": installed, "verified": verified}))
-    native_python = store.root / "installs" / installed["directory"] / "venv/bin/python"
+    runtime = store.root / "installs" / installed["directory"] / "venv"
+    native_python = runtime / "bin/python"
     argv = [str(native_python), "-I", "-B", str(root / "scripts/ci_operator_native.py"),
             "--consumer-python", sys.executable, "--store", str(store.root), "--policy", str(policy_path)]
     environment = {name: value for name, value in os.environ.items()
@@ -62,6 +68,12 @@ def main():
     result = subprocess.run(argv, env=environment, timeout=360, check=False)
     if result.returncode:
         raise AssertionError("Official operator deployment acceptance failed")
+    if verify_recovery:
+        recovery = [str(native_python), "-E", "-s", "-B", str(root / "scripts/ci_operator_recovery.py"),
+                    "--official-runtime", str(runtime)]
+        if sys.platform == "linux":
+            recovery = ["/usr/bin/dbus-run-session", "--", *recovery]
+        subprocess.run(recovery, env=environment, timeout=360, check=True)
     if (os.environ.get("R03_EXPORT_TRANSFER") == "true" and sys.platform == "linux"
             and policy_value["python_version"] == "3.12"):
         # Explicit transfer of the trusted preparing cache. Never include
