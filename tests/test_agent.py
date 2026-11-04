@@ -205,6 +205,9 @@ def test_lan_transport_rejects_nonlocal_scope():
 def test_live_lan_transport(scenario, monkeypatch, capsysbinary):
     import json
     import os
+    import socket
+    import struct
+    import time
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event
 
@@ -234,6 +237,24 @@ def test_live_lan_transport(scenario, monkeypatch, capsysbinary):
             wrong_pin = {**scenario["config"], "expected_operator": "0" * 64}
             with pytest.raises(SynProtocolError, match="No authenticated Syn operator"):
                 agent.discover(wrong_pin, port=route["port"], **scope)
+
+            # Even a bounded frame can contain enough nesting to exhaust the
+            # JSON decoder. Refuse this session and continue serving the LAN.
+            endpoint = (route["host"], route["port"])
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as malformed:
+                deadline = time.monotonic() + 4
+                malformed.bind((scope["local_address"], 0))
+                agent.set_deadline(malformed, deadline)
+                malformed.connect(endpoint)
+                agent.send(malformed, {
+                    "profile": agent.HELLO, "challenge": "aa" * 32, "purpose": "submit",
+                }, deadline)
+                agent.receive(malformed, deadline)
+                raw = b'{"nested":' + b"[" * 4096 + b"0" + b"]" * 4096 + b"}"
+                malformed.sendall(struct.pack(">I", len(raw)) + raw)
+                with pytest.raises(SynProtocolError, match="closed before the frame"):
+                    agent.receive(malformed, deadline)
+            assert lan_inbox.pending(operator_config)["pending"] == []
 
             expected = set()
             for index in range(2):
