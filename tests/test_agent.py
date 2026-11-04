@@ -306,6 +306,92 @@ def test_live_lan_transport(scenario, monkeypatch, capsysbinary):
     assert {row["pledge_offer_sha256"] for row in rows} == expected
 
 
+def test_selected_lan_reservation_recovers_and_requires_separate_grant(scenario, monkeypatch, capsysbinary):
+    import time
+
+    from syn.agent import lan_enrollment
+    from syn.operator import adoption_cli, lan_inbox
+    from syn.operator.__main__ import main as operator_cli
+
+    operator_config = scenario["operator"]
+    route = {"host": "192.168.77.1", "port": 45121}
+    lan_inbox.initialize(operator_config)
+    directory = scenario["root"] / "lan-reservation"
+    directory.mkdir(mode=0o700)
+    device.initialize(
+        directory, service="syn.fixture.agent", account="lan-reservation",
+        expected_operator=scenario["config"]["expected_operator"], network_id="fixture",
+        group_id=GROUP_ID, group_epoch=1, approved_profile=device.PROFILE,
+    )
+    config, _ = device.load_config(directory / "agent.json")
+    advertisement = lan_enrollment.advertise(operator_config, **route)
+    packet = lan_enrollment.submit_offer(config, directory, advertisement, **route)
+    receipt = lan_inbox.intake(operator_config, packet, **route)
+    offer = receipt["pledge_offer_sha256"]
+    server = operator_service.OperatorServer(operator_config)
+    before = server.state.read()["reservations"]
+
+    def unexpected_approval(_):
+        pytest.fail("An invalid selection or exact recovery must not prompt")
+
+    with pytest.raises(SynProtocolError, match="No unexpired"):
+        lan_inbox.reserve(operator_config, offer="0" * 64, operator_byte=41, approve=unexpected_approval)
+    with pytest.raises(SynProtocolError, match="permission was not granted"):
+        lan_inbox.reserve(operator_config, offer=offer, operator_byte=41, approve=lambda _: False)
+    assert server.state.read()["reservations"] == before
+
+    approved = []
+
+    def approve(decision):
+        assert decision["pledge_offer_sha256"] == offer
+        assert decision["agent_activation_authorized"] is False
+        approved.append(decision)
+        return True
+
+    with monkeypatch.context() as failure:
+        def interrupted(*_):
+            raise OSError("reservation interrupted after sealing")
+        failure.setattr(state.OperatorState, "_replace", interrupted)
+        with pytest.raises(OSError, match="interrupted after sealing"):
+            lan_inbox.reserve(operator_config, offer=offer, operator_byte=41, approve=approve)
+
+    candidates = lan_inbox.reserve(
+        operator_config, offer=offer, operator_byte=41, approve=unexpected_approval
+    )
+    assert len(approved) == 1
+    assert len(server.state.read()["reservations"]) == len(before) + 1
+    assert candidates["candidates"]["pledge_offer_sha256"] == offer
+    with pytest.raises(SynProtocolError, match="already reserved"):
+        lan_inbox.reserve(operator_config, offer=offer, operator_byte=42, approve=unexpected_approval)
+    with pytest.raises(SynProtocolError, match="already has an operator allocation"):
+        lan_inbox.intake(operator_config, packet, **route)
+
+    selection = enrollment.choose(config, directory, candidates)
+    request = {"candidates": candidates, "selection": selection}
+    with pytest.raises(SynProtocolError, match="acceptance was not granted"):
+        lan_inbox.grant(operator_config, request, offer=offer, approve=lambda _: False)
+
+    path = directory / "selection.json"
+    path.write_bytes(canonical(request))
+    path.chmod(0o600)
+    monkeypatch.setattr(adoption_cli, "approve_selection", lambda decision: decision["offer_sha256"] == offer)
+    assert operator_cli(["lan-grant", "--config", str(operator_config), "--offer-sha256", offer,
+                         "--request", str(path)]) == 0
+    from syn_client.operator_protocol import parse
+
+    granted = parse(capsysbinary.readouterr().out)
+    prepared = enrollment.prepare(config, directory, granted, now=int(time.time()))
+    assert prepared
+    with pytest.raises(SynProtocolError, match="already has a selected-key transition"):
+        lan_inbox.grant(operator_config, request, offer=offer, approve=unexpected_approval)
+
+    expires = advertisement["advertisement"]["pulse"]["body"]["signed_pulse"]["pulse"]["expires_at"]
+    monkeypatch.setattr(time, "time", lambda: expires + 1)
+    with pytest.raises(SynProtocolError, match="No unexpired"):
+        lan_inbox.reserve(operator_config, offer=offer, operator_byte=41, approve=unexpected_approval)
+    assert lan_inbox.pending(operator_config)["pending"] == []
+
+
 def test_lan_pending_inbox_recovers_and_fences_replays(scenario, monkeypatch, capsysbinary):
     import json
     import time

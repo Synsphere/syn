@@ -145,7 +145,18 @@ def _run_locked(args, observed):
                 if child is not None and op not in {"restart", "lock"}:
                     raise SynProtocolError("Running Agent enrollment is immutable")
                 if op == "offer":
-                    value = enrollment.create_offer(config, directory, payload)
+                    if isinstance(payload, dict) and payload.get("profile") == "syn.lan-enrollment-request/1":
+                        from .lan_enrollment import submit_offer
+
+                        request = exact(
+                            payload, {"profile", "advertisement", "host", "port"}, "LAN enrollment request"
+                        )
+                        value = submit_offer(
+                            config, directory, request["advertisement"],
+                            host=request["host"], port=request["port"],
+                        )
+                    else:
+                        value = enrollment.create_offer(config, directory, payload)
                 elif op == "choose":
                     value = enrollment.choose(config, directory, payload)
                 elif op == "prepare":

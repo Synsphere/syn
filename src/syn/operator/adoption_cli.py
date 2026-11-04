@@ -37,13 +37,11 @@ def operate(config_path, operation, payload=None, *, approve=approve_selection):
         journal = EnrollmentJournal(server.directory, server.signer.service, server.signer.account, server.expected_hash)
         journal.read(recover=True)
         now = int(time.time())
-        from syn.agent.adoption import grant_selected_key, seal_selected_key, confirm_selected_key
+        from syn.agent.adoption import seal_selected_key, confirm_selected_key
         if operation == "agent-grant":
             request = exact(payload, {"offer", "candidates", "selection"}, "selected enrollment")
             signed_pulse, pledge = open_offer(server, request["offer"], now=now)
-            selected = journal.select(server=server, signed_pulse=signed_pulse, signed_offer=pledge,
-                signed_candidates=request["candidates"], signed_selection=request["selection"], now=now, approve=approve)
-            return grant_selected_key(selection=selected, authorizer=journal, signer=server.signer, ledger=journal, now=now)
+            return _grant_locked(server, journal, signed_pulse, pledge, request, now=now, approve=approve)
         if operation == "agent-seal":
             request = exact(payload, {"grant", "request"}, "selected key transfer")
             return seal_selected_key(grant_packet=request["grant"], request_packet=request["request"], signer=server.signer,
@@ -58,6 +56,19 @@ def operate(config_path, operation, payload=None, *, approve=approve_selection):
             return seal_group_key(server=server, journal=journal, grant_packet=request["grant"], request_packet=request["request"],
                 identifier=request["group_id"], epoch=request["group_epoch"], now=now, approve=approve_group)
     raise SynProtocolError("Unknown canonical Agent enrollment operation")
+
+
+def _grant_locked(server, journal, pulse, pledge, request, *, now, approve):
+    from syn.agent.adoption import grant_selected_key
+
+    selected = journal.select(
+        server=server, signed_pulse=pulse, signed_offer=pledge,
+        signed_candidates=request["candidates"], signed_selection=request["selection"],
+        now=now, approve=approve,
+    )
+    return grant_selected_key(
+        selection=selected, authorizer=journal, signer=server.signer, ledger=journal, now=now
+    )
 
 
 def approve_group(decision):

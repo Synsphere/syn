@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local-disposable-fixture", action="store_true")
     parser.add_argument("--consumer-dir", type=Path)
+    parser.add_argument("--lan-enrollment", action="store_true")
     args = parser.parse_args()
     if sys.platform != "linux" or os.getuid() != 0:
         raise SystemExit("Official native Agent qualification requires disposable Linux root")
@@ -37,13 +38,15 @@ def main():
         python_version=os.environ["R04_PYTHON"], required_profiles=["syn.agent-group/1", "syn.agent-local/1"],
         required_capabilities=["authenticated-agent-ipc", "confidential-selected-key-adoption", "host-bound-virtual-device",
             "native-os-agent-custody", "native-os-group-custody", "retained-agent-identity"])
-    policy = Policy.parse(canonical(value))
     if tuple(map(int, value["version"].split("."))) >= (0, 4, 0):
         value["required_profiles"].append("syn.private-pubsub/1")
         value["required_capabilities"].append("authenticated-private-pubsub")
-        value["required_profiles"].sort()
-        value["required_capabilities"].sort()
-        policy = Policy.parse(canonical(value))
+    if args.lan_enrollment:
+        value["required_profiles"].append("syn.lan-enrollment-request/1")
+        value["required_capabilities"].append("authenticated-lan-enrollment")
+    value["required_profiles"].sort()
+    value["required_capabilities"].sort()
+    policy = Policy.parse(canonical(value))
     policy_path = base / "policy.json"
     policy_path.write_bytes(canonical(value))
     policy_path.chmod(0o600)
@@ -75,6 +78,8 @@ def main():
         "--consumer-dir", str(consumer), "--consumer-sha", os.environ["R04_POTBOT_SHA"],
         "--consumer-python", sys.executable, "--runtime-root", str(runtime),
         "--official-store", str(store.root), "--official-policy", str(policy_path)]
+    if args.lan_enrollment:
+        argv = ["/usr/bin/unshare", "--net", "--", *argv, "--lan-enrollment"]
     if args.local_disposable_fixture:
         argv.append("--local-disposable-fixture")
     environment = {name: item for name, item in os.environ.items() if name not in {"PYTHONPATH", "PYTHONHOME", "POTBOT_SYN_GITHUB_TOKEN"}}

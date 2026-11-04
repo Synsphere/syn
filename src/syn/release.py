@@ -16,11 +16,11 @@ def runtimeContract() -> RuntimeContract:
             "syn.agent-group/1", "syn.agent-local/1", "syn.communication/1", "syn.consensus-policy/1",
             "syn.dag-hashgraph-finality/1", "syn.dag-hashgraph-finality/2",
             "syn.governed-policy-record/1", "syn.governed-policy-record/2",
-            "syn.operator-local/1",
+            "syn.lan-enrollment-request/1", "syn.operator-local/1",
             "syn.private-pubsub/1",
         ),
         capabilities=(
-            "authenticated-agent-ipc", "authenticated-operator-ipc", "authenticated-private-pubsub", "confidential-selected-key-adoption",
+            "authenticated-agent-ipc", "authenticated-lan-enrollment", "authenticated-operator-ipc", "authenticated-private-pubsub", "confidential-selected-key-adoption",
             "host-bound-virtual-device", "http-workspace-messages", "native-os-agent-custody", "native-os-group-custody", "native-os-operator-custody", "offline-governance-verification",
             "offline-protected-dag-verification", "offline-type-policy-resolution",
             "retained-agent-identity", "retained-operator-identity",

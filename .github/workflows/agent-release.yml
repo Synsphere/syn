@@ -7,6 +7,11 @@ on:
         required: true
         default: "0.4.0"
         type: string
+      lan_enrollment:
+        description: Require full protected LAN enrollment with both sandboxed Agents
+        required: true
+        default: false
+        type: boolean
       potbot_sha:
         description: Exact reviewed Potbot consumer SHA
         required: true
@@ -75,7 +80,14 @@ jobs:
       - name: Install published signed bytes and exercise the complete native controller
         env:
           POTBOT_SYN_GITHUB_TOKEN: ${{ github.token }}
-        run: sudo -E consumer-agent/.venv/bin/python scripts/ci_agent_release.py
+          SYN_TEST_LAN: ${{ inputs.lan_enrollment }}
+        shell: bash
+        run: |
+          args=()
+          if [ "$SYN_TEST_LAN" = true ]; then
+            args+=(--lan-enrollment)
+          fi
+          sudo -E consumer-agent/.venv/bin/python scripts/ci_agent_release.py "${args[@]}"
       - name: Record routine CI completion assessment
         if: always()
         env:

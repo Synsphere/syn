@@ -36,6 +36,7 @@ parser.add_argument('--official-store',type=Path)
 parser.add_argument('--official-policy',type=Path)
 parser.add_argument('--consumer-python',type=Path)
 parser.add_argument('--local-disposable-fixture',action='store_true')
+parser.add_argument('--lan-enrollment',action='store_true')
 ARGS=parser.parse_args()
 if os.getuid()!=0 or sys.platform!='linux':
     raise SystemExit('Actual restricted native Agent qualification requires disposable Linux root')
@@ -240,7 +241,13 @@ def main():
         assert runtimeContract().to_dict()==verified['observed']['runtime']
     elif ARGS.source_wheels is None:
         raise AssertionError('A source-wheel qualification must retain exact candidate wheel digests')
+    if ARGS.lan_enrollment:
+        from ci_lan_enrollment import enroll as enroll_lan, prepare_network
+        if "authenticated-lan-enrollment" not in runtimeContract().capabilities:
+            raise AssertionError("Selected installed runtime does not advertise LAN enrollment")
+        prepare_network()
     hosts=[]
+    lan_evidence=[]
     try:
         with tempfile.TemporaryDirectory(prefix='syn-r04-op-',dir='/tmp') as name, ExitStack() as stack:
             base=Path(name)
@@ -252,6 +259,9 @@ def main():
             pin=created['identity']['base_public_key_hash']
             config=operator/'operator.json'
             operate(config,'adoption-init')
+            if ARGS.lan_enrollment:
+                from syn.operator import lan_inbox
+                lan_inbox.initialize(config)
             nodes=[]
             for uid in (53102,53103):
                 host=provision(ROOT,agent_id=uuid4(),uid=uid)
@@ -261,10 +271,14 @@ def main():
                 observed=node.initial['scope']
                 assert observed['uid']==uid and observed['gid']==uid
                 assert all(observed[key] for key in ('capabilities_zero','no_new_privileges','internet_socket_creation_denied','root_read_only'))
-                offer=node.command('offer',operate(config,'agent-pulse'))
-                candidates=reserve_offer(config,offer,uid%256,approve=lambda _:True)
-                choice=node.command('choose',candidates)
-                grant=operate(config,'agent-grant',{'offer':offer,'candidates':candidates,'selection':choice},approve=lambda _:True)
+                if ARGS.lan_enrollment:
+                    grant, network_receipt=enroll_lan(node,config,pin,uid)
+                    lan_evidence.append(network_receipt)
+                else:
+                    offer=node.command('offer',operate(config,'agent-pulse'))
+                    candidates=reserve_offer(config,offer,uid%256,approve=lambda _:True)
+                    choice=node.command('choose',candidates)
+                    grant=operate(config,'agent-grant',{'offer':offer,'candidates':candidates,'selection':choice},approve=lambda _:True)
                 request=node.command('prepare',grant)
                 sealed=operate(config,'agent-seal',{'grant':grant,'request':request})
                 proof=node.command('adopt',{'grant':grant,'request':request,'envelope':sealed})
@@ -342,6 +356,15 @@ def main():
             evidence.mkdir(parents=True,exist_ok=True)
             if private_pubsub is not None:
                 (evidence/'private-pubsub.json').write_bytes(canonical(private_pubsub))
+            if ARGS.lan_enrollment:
+                assert len({row["offer_sha256"] for row in lan_evidence}) == 2
+                (evidence/'lan-enrollment.json').write_bytes(canonical({
+                    "profile": "syn.lan-native-acceptance/1",
+                    "official_release": ARGS.official_policy is not None,
+                    "sandbox_internet_sockets_denied": True,
+                    "two_distinct_agents_activated_and_restarted": True,
+                    "agents": lan_evidence,
+                }))
             wheelroot=ARGS.source_wheels
             receipt={'profile':('syn.agent-official-native-acceptance/1' if ARGS.official_policy else 'syn.agent-source-native-acceptance/1'),'result':'passed',
                 'qualification':('official_released_native_software_custody_and_two_real_sandboxed_agents' if ARGS.official_policy else 'source_wheels_disposable_native_software_custody_and_two_real_sandboxed_agents'),
