@@ -48,6 +48,18 @@ jobs:
             ip link set syn-lan0 up
             exec runuser -u "$SUDO_USER" -- env SYN_TEST_DISPOSABLE_LAN=1 "$1" -m pytest -q tests/test_agent.py -k test_live_lan_transport -p no:cacheprovider
           ' syn-lan "$GITHUB_WORKSPACE/.venv/bin/python"
+      - name: Check out the exact legacy writer for disposable migration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: kieransimkin/potbot
+          ref: 70fa39c34404325d7499008e588ee958ba7186f8
+          path: .tmp-pytest/legacy-potbot
+          persist-credentials: false
+      - name: Migrate and independently read legacy receipts and tombstones
+        shell: bash
+        run: |
+          test "$(git -C .tmp-pytest/legacy-potbot rev-parse HEAD:syn-node)" = ac34b663b65999744a74ac872931198dc3734e85
+          SYN_LEGACY_FIXTURE="$GITHUB_WORKSPACE/.tmp-pytest/legacy-potbot" uv run --locked python -m pytest -q tests/test_legacy_state.py
       - name: Build official package candidates and hashed third-party lock
         shell: bash
         run: |
