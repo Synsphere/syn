@@ -412,8 +412,18 @@ def main():
         context = json.loads(sys.stdin.buffer.read(250_000))
         print(json.dumps(_destination(Path(sys.argv[2]), context)))
         return
+    official = len(sys.argv) == 3 and sys.argv[1] == "--official-runtime"
+    if len(sys.argv) != 1 and not official:
+        raise SystemExit("Unexpected recovery acceptance arguments")
+    if official:
+        from syn.operator import recovery
+
+        runtime = Path(sys.argv[2]).resolve(strict=True)
+        if Path(sys.prefix).resolve() != runtime or not Path(recovery.__file__).resolve().is_relative_to(runtime):
+            raise AssertionError("Recovery must execute from the admitted official runtime")
     with tempfile.TemporaryDirectory(prefix="syn-recovery-", dir=Path("/tmp").resolve()) as work:
         receipt = _fixture(Path(work).resolve())
+    receipt["official_runtime_executed"] = official
     output = Path("artifacts/operator/native-recovery.json")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(receipt, sort_keys=True) + "\n")
