@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import tarfile
 from private_interpreter import copy_private_python
@@ -31,6 +32,14 @@ def main():
     if verify_recovery:
         policy_value["required_profiles"].append("syn.operator-recovery/1")
         policy_value["required_capabilities"].append("native-operator-recovery")
+        policy_value["required_capabilities"].sort()
+    verify_legacy_archive = os.environ.get("R03_VERIFY_LEGACY_ARCHIVE") == "true"
+    if verify_legacy_archive:
+        if verify_recovery or os.environ.get("R03_EXPORT_TRANSFER") == "true":
+            raise AssertionError("Select archive qualification separately")
+        policy_value["required_profiles"].append("syn.legacy-state-archive/1")
+        policy_value["required_capabilities"].append("read-only-legacy-state-archive")
+        policy_value["required_profiles"].sort()
         policy_value["required_capabilities"].sort()
     policy = Policy.parse(canonical(policy_value))
     policy_path = base / "policy.json"
@@ -59,6 +68,9 @@ def main():
         "consumer_sha": os.environ["R03_POTBOT_SHA"], "installed": installed, "verified": verified}))
     runtime = store.root / "installs" / installed["directory"] / "venv"
     native_python = runtime / "bin/python"
+    if verify_legacy_archive:
+        qualify_legacy_archive(root, runtime, native_python, evidence)
+        return
     argv = [str(native_python), "-I", "-B", str(root / "scripts/ci_operator_native.py"),
             "--consumer-python", sys.executable, "--store", str(store.root), "--policy", str(policy_path)]
     environment = {name: value for name, value in os.environ.items()
@@ -109,6 +121,40 @@ def main():
                    "scope": "authenticated package/dependency preparation only; no operator credentials or installed environment"}
         (evidence / "transfer-archive.json").write_bytes(canonical(receipt))
         print(canonical(receipt).decode())
+
+
+def qualify_legacy_archive(root, runtime, native_python, evidence):
+    # Borrow only the consumer's test runner. Imports of Syn must resolve
+    # inside the official install, and the test CLI runs with isolation.
+    runner = """
+import os
+from pathlib import Path
+import sys
+
+runtime = Path(sys.argv[1]).resolve(strict=True)
+from syn.operator import legacy_state
+from syn_client import adoption
+
+assert Path(sys.prefix).resolve() == runtime
+assert all(Path(module.__file__).resolve().is_relative_to(runtime)
+           for module in (legacy_state, adoption))
+sys.path.append(sys.argv[2])
+os.environ["SYN_LEGACY_FIXTURE"] = sys.argv[3]
+os.environ["SYN_LEGACY_EVIDENCE"] = sys.argv[4]
+os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+import pytest
+
+test = Path(sys.argv[5])
+raise SystemExit(pytest.main(["-c", str(test.parents[1] / "pyproject.toml"), "--noconftest",
+                             "--import-mode=importlib", "-p", "no:cacheprovider", "-q", str(test)]))
+"""
+    subprocess.run([
+        str(native_python), "-I", "-B", "-c", runner, str(runtime), sysconfig.get_path("purelib"),
+        str(root / "consumer"), str(evidence / "legacy-archive.json"),
+        str(root / "tests/test_legacy_state.py"),
+    ], check=True, timeout=120)
+    if not (evidence / "legacy-archive.json").is_file():
+        raise AssertionError("The official migration did not produce evidence")
 
 
 if __name__ == "__main__":
