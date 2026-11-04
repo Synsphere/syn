@@ -31,12 +31,14 @@ def main(argv=None) -> int:
         sub.add_argument("--config", type=Path, required=True)
         if name not in {"adoption-init", "agent-pulse"}:
             sub.add_argument("--request", type=Path, required=True)
-    for name in ("lan-advertise", "lan-validate", "lan-intake"):
+    for name in ("lan-advertise", "lan-validate", "lan-intake", "lan-serve"):
         sub = commands.add_parser(name)
         sub.add_argument("--config", type=Path, required=True)
         sub.add_argument("--host", required=True)
         sub.add_argument("--port", type=int, required=True)
-        if name != "lan-advertise":
+        if name == "lan-serve":
+            sub.add_argument("--subnet", required=True)
+        elif name != "lan-advertise":
             sub.add_argument("--request", type=Path, required=True)
     for name in ("lan-inbox-init", "lan-pending", "lan-pending-read"):
         sub = commands.add_parser(name)
@@ -56,6 +58,13 @@ def main(argv=None) -> int:
             from syn_client.operator_protocol import parse
             payload = parse(private_read(args.request)) if hasattr(args, "request") else None
             value = operate(args.config, args.operation, payload)
+        elif args.operation == "lan-serve":
+            from .lan_transport import serve
+            try:
+                serve(args.config, host=args.host, port=args.port, subnet=args.subnet)
+            except KeyboardInterrupt:
+                pass
+            return 0
         elif args.operation == "lan-advertise":
             from syn.agent.lan_enrollment import advertise
             from syn_client.operator_protocol import canonical

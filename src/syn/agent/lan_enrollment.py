@@ -28,13 +28,17 @@ def advertise(config_path, *, host, port):
     with _agent_key_lock(
         server.directory, server.signer.service, server.signer.account + ".operator"
     ):
-        body = {
-            "profile": ADVERTISEMENT_PROFILE,
-            "endpoint": endpoint,
-            "pulse": _operator_pulse(server),
-        }
-        signature = server.signer.sign(ADVERTISEMENT_DOMAIN + canonical(body)).hex()
-        return {"advertisement": body, "signature": signature}
+        return _signed_advertisement(server, endpoint)
+
+
+def _signed_advertisement(server, endpoint):
+    body = {
+        "profile": ADVERTISEMENT_PROFILE,
+        "endpoint": endpoint,
+        "pulse": _operator_pulse(server),
+    }
+    signature = server.signer.sign(ADVERTISEMENT_DOMAIN + canonical(body)).hex()
+    return {"advertisement": body, "signature": signature}
 
 
 def _digest(advertisement):

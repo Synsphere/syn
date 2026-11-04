@@ -186,6 +186,126 @@ def test_signed_lan_pledge_cli_checks_route_without_admitting_agent(scenario, ca
     assert (authority.read_bytes(), adoptions.read_bytes()) == original
 
 
+def test_lan_transport_rejects_nonlocal_scope():
+    from syn.agent.lan_transport import lan_scope
+
+    for host, subnet in (
+        ("192.168.77.2", "0.0.0.0/0"),
+        ("192.168.77.2", "192.168.78.0/24"),
+        ("192.168.77.255", "192.168.77.0/24"),
+        ("192.168.77.2", "192.168.77.2/31"),
+        ("192.168.77.2", "192.168.77.2/24"),
+        ("0.0.0.0", "192.168.77.0/24"),
+    ):
+        with pytest.raises(SynProtocolError):
+            lan_scope(host, subnet, 45121)
+    assert str(lan_scope("192.168.77.2", "192.168.77.0/24", 45121)) == "192.168.77.0/24"
+
+
+def test_live_lan_transport(scenario, monkeypatch, capsysbinary):
+    import json
+    import os
+    import socket
+    import struct
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from syn.agent import lan_enrollment, lan_transport as agent
+    from syn.agent.__main__ import main as agent_cli
+    from syn.operator import lan_inbox, lan_transport as operator
+
+    if os.environ.get("SYN_TEST_DISPOSABLE_LAN") != "1":
+        pytest.skip("Requires an isolated LAN with the test's private IPv4 addresses")
+
+    operator_config = scenario["operator"]
+    route = {"host": "192.168.77.1", "port": 45121}
+    scope = {"local_address": "192.168.77.2", "subnet": "192.168.77.0/24"}
+    lan_inbox.initialize(operator_config)
+
+    ready, stopped = Event(), Event()
+    with ThreadPoolExecutor(max_workers=1) as workers:
+        server = workers.submit(
+            operator.serve, operator_config, **route, subnet=scope["subnet"],
+            ready=ready.set, stopped=stopped.is_set,
+        )
+        try:
+            if not ready.wait(5):
+                if server.done():
+                    server.result()
+                pytest.fail("Disposable LAN listener did not become ready")
+            wrong_pin = {**scenario["config"], "expected_operator": "0" * 64}
+            with pytest.raises(SynProtocolError, match="No authenticated Syn operator"):
+                agent.discover(wrong_pin, port=route["port"], **scope)
+
+            # Even a bounded frame can contain enough nesting to exhaust the
+            # JSON decoder. Refuse this session and continue serving the LAN.
+            endpoint = (route["host"], route["port"])
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as malformed:
+                deadline = time.monotonic() + 4
+                malformed.bind((scope["local_address"], 0))
+                agent.set_deadline(malformed, deadline)
+                malformed.connect(endpoint)
+                agent.send(malformed, {
+                    "profile": agent.HELLO, "challenge": "aa" * 32, "purpose": "submit",
+                }, deadline)
+                agent.receive(malformed, deadline)
+                raw = b'{"nested":' + b"[" * 4096 + b"0" + b"]" * 4096 + b"}"
+                malformed.sendall(struct.pack(">I", len(raw)) + raw)
+                with pytest.raises(SynProtocolError, match="closed before the frame"):
+                    agent.receive(malformed, deadline)
+            assert lan_inbox.pending(operator_config)["pending"] == []
+
+            expected = set()
+            for index in range(2):
+                name = f"live-lan-{index}"
+                directory = scenario["root"] / name
+                directory.mkdir(mode=0o700)
+                device.initialize(
+                    directory, service="syn.fixture.agent", account=name,
+                    expected_operator=scenario["config"]["expected_operator"], network_id="fixture",
+                    group_id=GROUP_ID, group_epoch=1, approved_profile=device.PROFILE,
+                )
+                config_path = directory / "agent.json"
+                cli_scope = ["--config", str(config_path), "--local-address", scope["local_address"],
+                             "--subnet", scope["subnet"]]
+                assert agent_cli(["lan-discover", *cli_scope, "--port", str(route["port"])]) == 0
+                advertisement = json.loads(capsysbinary.readouterr().out)
+                config, _ = device.load_config(config_path)
+                packet = lan_enrollment.submit_offer(config, directory, advertisement, **route)
+                request = directory / "submission.json"
+                request.write_bytes(canonical(packet))
+                request.chmod(0o600)
+                if index == 0:
+                    # A valid operator signature for a different packet cannot stand in
+                    # for this packet's receipt, even after the real pending write.
+                    original_sign = operator._signed
+
+                    def wrong_receipt_digest(server, domain, body):
+                        if domain == operator.RECEIPT_DOMAIN:
+                            body = {**body, "packet_sha256": "0" * 64}
+                        return original_sign(server, domain, body)
+
+                    with monkeypatch.context() as bad_receipt:
+                        bad_receipt.setattr(operator, "_signed", wrong_receipt_digest)
+                        with pytest.raises(SynProtocolError, match="does not acknowledge"):
+                            agent.deliver(config, packet, **scope)
+                    assert len(lan_inbox.pending(operator_config)["pending"]) == 1
+                assert agent_cli(["lan-send", *cli_scope, "--request", str(request)]) == 0
+                pending = json.loads(capsysbinary.readouterr().out)
+                assert pending["pending_persisted"] is True
+                assert pending["agent_activation_authorized"] is False
+                expected.add(pending["pledge_offer_sha256"])
+                assert agent.deliver(config, packet, **scope) == pending
+        finally:
+            stopped.set()
+        server.result()
+
+    rows = lan_inbox.pending(operator_config)["pending"]
+    assert len(expected) == 2
+    assert {row["pledge_offer_sha256"] for row in rows} == expected
+
+
 def test_lan_pending_inbox_recovers_and_fences_replays(scenario, monkeypatch, capsysbinary):
     import json
     import time

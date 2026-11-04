@@ -84,12 +84,12 @@ def parse(raw: bytes) -> dict[str, Any]:
             object_pairs_hook=unique,
             parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
         )
+        if not isinstance(payload, dict) or canonical(payload) != raw:
+            raise SynProtocolError("SYN JSON must be a canonical object")
     except SynProtocolError:
         raise
-    except (ValueError, UnicodeError) as exc:
+    except (ValueError, UnicodeError, RecursionError) as exc:
         raise SynProtocolError("invalid SYN JSON") from exc
-    if not isinstance(payload, dict) or canonical(payload) != raw:
-        raise SynProtocolError("SYN JSON must be a canonical object")
     return payload
 
 
