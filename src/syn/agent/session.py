@@ -124,7 +124,7 @@ def _run_locked(args, observed):
         config, config_sha = device.load_config(config_path)
         if (config["keyring_service"] != args.keyring_service or config["keyring_account"] != args.keyring_account
                 or config["expected_operator"] != args.expected_operator or config["network_id"] != args.network_id
-                or config["group_id"] != args.group_id or config["group_epoch"] != args.group_epoch
+                or config["group_id"] != args.group_id or config["group_epoch"] > args.group_epoch
                 or config["device_profile"] != args.approved_device_profile):
             raise SynProtocolError("Retained Agent configuration differs from selected deployment policy")
         _output({"profile": "syn.agent-session/1", "created": created, "configuration_sha256": config_sha, "scope": observed})
@@ -171,6 +171,14 @@ def _run_locked(args, observed):
                     exact(payload, {"grant", "request", "group"}, "initial group handoff")
                     value = adopt_group_key(config, directory, grant_packet=payload["grant"], request_packet=payload["request"],
                                              envelope=payload["group"], now=int(time.time()))
+                elif op == "prepare-group-rollover":
+                    from .group_rollover import prepare_rollover
+                    if payload is not None:
+                        raise SynProtocolError("Rollover receiver preparation takes no payload")
+                    value = prepare_rollover(config_path)
+                elif op == "apply-group-rollover":
+                    from .group_rollover import apply_rollover
+                    value = apply_rollover(config_path, payload)
                 elif op == "activate":
                     value = service.activate(config_path, payload)
                 elif op == "lock":
@@ -185,10 +193,14 @@ def _run_locked(args, observed):
                         raise SynProtocolError("Restart requires the session's existing owned node")
                     if payload is not None:
                         raise SynProtocolError("Node lifecycle operation takes no caller-controlled parameters")
+                    from .group import load_group
+                    server = service.AgentServer(config_path)
+                    certificate = load_group(config, server.expected_hash)
+                    if certificate["body"]["group_epoch"] != args.group_epoch:
+                        raise SynProtocolError("Current group epoch differs from selected deployment policy")
                     _stop(child)
                     child = subprocess.Popen([sys.executable, "-I", "-B", "-m", "syn.agent", "serve", "--config", str(config_path)],
                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    server = service.AgentServer(config_path)
                     deadline = time.monotonic() + 10
                     while True:
                         if child.poll() is not None:
@@ -197,7 +209,7 @@ def _run_locked(args, observed):
                             value = agent_status(socket_path=directory / "agent.sock", owner_uid=os.getuid(),
                                 expected_hash=server.expected_hash, expected_operator=config["expected_operator"],
                                 expected_version=service.runtimeContract().runtime_version, configuration_sha256=config_sha,
-                                assignment_sha256=server.assignment_sha, expected_group=config["group_id"], expected_epoch=config["group_epoch"])
+                                assignment_sha256=server.assignment_sha, expected_group=config["group_id"], expected_epoch=args.group_epoch)
                             if value["status"]["pid"] != child.pid:
                                 raise SynProtocolError("Agent endpoint belongs to a different process")
                             break

@@ -21,10 +21,10 @@ def main(argv=None):
     create.add_argument("--group-epoch", type=int, required=True)
     create.add_argument("--approved-device-profile", required=True)
     create.add_argument("--new-identity", action="store_true", required=True)
-    for operation in ("offer", "lan-offer", "choose", "prepare", "adopt", "adopt-group", "activate", "serve"):
+    for operation in ("offer", "lan-offer", "choose", "prepare", "adopt", "adopt-group", "prepare-group-rollover", "apply-group-rollover", "activate", "serve"):
         sub = commands.add_parser(operation)
         sub.add_argument("--config", type=Path, required=True)
-        if operation != "serve":
+        if operation not in {"serve", "prepare-group-rollover"}:
             sub.add_argument("--request", type=Path, required=True)
         if operation == "lan-offer":
             sub.add_argument("--host", required=True)
@@ -53,6 +53,9 @@ def main(argv=None):
             from .service import run
             run(args.config)
             return 0
+        elif args.operation == "prepare-group-rollover":
+            from .group_rollover import prepare_rollover
+            value = prepare_rollover(args.config)
         elif args.operation in ("lan-discover", "lan-send"):
             from syn_client.operator_protocol import canonical
             from .lan_transport import deliver, discover
@@ -84,6 +87,9 @@ def main(argv=None):
                 payload = exact(payload, {"grant", "request", "group"}, "group handoff")
                 value = adopt_group_key(config, args.config.parent, grant_packet=payload["grant"],
                     request_packet=payload["request"], envelope=payload["group"], now=int(time.time()))
+            elif args.operation == "apply-group-rollover":
+                from .group_rollover import apply_rollover
+                value = apply_rollover(args.config, payload)
             elif args.operation == "activate":
                 from .service import activate
                 value = activate(args.config, payload)
