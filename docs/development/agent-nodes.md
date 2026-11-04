@@ -151,8 +151,8 @@ bounded to eight pending entries, 128 replay records and the existing
 reconciliation.
 
 A pending receipt carries no authority to select a leaf or activate an Agent.
-The bridge from a pending record into explicit operator reservation remains
-a separate increment.
+The operator chooses a retained offer by digest and explicitly authorizes
+candidate reservation. Leaf assignment still requires a second approval.
 
 ### Discover and deliver on a live LAN
 
@@ -216,15 +216,66 @@ the receipt is lost, retry `lan-send` with the same saved packet before the
 original advertisement expires. Do not generate a second pledge to retry
 delivery. The operator's pending list remains the local record of intake.
 
-The source integration test uses real UDP and TCP sockets on an isolated
-Linux network with two Agent identities and fixture custody. It checks
-an incorrect operator pin, a signed receipt with the wrong packet digest,
-and exact retries. The retirement gate still requires the reservation bridge
-and acceptance with two disposable Agents using pinned official packages.
-Keep Potbot's transitional `syn-node` until that gate passes. The sequence
-diagram and CLI examples cover the headless flow; keystore terminal
-screenshots and recordings would expose private setup without adding
-verification evidence.
+### Reserve and assign one pending pledge
+
+Stop the LAN listener before operator maintenance. On the operator, select
+the complete digest reported by `lan-pending`. Both commands below require a
+private foreground terminal; redirecting stdout keeps their canonical results
+in owner-private files. Use a fresh discovery for each Agent: an operator
+pulse can authorize only one candidate reservation.
+
+```sh
+umask 077
+syn-operator lan-pending --config /operator/operator.json
+syn-operator lan-reserve --config /operator/operator.json \
+  --offer-sha256 "$OFFER_SHA256" --operator-byte 41 > candidates.json
+```
+
+Give the signed candidates to the Agent for its existing `choose` operation.
+Return an owner-private canonical request containing exactly the signed
+`candidates` and signed `selection`. Then separately approve assignment:
+
+```sh
+syn-operator lan-grant --config /operator/operator.json \
+  --offer-sha256 "$OFFER_SHA256" --request selection-request.json > grant.json
+```
+
+```mermaid
+sequenceDiagram
+    participant A as Agent sandbox
+    participant O as Local operator terminal
+    participant I as Protected pending inbox
+    O->>I: Look up and revalidate one selected offer digest
+    O->>O: Confirm RESERVE for these candidates
+    O-->>A: Signed candidates after durable reservation
+    A-->>O: Signed choice of one candidate
+    O->>O: Confirm ADOPT for that choice
+    O-->>A: One-use grant for the existing adoption flow
+```
+
+The exact reservation can be read back with the same digest and operator
+byte before expiry, including after interruption between the keystore
+checkpoint and the state-file write. A different byte or another offer
+for the same device cannot allocate a second candidate set. The encrypted
+inbox record remains available for the separate grant until it expires;
+the existing replay markers and reservation remain protected after expiry.
+Continue with the existing prepare, seal, adopt, confirm, group assignment
+and activate operations. Reservation and grant must both occur while the
+advertisement is still live.
+
+Under the Potbot controller, the Agent's existing private `offer` operation
+accepts a `syn.lan-enrollment-request/1` payload containing the signed
+`advertisement`, `host` and `port`. The controller may relay public discovery
+data and the resulting encrypted packet. The sandbox still cannot open
+Internet sockets; it alone creates the pledge and holds its Agent keys.
+
+Source acceptance covers disposable sockets and a separate native two-Agent
+lane that exercises the full flow through real approval terminals, activation
+and restart. The official Agent workflow can require this same LAN scenario
+with `lan_enrollment=true` and independently pinned release and consumer
+identities. A source build cannot qualify an official release. Keep Potbot's
+transitional `syn-node` until that and the other parity gates pass. These
+headless diagrams and CLI examples avoid recording private keystore setup.
 
 ## Group membership is a separate authority
 

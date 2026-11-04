@@ -11,6 +11,7 @@ from syn_client.operator_protocol import SynProtocolError, canonical, exact, hex
 
 from .adoption_state import EnrollmentJournal
 from .custody import _agent_key_lock
+from .enrollment import _reserve_locked
 from .service import OperatorServer
 from .state import OperatorState
 
@@ -154,6 +155,50 @@ def _intake_locked(server, inbox, packet, *, host, port):
         "pending_persisted": True,
         "agent_activation_authorized": False,
     }
+
+
+def _selected(server, inbox, offer, now):
+    # Resolve interrupted canonical writes before comparing the retained packet.
+    server.state.read(recover=True)
+    journal = EnrollmentJournal(
+        server.directory, server.signer.service, server.signer.account, server.expected_hash
+    )
+    journal.read(recover=True)
+    for row in inbox.refresh(now)["records"]:
+        if row["offer"] != offer or row["packet"] is None:
+            continue
+        packet = row["packet"]
+        endpoint = packet["route"]["advertisement"]["endpoint"]
+        pulse, pledge, _ = _checked_submission(
+            server, packet, host=endpoint["host"], port=endpoint["port"], now=now
+        )
+        device = server.signer.device_commitment(bytes.fromhex(pledge["offer"]["hardware_unique_id"]))
+        if (offer_digest(pledge), device, pulse["pulse"]["expires_at"]) != (
+            offer, row["device"], row["expires_at"]
+        ):
+            raise SynProtocolError("Selected LAN pledge differs from its protected inbox record")
+        return journal, pulse, pledge
+    raise SynProtocolError("No unexpired LAN pledge matches the selected digest")
+
+
+def reserve(config_path, *, offer, operator_byte, approve):
+    """Offer exactly one retained, validated LAN pledge for explicit reservation."""
+    hex_bytes(offer, 32, "LAN pending offer")
+    with _locked(config_path) as (server, inbox):
+        _, pulse, pledge = _selected(server, inbox, offer, int(time.time()))
+        return _reserve_locked(server, pulse, pledge, operator_byte, approve=approve, recover_exact=True)
+
+
+def grant(config_path, request, *, offer, approve):
+    """Continue the selected LAN pledge through the separate adoption approval."""
+    from .adoption_cli import _grant_locked
+
+    hex_bytes(offer, 32, "LAN pending offer")
+    request = exact(request, {"candidates", "selection"}, "LAN selected enrollment")
+    with _locked(config_path) as (server, inbox):
+        now = int(time.time())
+        journal, pulse, pledge = _selected(server, inbox, offer, now)
+        return _grant_locked(server, journal, pulse, pledge, request, now=now, approve=approve)
 
 
 def pending(config_path, *, offer=None):

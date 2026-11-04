@@ -74,38 +74,65 @@ def _verified_offer(server, signed_pulse, signed_offer, now):
 
 
 def reserve(config_path, signed_pulse, signed_offer, operator_byte, *, approve):
-    if type(operator_byte) is not int or not 0 <= operator_byte <= 255:
-        raise SynProtocolError("Operator choice must be one unsigned byte")
     server = OperatorServer(config_path)
     with _agent_key_lock(server.directory, server.signer.service, server.signer.account + ".operator"):
-        current = server.state.read(recover=True)
-        now = int(time.time())
-        hardware, offer_digest, pulse_digest = _verified_offer(server, signed_pulse, signed_offer, now)
-        inheritance = int.from_bytes(hashlib.sha256(hardware + bytes([operator_byte])).digest()[:3], "big")
-        device = server.signer.device_commitment(hardware)
-        for record in current["reservations"]:
-            if (record["inheritance"] == inheritance or record["device_commitment"] == device
-                    or record["pledge_offer_sha256"] == offer_digest or record["pulse_sha256"] == pulse_digest):
-                raise SynProtocolError("Device, pledge, pulse or inheritance is already reserved")
-        hashes = server.signer.derive_candidate_public_hashes(inheritance)
-        candidates = {"schema_version": 2, "type_ref": "synny://type/syn-agent-identity-candidates-v2",
-                      "pledge_offer_sha256": offer_digest, "target_master_public_key_hash": server.expected_hash,
-                      "operator_byte": operator_byte, "inheritance": inheritance, "inheritance_hex": f"{inheritance:06x}",
-                      "short_public_key_hashes": [value[:3].hex() for value in hashes]}
-        decision = {"operator": server.expected_hash, "pledge_offer_sha256": offer_digest,
-                    "inheritance_hex": f"{inheritance:06x}", "hardware_provenance_verified": False,
-                    "agent_activation_authorized": False}
+        return _reserve_locked(server, signed_pulse, signed_offer, operator_byte, approve=approve)
+
+
+def _reserve_locked(server, signed_pulse, signed_offer, operator_byte, *, approve, recover_exact=False):
+    if type(operator_byte) is not int or not 0 <= operator_byte <= 255:
+        raise SynProtocolError("Operator choice must be one unsigned octet")
+    current = server.state.read(recover=True)
+    now = int(time.time())
+    hardware, offer_digest, pulse_digest = _verified_offer(server, signed_pulse, signed_offer, now)
+    inheritance = int.from_bytes(hashlib.sha256(hardware + bytes([operator_byte])).digest()[:3], "big")
+    device = server.signer.device_commitment(hardware)
+    hashes = server.signer.derive_candidate_public_hashes(inheritance)
+    candidates = {
+        "schema_version": 2,
+        "type_ref": "synny://type/syn-agent-identity-candidates-v2",
+        "pledge_offer_sha256": offer_digest,
+        "target_master_public_key_hash": server.expected_hash,
+        "operator_byte": operator_byte,
+        "inheritance": inheritance,
+        "inheritance_hex": f"{inheritance:06x}",
+        "short_public_key_hashes": [value[:3].hex() for value in hashes],
+    }
+    signed_data = CANDIDATE_DOMAIN + canonical(candidates)
+    binding = {
+        "pledge_offer_sha256": offer_digest,
+        "pulse_sha256": pulse_digest,
+        "device_commitment": device,
+        "inheritance": inheritance,
+        "candidates_sha256": hashlib.sha256(signed_data).hexdigest(),
+    }
+    for record in current["reservations"]:
+        if recover_exact and all(record[key] == value for key, value in binding.items()):
+            break  # A prior explicit approval already committed this exact candidate set.
+        if any(record[key] == binding[key] for key in (
+            "inheritance", "device_commitment", "pledge_offer_sha256", "pulse_sha256"
+        )):
+            raise SynProtocolError("Device, pledge, pulse or inheritance is already reserved")
+    else:
+        decision = {
+            "operator": server.expected_hash,
+            "pledge_offer_sha256": offer_digest,
+            "inheritance_hex": candidates["inheritance_hex"],
+            "hardware_provenance_verified": False,
+            "agent_activation_authorized": False,
+        }
         if approve(decision) is not True:
             raise SynProtocolError("Explicit operator reservation permission was not granted")
         # Human decisions can take time; recheck freshness before durable commit.
         _verified_offer(server, signed_pulse, signed_offer, int(time.time()))
-        record = {"pledge_offer_sha256": offer_digest, "pulse_sha256": pulse_digest, "device_commitment": device,
-                  "inheritance": inheritance, "reserved_at": now,
-                  "candidates_sha256": hashlib.sha256(CANDIDATE_DOMAIN + canonical(candidates)).hexdigest()}
+        record = {**binding, "reserved_at": now}
         server.state.commit({**current, "reservations": current["reservations"] + [record]})
-        # Release the signature only AFTER the anchor and journal commit.
-        return {"candidates": candidates, "operator_public_key": server.signer.public_key.hex(),
-                "signature": server.signer.sign(CANDIDATE_DOMAIN + canonical(candidates)).hex()}
+    # Release the signature only AFTER the anchor and journal commit.
+    return {
+        "candidates": candidates,
+        "operator_public_key": server.signer.public_key.hex(),
+        "signature": server.signer.sign(signed_data).hex(),
+    }
 
 
 def terminal_approval(decision):

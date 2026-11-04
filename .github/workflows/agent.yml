@@ -46,10 +46,10 @@ jobs:
         shell: bash
         run: |
           sudo -E .venv/bin/python scripts/prepare_agent_runtime.py --source-prefix "$GITHUB_WORKSPACE/.venv" --wheels "$GITHUB_WORKSPACE/artifacts/agent/wheels" --destination /var/lib/potbot/syn-agent-source-runtime --uv "$(command -v uv)"
-      - name: Two real nodes, native encrypted stores, full-session restarts and isolation faults
+      - name: Two real nodes from LAN enrollment through native restarts and isolation faults
         shell: bash
         run: |
-          sudo -E env -u DISPLAY -u WAYLAND_DISPLAY dbus-run-session -- /var/lib/potbot/syn-agent-source-runtime/runtime/bin/python -I -B scripts/ci_agent_native.py --consumer-dir "$GITHUB_WORKSPACE/consumer-agent" --consumer-sha "$SYN_AGENT_CONSUMER" --runtime-root /var/lib/potbot/syn-agent-source-runtime/runtime --source-wheels "$GITHUB_WORKSPACE/artifacts/agent/wheels"
+          sudo -E unshare --net -- env -u DISPLAY -u WAYLAND_DISPLAY dbus-run-session -- /var/lib/potbot/syn-agent-source-runtime/runtime/bin/python -I -B scripts/ci_agent_native.py --consumer-dir "$GITHUB_WORKSPACE/consumer-agent" --consumer-sha "$SYN_AGENT_CONSUMER" --runtime-root /var/lib/potbot/syn-agent-source-runtime/runtime --source-wheels "$GITHUB_WORKSPACE/artifacts/agent/wheels" --lan-enrollment
       - name: Record routine CI completion assessment
         if: always()
         env:

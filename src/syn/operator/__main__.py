@@ -45,6 +45,14 @@ def main(argv=None) -> int:
         sub.add_argument("--config", type=Path, required=True)
         if name == "lan-pending-read":
             sub.add_argument("--offer-sha256", required=True)
+    for name in ("lan-reserve", "lan-grant"):
+        sub = commands.add_parser(name)
+        sub.add_argument("--config", type=Path, required=True)
+        sub.add_argument("--offer-sha256", required=True)
+        if name == "lan-reserve":
+            sub.add_argument("--operator-byte", type=int, required=True)
+        else:
+            sub.add_argument("--request", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.operation == "unlock":
@@ -58,6 +66,25 @@ def main(argv=None) -> int:
             from syn_client.operator_protocol import parse
             payload = parse(private_read(args.request)) if hasattr(args, "request") else None
             value = operate(args.config, args.operation, payload)
+        elif args.operation in ("lan-reserve", "lan-grant"):
+            from .adoption_cli import approve_selection
+            from .custody import private_read
+            from .enrollment import terminal_approval
+            from .lan_inbox import grant, reserve as reserve_pending
+            from syn_client.operator_protocol import canonical, parse
+
+            if args.operation == "lan-reserve":
+                value = reserve_pending(
+                    args.config, offer=args.offer_sha256, operator_byte=args.operator_byte,
+                    approve=terminal_approval,
+                )
+            else:
+                value = grant(
+                    args.config, parse(private_read(args.request)), offer=args.offer_sha256,
+                    approve=approve_selection,
+                )
+            sys.stdout.buffer.write(canonical(value))
+            return 0
         elif args.operation == "lan-serve":
             from .lan_transport import serve
             try:
