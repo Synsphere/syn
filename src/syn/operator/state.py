@@ -67,11 +67,14 @@ class OperatorState:
             raise SynProtocolError("Native operator state write/readback failed") from exc
 
     def create(self) -> None:
+        self._create({"profile": "syn.operator-state/1", "base_hash": self.base_hash,
+                      "boot": 0, "socket": None, "reservations": []})
+
+    def _create(self, body) -> None:
+        self._validate(body)
         backend = _native_backend()
         if self.path.exists() or self.path.is_symlink() or backend.get_password(self.service, self.slot) is not None:
             raise SynProtocolError("Operator allocation state exists or is incomplete")
-        body = {"profile": "syn.operator-state/1", "base_hash": self.base_hash,
-                "boot": 0, "socket": None, "reservations": []}
         # First state is sealed before publishing any allocation register.
         self._store_anchor({"profile": "syn.operator-state-anchor/1", "path": str(self.path),
                             "base_hash": self.base_hash, "current": None, "pending": body})
@@ -145,6 +148,9 @@ class OperatorState:
             raise SynProtocolError("Operator boot counter cannot rewind")
         if body["reservations"][:len(current["reservations"])] != current["reservations"]:
             raise SynProtocolError("Operator allocations are append-only")
+        self._commit(body)
+
+    def _commit(self, body) -> None:
         anchor = self._anchor()
         # Capacity is checked before either persistence side changes.
         if len(canonical(body)) > 48000:
