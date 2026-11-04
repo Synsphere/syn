@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 import errno
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -217,6 +218,7 @@ def _fixture(base):
             name: state.read() for name, state in _states(node, service, account, pin).items()
         }
         receiver = _native_backend().get_password(service, account + RECEIVER_SUFFIX)
+        receiver_sha256 = hashlib.sha256(receiver.encode("ascii")).hexdigest()
         assert len(before["control"]["reservations"]) == 1
         assert [row["kind"] for row in before["adoption"]["events"]] == [
             "selected",
@@ -225,133 +227,165 @@ def _fixture(base):
         ]
         assert before["lan"]["records"][0]["offer"] == offer
 
+    # Security.framework can cache the selected keychain inside a process.
+    # A clean verifier process selects the fresh destination, like a real restore.
+    context = {
+        "service": service,
+        "account": account,
+        "created": created,
+        "pin": pin,
+        "receipt": receipt,
+        "original_proof": original_proof,
+        "before": before,
+        "phrase": phrase.decode("ascii"),
+        "receiver_sha256": receiver_sha256,
+        "stale_control": stale_control.decode("ascii"),
+        "offer": offer,
+        "pledge": pledge,
+        "grant": grant,
+        "request": request,
+    }
     with native_fixture(destination_store):
-        assert _native_backend().get_password(service, account + ".operator.entropy.v1") is None
-        fresh = base / "fresh"
-        competing = base / "competing"
-        partial = base / "partial"
-        for path in (fresh, competing, partial):
-            path.mkdir(mode=0o700)
-        digest = receipt["backup_sha256"]
+        result = subprocess.run(
+            [sys.executable, "-B", str(Path(__file__).resolve()), "--destination", str(base)],
+            input=json.dumps(context).encode("ascii"),
+            stdout=subprocess.PIPE,
+            env={**child_environment(), "GITHUB_ACTIONS": "true"},
+            timeout=105,
+            check=False,
+        )
+        if result.returncode or phrase in result.stdout:
+            raise AssertionError("Fresh native destination verification failed")
+        return json.loads(result.stdout)
 
-        def args(path=fresh, file=backup, selected_pin=pin, selected_account="fresh"):
-            return destination_arguments(path, file, selected_pin, digest, selected_account)
 
-        stale = conversation(
-            terminal_process(*args(file=old_backup)), RESTORE_PROMPT, phrase=phrase
-        )
-        assert stale == (2, None, None, False) and not any(fresh.iterdir())
-        tampered = base / "tampered.bin"
-        raw = backup.read_bytes()
-        write_new(tampered, raw[:-1] + bytes([raw[-1] ^ 1]))
-        corrupted = conversation(
-            terminal_process(*args(file=tampered)), RESTORE_PROMPT, phrase=phrase
-        )
-        assert corrupted == (2, None, None, False) and not any(fresh.iterdir())
-        wrong = Mnemonic("english").to_mnemonic(bytes(32)).encode("ascii")
-        assert conversation(terminal_process(*args()), RESTORE_PROMPT, phrase=wrong) == (
-            2,
-            None,
-            None,
-            True,
-        )
-        assert conversation(
-            terminal_process(*args(selected_pin="0" * 64)),
-            RESTORE_PROMPT,
-            phrase=phrase,
-        ) == (2, None, None, True)
-        assert not any(fresh.iterdir())
+def _destination(base, context):
+    service, account = context["service"], context["account"]
+    created, pin, receipt = context["created"], context["pin"], context["receipt"]
+    original_proof, before = context["original_proof"], context["before"]
+    phrase = context["phrase"].encode("ascii")
+    stale_control = context["stale_control"].encode("ascii")
+    offer, pledge, grant, request = (
+        context[key] for key in ("offer", "pledge", "grant", "request")
+    )
+    old_backup, backup = base / "older.bin", base / "latest.bin"
+    assert _native_backend().get_password(service, account + ".operator.entropy.v1") is None
+    fresh = base / "fresh"
+    competing = base / "competing"
+    partial = base / "partial"
+    for path in (fresh, competing, partial):
+        path.mkdir(mode=0o700)
+    digest = receipt["backup_sha256"]
 
-        _native_backend().set_password(
-            "syn.fixture.recovery.destination", "partial.operator.control-state.v1", "partial"
-        )
-        assert conversation(
-            terminal_process(*args(partial, selected_account="partial")),
-            RESTORE_PROMPT,
-            phrase=phrase,
-        ) == (2, None, None, True)
-        assert not any(partial.iterdir())
-        assert (
-            _native_backend().get_password(
-                "syn.fixture.recovery.destination",
-                "partial.operator.control-state.v1",
-            )
-            == "partial"
-        )
+    def args(path=fresh, file=backup, selected_pin=pin, selected_account="fresh"):
+        return destination_arguments(path, file, selected_pin, digest, selected_account)
 
-        jobs = [
-            terminal_process(*args()),
-            terminal_process(*args(competing, selected_account="competing")),
-        ]
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            results = list(
-                executor.map(lambda job: conversation(job, RESTORE_PROMPT, phrase=phrase), jobs)
-            )
-        assert sorted(item[0] for item in results) == [0, 2]
-        winner = next(i for i, result in enumerate(results) if result[0] == 0)
-        restored = results[winner][1]
-        target, target_account = ((fresh, "fresh"), (competing, "competing"))[winner]
-        loser = (competing, fresh)[winner]
-        assert not any(loser.iterdir())
-        assert (
-            restored["identity"] == created["identity"]
-            and restored["state_sha256"] == receipt["state_sha256"]
-        )
-        assert restored["agent_activation_authorized"] is False
-        assert conversation(
-            terminal_process(*args(target, selected_account=target_account)),
-            RESTORE_PROMPT,
-            phrase=phrase,
-        ) == (2, None, None, True)
+    stale = conversation(terminal_process(*args(file=old_backup)), RESTORE_PROMPT, phrase=phrase)
+    assert stale == (2, None, None, False) and not any(fresh.iterdir())
+    tampered = base / "tampered.bin"
+    raw = backup.read_bytes()
+    write_new(tampered, raw[:-1] + bytes([raw[-1] ^ 1]))
+    corrupted = conversation(terminal_process(*args(file=tampered)), RESTORE_PROMPT, phrase=phrase)
+    assert corrupted == (2, None, None, False) and not any(fresh.iterdir())
+    wrong = Mnemonic("english").to_mnemonic(bytes(32)).encode("ascii")
+    assert conversation(terminal_process(*args()), RESTORE_PROMPT, phrase=wrong) == (
+        2,
+        None,
+        None,
+        True,
+    )
+    assert conversation(
+        terminal_process(*args(selected_pin="0" * 64)),
+        RESTORE_PROMPT,
+        phrase=phrase,
+    ) == (2, None, None, True)
+    assert not any(fresh.iterdir())
 
-        restored_config = target / "operator.json"
-        server = OperatorServer(restored_config)
-        assert server.expected_hash == pin and server.config["network_id"] == "ci-recovery"
-        states = _states(target, server.signer.service, server.signer.account, pin)
-        assert {name: state.read() for name, state in states.items()} == before
-        assert (
-            _native_backend().get_password(
-                server.signer.service, server.signer.account + RECEIVER_SUFFIX
-            )
-            == receiver
+    _native_backend().set_password(
+        "syn.fixture.recovery.destination", "partial.operator.control-state.v1", "partial"
+    )
+    assert conversation(
+        terminal_process(*args(partial, selected_account="partial")),
+        RESTORE_PROMPT,
+        phrase=phrase,
+    ) == (2, None, None, True)
+    assert not any(partial.iterdir())
+    assert (
+        _native_backend().get_password(
+            "syn.fixture.recovery.destination",
+            "partial.operator.control-state.v1",
         )
-        assert lan_inbox.pending(restored_config, offer=offer) == pledge
-        assert (
-            lan_enrollment.validate_submission(restored_config, pledge, **ROUTE)[
-                "pledge_offer_sha256"
-            ]
-            == offer
-        )
-        try:
-            operate(restored_config, "agent-seal", {"grant": grant, "request": request})
-        except SynProtocolError:
-            pass
-        else:
-            raise AssertionError("Restored one-use adoption transition accepted replay")
+        == "partial"
+    )
 
-        # Copying stale journal bytes must still be refused against the new native anchor.
-        control = states["control"]
-        retained = control.path.read_bytes()
-        control.path.write_bytes(stale_control)
-        try:
-            control.read()
-        except SynProtocolError:
-            pass
-        else:
-            raise AssertionError("Restored allocation anchor accepted stale state")
-        finally:
-            control.path.write_bytes(retained)
-
-        process = start(target)
-        try:
-            restored_proof = ready(process, target, restored)
-        finally:
-            stop(process)
-        assert (
-            restored_proof["status"]["base_public_key"]
-            == original_proof["status"]["base_public_key"]
+    jobs = [
+        terminal_process(*args()),
+        terminal_process(*args(competing, selected_account="competing")),
+    ]
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(
+            executor.map(lambda job: conversation(job, RESTORE_PROMPT, phrase=phrase), jobs)
         )
-        assert restored_proof["status"]["boot"] == original_proof["status"]["boot"] + 1
+    assert sorted(item[0] for item in results) == [0, 2]
+    winner = next(i for i, result in enumerate(results) if result[0] == 0)
+    restored = results[winner][1]
+    target, target_account = ((fresh, "fresh"), (competing, "competing"))[winner]
+    loser = (competing, fresh)[winner]
+    assert not any(loser.iterdir())
+    assert (
+        restored["identity"] == created["identity"]
+        and restored["state_sha256"] == receipt["state_sha256"]
+    )
+    assert restored["agent_activation_authorized"] is False
+    assert conversation(
+        terminal_process(*args(target, selected_account=target_account)),
+        RESTORE_PROMPT,
+        phrase=phrase,
+    ) == (2, None, None, True)
+
+    restored_config = target / "operator.json"
+    server = OperatorServer(restored_config)
+    assert server.expected_hash == pin and server.config["network_id"] == "ci-recovery"
+    states = _states(target, server.signer.service, server.signer.account, pin)
+    assert {name: state.read() for name, state in states.items()} == before
+    receiver = _native_backend().get_password(
+        server.signer.service, server.signer.account + RECEIVER_SUFFIX
+    )
+    assert hashlib.sha256(receiver.encode("ascii")).hexdigest() == context["receiver_sha256"]
+    assert lan_inbox.pending(restored_config, offer=offer) == pledge
+    assert (
+        lan_enrollment.validate_submission(restored_config, pledge, **ROUTE)["pledge_offer_sha256"]
+        == offer
+    )
+    try:
+        operate(restored_config, "agent-seal", {"grant": grant, "request": request})
+    except SynProtocolError:
+        pass
+    else:
+        raise AssertionError("Restored one-use adoption transition accepted replay")
+
+    # Copying stale journal bytes must still be refused against the new native anchor.
+    control = states["control"]
+    retained = control.path.read_bytes()
+    control.path.write_bytes(stale_control)
+    try:
+        control.read()
+    except SynProtocolError:
+        pass
+    else:
+        raise AssertionError("Restored allocation anchor accepted stale state")
+    finally:
+        control.path.write_bytes(retained)
+
+    process = start(target)
+    try:
+        restored_proof = ready(process, target, restored)
+    finally:
+        stop(process)
+    assert (
+        restored_proof["status"]["base_public_key"] == original_proof["status"]["base_public_key"]
+    )
+    assert restored_proof["status"]["boot"] == original_proof["status"]["boot"] + 1
     return {
         "profile": "syn.operator-native-recovery-acceptance/1",
         "result": "passed",
@@ -374,6 +408,10 @@ def _fixture(base):
 def main():
     if os.environ.get("GITHUB_ACTIONS") != "true":
         raise SystemExit("This acceptance harness requires an owned disposable CI host")
+    if len(sys.argv) == 3 and sys.argv[1] == "--destination":
+        context = json.loads(sys.stdin.buffer.read(250_000))
+        print(json.dumps(_destination(Path(sys.argv[2]), context)))
+        return
     with tempfile.TemporaryDirectory(prefix="syn-recovery-", dir=Path("/tmp").resolve()) as work:
         receipt = _fixture(Path(work).resolve())
     output = Path("artifacts/operator/native-recovery.json")
