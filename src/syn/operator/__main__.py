@@ -53,6 +53,16 @@ def main(argv=None) -> int:
             sub.add_argument("--operator-byte", type=int, required=True)
         else:
             sub.add_argument("--request", type=Path, required=True)
+    backup = commands.add_parser("backup-recovery", help="Create an encrypted operator checkpoint with a private recovery phrase")
+    backup.add_argument("--config", type=Path, required=True)
+    backup.add_argument("--output", type=Path, required=True)
+    recovery = commands.add_parser("recover-operator", help="Restore one pinned checkpoint into a fresh native store")
+    recovery.add_argument("--state-dir", type=Path, required=True)
+    recovery.add_argument("--keyring-service", required=True)
+    recovery.add_argument("--keyring-account", required=True)
+    recovery.add_argument("--backup", type=Path, required=True)
+    recovery.add_argument("--expected-base-public-key-hash", required=True)
+    recovery.add_argument("--expected-backup-sha256", required=True)
     args = parser.parse_args(argv)
     try:
         if args.operation == "unlock":
@@ -126,6 +136,18 @@ def main(argv=None) -> int:
                 from syn_client.operator_protocol import exact, parse
                 request = exact(parse(private_read(args.request)), {"pulse", "pledge"}, "private enrollment request")
                 value = reserve(args.config, request["pulse"], request["pledge"], args.operator_byte, approve=terminal_approval)
+        elif args.operation == "backup-recovery":
+            from .recovery import backup_operator
+
+            value = backup_operator(args.config, args.output)
+        elif args.operation == "recover-operator":
+            from .recovery import recover_operator
+
+            value = recover_operator(
+                args.state_dir, service=args.keyring_service, account=args.keyring_account,
+                backup=args.backup, expected_base_hash=args.expected_base_public_key_hash,
+                expected_backup_sha256=args.expected_backup_sha256,
+            )
         elif args.operation == "preflight":
             server = OperatorServer(args.config)
             current = server.state.read()

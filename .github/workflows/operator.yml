@@ -59,6 +59,12 @@ jobs:
       - name: Real native macOS Keychain and independently restarted operator process
         if: runner.os == 'macOS'
         run: uv run --locked python scripts/ci_operator_native.py
+      - name: Recover protected enrollment into a fresh Linux Secret Service
+        if: runner.os == 'Linux'
+        run: env -u DISPLAY -u WAYLAND_DISPLAY dbus-run-session -- uv run --locked python scripts/ci_operator_recovery.py
+      - name: Recover protected enrollment into a fresh macOS Keychain
+        if: runner.os == 'macOS'
+        run: uv run --locked python scripts/ci_operator_recovery.py
       - name: Record routine CI completion assessment
         if: always()
         env:

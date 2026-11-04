@@ -193,3 +193,63 @@ There is no graphical node UI or dynamic Agent exchange in this stage.
 The architecture diagram explains the interface; sanitized native test receipts
 provide execution evidence. No screenshot/video of a production deployment is
 claimed before it exists.
+
+## Recover an operator into a fresh native keystore
+
+Recovery combines a private 24-word BIP-39 phrase with an encrypted checkpoint.
+The phrase reproduces the existing operator base key. The checkpoint preserves
+its network, boot counter, allocation reservations, enrollment receiver key,
+adoption history, and pending LAN pledges and replay records where initialized.
+Syn validates the existing native anchors before backup and rebinds the same
+committed state to the destination's private files and native keystore.
+
+Stop the operator and any LAN enrollment listener before taking a checkpoint.
+Use an owner-private output directory. The command displays the phrase only
+in its private foreground terminal and returns the checkpoint digest in its
+public receipt. Store the phrase separately from the encrypted file. Retain
+the latest checkpoint digest and the previously trusted base key hash in an
+independent record. Take a new checkpoint after any enrollment changes you
+need to preserve.
+
+```sh
+syn-operator backup-recovery --config /private/operator/operator.json \
+  --output /private/checkpoints/operator-latest.bin
+```
+
+On the recovery host, unlock a fresh native keystore and create an empty,
+owner-private state directory. Fence the original operator and any other
+restored copy before allowing the replacement to sign. Use the latest trusted
+checkpoint and the independently retained pins. If the original kept
+accepting enrollment after that checkpoint and its later state is missing,
+stop for reconciliation. A valid older checkpoint cannot reconstruct those
+later writes.
+
+```sh
+syn-operator recover-operator --state-dir /private/recovered \
+  --keyring-service syn.operator --keyring-account primary \
+  --backup /private/checkpoints/operator-latest.bin \
+  --expected-base-public-key-hash "$OPERATOR_PIN" \
+  --expected-backup-sha256 "$CHECKPOINT_PIN"
+syn-operator preflight --config /private/recovered/operator.json
+```
+
+The terminal asks for confirmation of the pinned restore, then reads the
+phrase with echo disabled. Recovery refuses a wrong phrase, a changed file or
+an occupied destination. A native claim lets only one recovery of the identity
+proceed in the same native store. An interrupted installation retains its
+partial state for inspection. Reconcile it before attempting a new restore
+into a fresh store. Use a signed readiness challenge after starting the
+replacement. The existing boot counter resumes from the checkpoint.
+
+```mermaid
+flowchart LR
+    A[Stopped operator with validated native anchors] --> B[Encrypted checkpoint]
+    A --> C[Private recovery phrase]
+    B --> D[Fresh native keystore]
+    C --> D
+    E[Independently retained identity and checkpoint pins] --> D
+    D --> F[Rebound state and signed readiness]
+```
+
+The diagram covers the headless procedure. Recovery phrases and native
+keystore prompts are private and should stay out of recordings.
