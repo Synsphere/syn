@@ -8,8 +8,14 @@ import sys
 
 
 def main(argv=None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "legacy-state":
+        from .legacy_state import main as legacy_main
+
+        return legacy_main(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="operation", required=True)
+    commands.add_parser("legacy-state", help="Archive and inspect retired receipt and replay journals")
     commands.add_parser("unlock", help="Private local native-keystore prompt; never creates an identity")
     create = commands.add_parser("init", help="Explicitly create one NEW operator identity in the native OS keystore")
     create.add_argument("--state-dir", type=Path, required=True)

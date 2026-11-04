@@ -33,6 +33,19 @@ def verify_adoption(record: object, *, expected_master_hash: bytes, now: int) ->
     This authenticates an operator's statement and a chosen-key signature, not
     third-party hardware attestation or independent control of the child key.
     """
+    return _verify_adoption(record, expected_master_hash=expected_master_hash, now=now,
+                            require_distinct_identity=True)
+
+
+def verify_historical_legacy_adoption(record: object, *, expected_master_hash: bytes) -> str:
+    """Verify legacy receipt signatures at signing time for archival use only."""
+    if not isinstance(record, dict) or not isinstance(record.get("receipt"), dict):
+        raise SynProtocolError("Malformed historical adoption receipt")
+    return _verify_adoption(record, expected_master_hash=expected_master_hash,
+                            now=record["receipt"].get("adopted_at"), require_distinct_identity=False)
+
+
+def _verify_adoption(record, *, expected_master_hash, now, require_distinct_identity):
     if type(expected_master_hash) is not bytes or len(expected_master_hash) != 32:
         raise SynProtocolError("SYN receipt verifier needs a pinned operator hash")
     outer = exact(
@@ -98,7 +111,7 @@ def verify_adoption(record: object, *, expected_master_hash: bytes, now: int) ->
     _int(receipt["inheritance"], 0, 16_777_215, "inheritance")
     _int(receipt["independence"], 1, 8, "independence")
     chosen = hex_bytes(proof["selected_public_key"], 32, "chosen key")
-    if hashlib.sha256(chosen).digest() == expected_master_hash:
+    if require_distinct_identity and hashlib.sha256(chosen).digest() == expected_master_hash:
         raise SynProtocolError("An Agent assignment cannot reuse its operator base identity")
     if hashlib.sha256(chosen).hexdigest() != receipt["selected_public_key_hash"]:
         raise SynProtocolError("SYN selected public key does not match adopted identity")
