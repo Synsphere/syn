@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 import secrets
 from unittest.mock import patch
@@ -14,7 +15,7 @@ from syn_client.operator_protocol import SynProtocolError, canonical, receive, s
 from syn_client.pubsub_client import private_connect, request
 
 
-def qualify_rollover(stack, session_factory, nodes, config):
+def qualify_rollover(stack, session_factory, nodes, config, *, official=None):
     survivor, revoked = (entry[0] for entry in nodes)
     old_status, revoked_status = (entry[2]["status"] for entry in nodes)
     old_cert, revoked_cert = (status["group_certificate"] for status in (old_status, revoked_status))
@@ -30,7 +31,9 @@ def qualify_rollover(stack, session_factory, nodes, config):
         return session
 
     def maintenance(session, operation, payload=None):
-        # The pinned Potbot adapter predates these two maintenance operations.
+        if official is not None:
+            return session.command(operation, payload)
+        # Older consumers in the candidate-wheel lane launch Syn directly.
         raw = canonical({"operation": operation, "payload": payload}) + b"\n"
         session.process.stdin.write(raw)
         session.process.stdin.flush()
@@ -80,6 +83,13 @@ def qualify_rollover(stack, session_factory, nodes, config):
             excluded.command("serve")
         except StateMismatchError:
             assert excluded.process.wait(timeout=10) == 2
+            if official is not None:
+                refusal = json.loads(excluded.process.stderr.read(4096))
+                assert refusal["code"] == "state_mismatch"
+                assert refusal["message"] in {
+                    "Syn private Agent session exited; deployment fenced",
+                    "Syn Agent closed its public response pipe",
+                }
             assert not (Path(revoked.host["home"]) / "syn/agent.sock").exists()
         else:
             raise AssertionError("Revoked Agent started after a complete native restart")
@@ -108,22 +118,40 @@ def qualify_rollover(stack, session_factory, nodes, config):
         else:
             raise AssertionError("Retained Agent admitted the prior cohort after restart")
 
-    scope.update(session_id=secrets.token_hex(16), group_epoch=2, members=[certificate])
-    relay = PrivateRelay({"profile": "syn.private-relay-config/1", "scope": scope,
-                          "endpoints": [{"node": retained_node, "socket": str(path), "owner_uid": owner}]})
-    try:
-        relay.connect()
-        status = request(socket_path=path, owner_uid=owner, expected_node=retained_node,
-                         configuration_sha256=ready["configuration_sha256"], selected_scope=scope,
-                         operation="status", expected_boot=ready["boot_id"])
-        assert status["reply"]["result"]["peers"] == [retained_node]
-    finally:
-        relay.close()
+    if official is None:
+        scope.update(session_id=secrets.token_hex(16), group_epoch=2, members=[certificate])
+        relay = PrivateRelay({"profile": "syn.private-relay-config/1", "scope": scope,
+                              "endpoints": [{"node": retained_node, "socket": str(path), "owner_uid": owner}]})
+        try:
+            relay.connect()
+            status = request(socket_path=path, owner_uid=owner, expected_node=retained_node,
+                             configuration_sha256=ready["configuration_sha256"], selected_scope=scope,
+                             operation="status", expected_boot=ready["boot_id"])
+        finally:
+            relay.close()
+    else:
+        from uuid import UUID
+        from potbot.syn_release.agent import SynAgentDeployment
+        from potbot.syn_release.mesh import SynPrivateMesh
+
+        store, policy = official
+        agent_id = UUID(survivor.host["agent_id"])
+        deployment = SynAgentDeployment(
+            store, policy, path.parents[3], agent_id=agent_id, uid=owner,
+            expected_operator=operator, network_id=ready["network_id"], group_id=UUID(group),
+            group_epoch=2, device_profile=ready["device_profile"],
+        )
+        mesh = SynPrivateMesh(config.parent.parent / "rollover-mesh", workspace_id=uuid4(),
+                              participants={agent_id: (deployment, admitted.api)})
+        with mesh.running():
+            status = mesh.call(agent_id, "status")
+    assert status["reply"]["result"]["peers"] == [retained_node]
     assert admitted.process.wait(timeout=15) == 2
     admitted.close()
     print("Group rollover passed: retained Agent joined epoch 2; revoked Agent refused both epoch pins after restart",
           flush=True)
     return {"profile": "syn.agent-group-rollover-native-acceptance/1", "result": "passed",
             "transition": transition, "retained_status": status,
+            "official_packages_and_pinned_controller": official is not None,
             "revoked_restart_refused_epochs": [1, 2], "prior_cohort_refused_after_restart": True,
             "retained_identity_and_assignment_preserved": True, "new_group_key_commitment": True}

@@ -37,6 +37,7 @@ parser.add_argument('--official-policy',type=Path)
 parser.add_argument('--consumer-python',type=Path)
 parser.add_argument('--local-disposable-fixture',action='store_true')
 parser.add_argument('--lan-enrollment',action='store_true')
+parser.add_argument('--group-rollover',action='store_true')
 ARGS=parser.parse_args()
 if os.getuid()!=0 or sys.platform!='linux':
     raise SystemExit('Actual restricted native Agent qualification requires disposable Linux root')
@@ -241,6 +242,9 @@ def main():
         assert runtimeContract().to_dict()==verified['observed']['runtime']
     elif ARGS.source_wheels is None:
         raise AssertionError('A source-wheel qualification must retain exact candidate wheel digests')
+    supports_rollover = 'group-member-revocation' in runtimeContract().capabilities
+    if ARGS.group_rollover and (not ARGS.official_policy or not supports_rollover):
+        raise AssertionError('Requested rollover requires pinned official packages with the rollover contract')
     if ARGS.lan_enrollment:
         from ci_lan_enrollment import enroll as enroll_lan, prepare_network
         if "authenticated-lan-enrollment" not in runtimeContract().capabilities:
@@ -365,10 +369,13 @@ def main():
                     "two_distinct_agents_activated_and_restarted": True,
                     "agents": lan_evidence,
                 }))
-            if 'group-member-revocation' in runtimeContract().capabilities and not ARGS.official_policy:
+            if ARGS.group_rollover or (supports_rollover and not ARGS.official_policy):
                 native.stop(running_operator)
                 from ci_group_rollover import qualify_rollover
-                rollover = qualify_rollover(stack, Session, nodes, config)
+                rollover = qualify_rollover(
+                    stack, Session, nodes, config,
+                    official=(store, policy) if ARGS.official_policy else None,
+                )
                 (evidence/'group-rollover.json').write_bytes(canonical(rollover))
             wheelroot=ARGS.source_wheels
             receipt={'profile':('syn.agent-official-native-acceptance/1' if ARGS.official_policy else 'syn.agent-source-native-acceptance/1'),'result':'passed',

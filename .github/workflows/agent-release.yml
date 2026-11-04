@@ -12,6 +12,11 @@ on:
         required: true
         default: false
         type: boolean
+      group_rollover:
+        description: Require member revocation and epoch rollover through the pinned controller
+        required: true
+        default: false
+        type: boolean
       potbot_sha:
         description: Exact reviewed Potbot consumer SHA
         required: true
@@ -81,11 +86,15 @@ jobs:
         env:
           POTBOT_SYN_GITHUB_TOKEN: ${{ github.token }}
           SYN_TEST_LAN: ${{ inputs.lan_enrollment }}
+          SYN_TEST_GROUP_ROLLOVER: ${{ inputs.group_rollover }}
         shell: bash
         run: |
           args=()
           if [ "$SYN_TEST_LAN" = true ]; then
             args+=(--lan-enrollment)
+          fi
+          if [ "$SYN_TEST_GROUP_ROLLOVER" = true ]; then
+            args+=(--group-rollover)
           fi
           sudo -E consumer-agent/.venv/bin/python scripts/ci_agent_release.py "${args[@]}"
       - name: Record routine CI completion assessment
