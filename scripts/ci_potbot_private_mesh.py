@@ -69,7 +69,18 @@ def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None,
 
     class RecordedTransport(SynPrivateMesh):
         def call(self, agent_id, operation, payload=None):
-            value = super().call(agent_id, operation, payload)
+            try:
+                value = super().call(agent_id, operation, payload)
+            except StateMismatchError as error:
+                if monitored_worker_probe is not None:
+                    public = str(error)
+                    if public in {
+                        "Native Syn command capacity deadline exceeded",
+                        "Upstream Syn operation exceeded its deadline",
+                        "Upstream Syn refused; reconcile native keystore and state",
+                    }:
+                        print("Official native operation failed:", operation, public, flush=True)
+                raise
             if operation == "receive" and value["reply"]["result"]["messages"] and len(receptions) < 8:
                 receptions.append(value)
             return value
@@ -77,7 +88,10 @@ def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None,
     receptions = []
     workspace = uuid4()
     transport = RecordedTransport(base / "potbot-private-mesh", workspace_id=workspace, participants=participants)
-    workers = ReleasedSynWorkerNodeMesh(transport, interval_seconds=1)
+    workers = (
+        ReleasedSynWorkerNodeMesh(transport) if monitored_worker_probe is not None
+        else ReleasedSynWorkerNodeMesh(transport, interval_seconds=1)
+    )
     actor = WorkspaceContext(workspace, uuid4())
     policy_pin = ExecutionPolicy("a" * 64, "b" * 64, "c" * 64, "native-admission-fixture")
     operation = SandboxedCogOperation(WorkBinding("tool", "syn://thing/undispatched-fixture",

@@ -93,7 +93,7 @@ def main():
         argv.append("--local-disposable-fixture")
     environment = {name: item for name, item in os.environ.items() if name not in {"PYTHONPATH", "PYTHONHOME", "POTBOT_SYN_GITHUB_TOKEN"}}
     environment["XDG_RUNTIME_DIR"] = str(base)
-    timeout = 720 if args.group_rollover else 420
+    timeout = 720 if args.group_rollover else (600 if args.monitored_worker else 420)
     result = subprocess.run(argv, env=environment, timeout=timeout, check=False)
     if result.returncode:
         raise AssertionError("Exact official-package Agent controller acceptance failed")
