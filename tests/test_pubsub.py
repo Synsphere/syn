@@ -53,7 +53,7 @@ def fixture(monkeypatch):
         "group_epoch": 1, "network_id": "fixture", "members": certificates})
     mapping = dict(zip((server.expected_hash for server in servers), certificates))
     monkeypatch.setattr(pubsub, "load_group", lambda config, node: mapping[node])
-    monkeypatch.setattr(pubsub, "_native_backend", lambda: SimpleNamespace(get_password=lambda *_: group_key.hex()))
+    monkeypatch.setattr(pubsub, "load_group_custody", lambda config, node: (mapping[node], group_key, None))
     return servers, selected_scope
 
 
@@ -169,7 +169,10 @@ def test_duplicate_and_changed_ciphertext_fence_actual_reader(fixture):
 
 def test_native_custody_loss_and_relay_loss_fence_pubsub(fixture, monkeypatch):
     with connected(fixture) as (nodes, relay, captured, selected):
-        monkeypatch.setattr(pubsub, "_native_backend", lambda: SimpleNamespace(get_password=lambda *_: None))
+        def locked(*_):
+            raise SynProtocolError("Native keyring is locked")
+
+        monkeypatch.setattr(pubsub, "load_group_custody", locked)
         with pytest.raises(SynProtocolError):
             nodes[0].publish("syn://type/event", {})
         assert nodes[0].fault.is_set()

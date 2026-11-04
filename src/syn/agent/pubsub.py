@@ -18,12 +18,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
-from syn.operator.custody import _native_backend
 from syn_client.operator_protocol import SynProtocolError, canonical, exact, hex_bytes, parse, peer_uid, receive, send
 from syn_client.pubsub import (HELLO_DOMAIN, MAX_PAYLOAD, MAX_QUEUE, MESSAGE_DOMAIN, REPLY_DOMAIN,
                                scope, verify_hello, verify_message)
-from syn_client.group import COMMIT_DOMAIN
-from .group import load_group
+from .group import load_group, load_group_custody
 
 KEY_DOMAIN = b"syn.private-pubsub.sender-key.hkdf-sha256/1\0"
 
@@ -60,9 +58,11 @@ class NativePubSub:
         if request["profile"] != "syn.private-pubsub-link/1" or peer_uid(conn) != 0:
             raise SynProtocolError("Private Syn relay requires the privileged local controller")
         selected = scope(request["scope"])
-        own = load_group(self.server.config, self.server.expected_hash)
-        if (own not in selected["members"] or any(selected[key] != self.server.config[key]
-                for key in ("network_id", "group_id", "group_epoch"))
+        own, _, members = load_group_custody(self.server.config, self.server.expected_hash)
+        selected_nodes = sorted(packet["body"]["node_public_key_hash"] for packet in selected["members"])
+        if (own not in selected["members"] or selected["group_epoch"] != own["body"]["group_epoch"]
+                or (members is not None and selected_nodes != members)
+                or any(selected[key] != self.server.config[key] for key in ("network_id", "group_id"))
                 or selected["operator"] != self.server.config["expected_operator"]):
             raise SynProtocolError("Private relay scope differs from retained Agent custody")
         with self.lock:
@@ -84,12 +84,9 @@ class NativePubSub:
     def _key(self, header):
         # Recheck actual native custody on each operation. No key material is
         # returned over IPC or made available to the public-only client/relay.
-        certificate = load_group(self.server.config, self.server.expected_hash)
-        raw = _native_backend().get_password(self.server.config["keyring_service"],
-            self.server.config["keyring_account"] + ".agent.group-key.v1")
-        secret = hex_bytes(raw, 32, "native pub-sub group key")
-        if hashlib.sha256(COMMIT_DOMAIN + secret).hexdigest() != certificate["body"]["group_key_commitment"]:
-            raise SynProtocolError("Native pub-sub key changed during custody verification")
+        certificate, secret, _ = load_group_custody(self.server.config, self.server.expected_hash)
+        if certificate["body"]["group_epoch"] != header["group_epoch"]:
+            raise SynProtocolError("Native pub-sub key belongs to another epoch")
         context = {name: header[name] for name in ("network_id", "group_id", "group_epoch", "workspace_id", "session_id", "node", "boot_id")}
         return HKDF(algorithm=hashes.SHA256(), length=32,
                     salt=hashlib.sha256(KEY_DOMAIN).digest(), info=KEY_DOMAIN + canonical(context)).derive(secret)

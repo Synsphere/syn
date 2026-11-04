@@ -32,7 +32,7 @@ def main(argv=None) -> int:
     reservation.add_argument("--config", type=Path, required=True)
     reservation.add_argument("--request", type=Path, required=True)
     reservation.add_argument("--operator-byte", type=int, required=True)
-    for name in ("adoption-init", "agent-pulse", "agent-reserve", "agent-grant", "agent-seal", "agent-confirm", "agent-group"):
+    for name in ("adoption-init", "agent-pulse", "agent-reserve", "agent-grant", "agent-seal", "agent-confirm", "agent-group", "agent-group-rollover"):
         sub = commands.add_parser(name)
         sub.add_argument("--config", type=Path, required=True)
         if name not in {"adoption-init", "agent-pulse"}:

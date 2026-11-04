@@ -50,6 +50,9 @@ def operate(config_path, operation, payload=None, *, approve=approve_selection):
             request = exact(payload, {"grant", "key_proof"}, "selected key confirmation")
             return confirm_selected_key(grant_packet=request["grant"], key_proof=request["key_proof"], signer=server.signer,
                 authorizer=journal, ledger=journal, journal=journal, now=now)
+        if operation == "agent-group-rollover":
+            from syn.agent.group_rollover import roll_group
+            return roll_group(server, journal, payload, approve=approve_rollover)
         if operation == "agent-group":
             from syn.agent.group import seal_group_key
             request = exact(payload, {"grant", "request", "group_id", "group_epoch"}, "initial group assignment")
@@ -77,5 +80,17 @@ def approve_group(decision):
         terminal.write("Assign only the current group epoch key; no parent derivation authority.\n")
         phrase = "GROUP " + decision["group_id"] + " " + str(decision["group_epoch"]) + " " + decision["selected_public_key_hash"][:12]
         terminal.write("Type " + phrase + " to authorize: ")
+        terminal.flush()
+        return terminal.readline(128).strip() == phrase
+
+
+def approve_rollover(decision):
+    from .unlock import _private_terminal
+    with _private_terminal() as terminal:
+        terminal.write("Group " + decision["group_id"] + "\n")
+        terminal.write("Revoked selected Agent hashes:\n" + "\n".join(decision["revoked"]) + "\n")
+        terminal.write("Retained selected Agent hashes:\n" + "\n".join(decision["retained"]) + "\n")
+        phrase = "ROLL " + decision["group_id"] + " " + str(decision["epoch"])
+        terminal.write("Type " + phrase + " to authorize the next group key: ")
         terminal.flush()
         return terminal.readline(128).strip() == phrase

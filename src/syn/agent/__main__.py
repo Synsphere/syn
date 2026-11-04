@@ -21,7 +21,7 @@ def main(argv=None):
     create.add_argument("--group-epoch", type=int, required=True)
     create.add_argument("--approved-device-profile", required=True)
     create.add_argument("--new-identity", action="store_true", required=True)
-    for operation in ("offer", "lan-offer", "choose", "prepare", "adopt", "adopt-group", "activate", "serve"):
+    for operation in ("offer", "lan-offer", "choose", "prepare", "adopt", "adopt-group", "apply-group-rollover", "activate", "serve"):
         sub = commands.add_parser(operation)
         sub.add_argument("--config", type=Path, required=True)
         if operation != "serve":
@@ -84,6 +84,9 @@ def main(argv=None):
                 payload = exact(payload, {"grant", "request", "group"}, "group handoff")
                 value = adopt_group_key(config, args.config.parent, grant_packet=payload["grant"],
                     request_packet=payload["request"], envelope=payload["group"], now=int(time.time()))
+            elif args.operation == "apply-group-rollover":
+                from .group_rollover import apply_rollover
+                value = apply_rollover(args.config, payload)
             elif args.operation == "activate":
                 from .service import activate
                 value = activate(args.config, payload)

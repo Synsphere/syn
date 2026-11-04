@@ -134,7 +134,7 @@ def independent_process(node, proof):
 
 
 class Session:
-    def __init__(self, stack, host, expected_operator, *, password=None, existing=False):
+    def __init__(self, stack, host, expected_operator, *, password=None, existing=False, epoch=1):
         self.host = host
         self.master, slave = pty.openpty()
         self.password = password or secrets.token_urlsafe(32)
@@ -144,14 +144,14 @@ class Session:
         self.answered = set()
         arguments = ('--state-dir',str(Path(host['home'])/'syn'), '--keyring-service','syn.agent.fixture',
             '--keyring-account','agent', '--expected-operator',expected_operator,'--network-id','r04-fixture',
-            '--approved-device-profile','syn.host-bound-virtual-device/1','--group-id',GROUP_ID,'--group-epoch','1') + (() if existing else ('--new-identity',))
+            '--approved-device-profile','syn.host-bound-virtual-device/1','--group-id',GROUP_ID,'--group-epoch',str(epoch)) + (() if existing else ('--new-identity',))
         if ARGS.official_policy:
             if ARGS.consumer_python is None:
                 raise AssertionError('Official acceptance must execute the full reviewed Potbot controller')
             argv=[str(ARGS.consumer_python),'-I','-B','-m','potbot','syn-agent','session',
                 '--store',str(ARGS.official_store),'--policy',str(ARGS.official_policy),'--agent-root',str(ROOT),
                 '--agent-id',host['agent_id'],'--uid',str(host['uid']),'--expected-operator',expected_operator,
-                '--network-id','r04-fixture','--group-id',GROUP_ID,'--group-epoch','1',
+                '--network-id','r04-fixture','--group-id',GROUP_ID,'--group-epoch',str(epoch),
                 '--approved-device-profile','syn.host-bound-virtual-device/1']
             if not existing:
                 argv.append('--new-identity')
@@ -263,6 +263,7 @@ def main():
                 from syn.operator import lan_inbox
                 lan_inbox.initialize(config)
             nodes=[]
+            group_requests = {}
             for uid in (53102,53103):
                 host=provision(ROOT,agent_id=uuid4(),uid=uid)
                 hosts.append(host)
@@ -280,6 +281,7 @@ def main():
                     choice=node.command('choose',candidates)
                     grant=operate(config,'agent-grant',{'offer':offer,'candidates':candidates,'selection':choice},approve=lambda _:True)
                 request=node.command('prepare',grant)
+                group_requests[grant["grant"]["selected_public_key_hash"]] = request
                 sealed=operate(config,'agent-seal',{'grant':grant,'request':request})
                 proof=node.command('adopt',{'grant':grant,'request':request,'envelope':sealed})
                 receipt=operate(config,'agent-confirm',{'grant':grant,'key_proof':proof['key_proof']})
@@ -365,6 +367,11 @@ def main():
                     "two_distinct_agents_activated_and_restarted": True,
                     "agents": lan_evidence,
                 }))
+            if 'group-member-revocation' in runtimeContract().capabilities and not ARGS.official_policy:
+                native.stop(running_operator)
+                from ci_group_rollover import qualify_rollover
+                rollover = qualify_rollover(stack, Session, nodes, config, group_requests)
+                (evidence/'group-rollover.json').write_bytes(canonical(rollover))
             wheelroot=ARGS.source_wheels
             receipt={'profile':('syn.agent-official-native-acceptance/1' if ARGS.official_policy else 'syn.agent-source-native-acceptance/1'),'result':'passed',
                 'qualification':('official_released_native_software_custody_and_two_real_sandboxed_agents' if ARGS.official_policy else 'source_wheels_disposable_native_software_custody_and_two_real_sandboxed_agents'),

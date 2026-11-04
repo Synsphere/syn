@@ -45,7 +45,7 @@ class EnrollmentJournal(OperatorState):
         for event in body["events"]:
             exact(event, {"kind", "offer", "body"}, "adoption event")
             hex_bytes(event["offer"], 32, "pledge digest")
-            if event["kind"] not in {"selected", "granted", "sealed", "receipt", "confirmed", "groupsealed"}:
+            if event["kind"] not in {"selected", "granted", "sealed", "receipt", "confirmed", "groupsealed", "grouprolled"}:
                 raise SynProtocolError("Unknown adoption transition")
 
     def commit(self, body):
