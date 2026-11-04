@@ -57,7 +57,7 @@ def sha(path):
 
 def cli(*args):
     return subprocess.run(
-        [sys.executable, "-B", "-m", "syn.operator", "legacy-state", *map(str, args)],
+        [sys.executable, "-I", "-B", "-m", "syn.operator", "legacy-state", *map(str, args)],
         capture_output=True,
         timeout=15,
     )
@@ -79,8 +79,8 @@ def potbot_schema(root, filename, table):
 @pytest.fixture
 def legacy(monkeypatch):
     source = os.environ.get("SYN_LEGACY_FIXTURE")
-    if sys.platform != "linux" or source is None:
-        pytest.skip("Requires the pinned Potbot writer checkout on a disposable Linux runner")
+    if sys.platform not in {"linux", "darwin"} or source is None:
+        pytest.skip("Requires the pinned Potbot writer checkout on a disposable native runner")
     root = Path(source).resolve(strict=True)
     monkeypatch.syspath_prepend(str(root / "syn-node/src"))
     monkeypatch.syspath_prepend(str(root / "src"))
@@ -248,10 +248,8 @@ def test_migrate_legacy_receipts_and_replay_tombstones(legacy):
         "lan_pending": 1,
         "lan_tombstones": 1,
     }
-    assert all(
-        sha(paths[role]) == sha(target / f"{role}.sqlite") == value
-        for role, value in before.items()
-    )
+    archived = {role: sha(target / f"{role}.sqlite") for role in paths}
+    assert archived == before
     options = [
         "--archive",
         target,
@@ -266,12 +264,14 @@ def test_migrate_legacy_receipts_and_replay_tombstones(legacy):
 
     expired = cli("replay", *options, "--offer-sha256", lan_offer)
     assert expired.returncode == 0
-    assert json.loads(expired.stdout)["records"]["lan"] == {
+    returned_tombstone = json.loads(expired.stdout)["records"]["lan"]
+    original_tombstone = {
         "state": "expired",
         "device_handle": lan_handle,
         "created": NOW,
         "expires": NOW + 300,
     }
+    assert returned_tombstone == original_tombstone
     keywords = {"operator": pin.hex(), "archive_sha256": manifest["archive_sha256"]}
     assert replay(target, offer=lan_pending, **keywords)["records"]["lan"]["state"] == "pending"
     assert replay(target, offer=other, **keywords)["records"]["handoffs"]["state"] == "sealed"
@@ -288,6 +288,24 @@ def test_migrate_legacy_receipts_and_replay_tombstones(legacy):
         db.commit()
     assert cli("replay", *options, "--offer-sha256", lan_offer).returncode == 2
     assert {role: sha(path) for role, path in paths.items()} == before
+    evidence = os.environ.get("SYN_LEGACY_EVIDENCE")
+    if evidence:
+        Path(evidence).write_bytes(
+            canonical(
+                {
+                    "profile": "syn.official-legacy-archive-evidence/1",
+                    "source_sha256": before,
+                    "archive_snapshot_sha256": archived,
+                    "original_receipt_sha256": digest(original),
+                    "returned_receipt_sha256": digest(retrieved.stdout),
+                    "original_tombstone_sha256": digest(canonical(original_tombstone)),
+                    "returned_tombstone_sha256": digest(canonical(returned_tombstone)),
+                    "counts": manifest["counts"],
+                    "receipt_signatures_verified": True,
+                    "tampered_archive_refused": True,
+                }
+            )
+        )
 
 
 def test_archive_refuses_stale_pins_active_journals_and_altered_receipts(legacy):

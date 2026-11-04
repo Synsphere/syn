@@ -19,6 +19,11 @@ on:
         description: Independently retained signed manifest SHA-256
         required: true
         type: string
+      verify_legacy_archive:
+        description: Exercise archival migration with the installed official packages
+        required: false
+        default: false
+        type: boolean
       verify_recovery:
         description: Exercise native recovery from the installed official packages
         required: false
@@ -54,6 +59,7 @@ jobs:
       R03_MANIFEST: ${{ inputs.manifest_sha256 }}
       R03_PYTHON: ${{ matrix.python }}
       R03_EXPORT_TRANSFER: ${{ inputs.export_transfer }}
+      R03_VERIFY_LEGACY_ARCHIVE: ${{ inputs.verify_legacy_archive }}
       R03_VERIFY_RECOVERY: ${{ inputs.verify_recovery }}
       UV_MANAGED_PYTHON: "true"
     steps:
@@ -92,10 +98,13 @@ jobs:
         shell: bash
         run: |
           test "$(git -C consumer rev-parse HEAD)" = "$R03_POTBOT_SHA"
+          if [[ "$R03_VERIFY_LEGACY_ARCHIVE" == true ]]; then
+            test "$(git -C consumer rev-parse HEAD:syn-node)" = ac34b663b65999744a74ac872931198dc3734e85
+          fi
           uv python install "$R03_PYTHON"
           uv sync --locked --project consumer --dev --extra security
           echo "R03_HOST_PYTHON=$(uv python find --managed-python "$R03_PYTHON")" >> "$GITHUB_ENV"
-      - name: Install actual official package and qualify real native custody and Potbot supervisor
+      - name: Install official packages and run the selected operator qualification
         env:
           POTBOT_SYN_GITHUB_TOKEN: ${{ github.token }}
         run: consumer/.venv/bin/python scripts/ci_operator_release.py
