@@ -13,11 +13,12 @@ from syn_client.custody import verify_ed25519
 from syn_client.group import COMMIT_DOMAIN, group_epoch, group_id, verify_group
 from syn_client.operator_protocol import SynProtocolError, canonical, exact, hex_bytes, parse
 from syn_client.pubsub import MAX_PEERS
-from .adoption import REQUEST_DOMAIN, _read_keyring, _x25519_public
+from .adoption import _read_keyring, _x25519_public
 from .group import _derive_group_key, _transfer_key, group_certificate, load_group
 
 PROFILE = "syn.agent-group-rollover/1"
 DOMAIN = b"syn.agent.group-rollover.v1\0"
+RECEIVER_DOMAIN = b"syn.agent.group-rollover-receiver.v1\0"
 CUSTODY_PROFILE = "syn.agent-group-epoch-custody/1"
 
 
@@ -59,29 +60,59 @@ def _policy(packet, config):
     return body
 
 
-def _initial_assignments(journal, identifier, epoch):
+def _initial_members(journal, identifier, epoch):
     events = journal.read()["events"]
     selected = {row["offer"]: row["body"]["commitment"]["selected_public_key_hash"]
                 for row in events if row["kind"] == "selected"}
-    assignments = {}
+    members = set()
     for row in events:
         body = row["body"]
         if row["kind"] != "groupsealed" or body["group_id"] != identifier:
             continue
         node = selected[row["offer"]]
-        if body["epoch"] != epoch or node in assignments:
+        if body["epoch"] != epoch or node in members:
             raise SynProtocolError("Initial group assignments do not establish one unambiguous epoch")
-        assignments[node] = body["request"]
-    return assignments
+        members.add(node)
+    return members
 
 
-def _transfer_public(request, pinned_digest):
-    exact(request, {"request", "temporary_signature"}, "retained adoption request")
-    signature = hex_bytes(request["temporary_signature"], 64, "adoption request signature")
-    # The operator journal pinned the exact, verified request before initial key release.
-    if _digest(REQUEST_DOMAIN + canonical(request["request"]) + signature) != pinned_digest:
-        raise SynProtocolError("Transfer request differs from the operator's retained adoption")
-    return request["request"]["transfer_public_key"]
+def _receiver_context(operator, network, group, epoch, node):
+    return {"operator": operator, "network_id": network, "group_id": group, "group_epoch": epoch, "node": node}
+
+
+def _transfer_public(packet, context):
+    exact(packet, {"body", "public_key", "signature"}, "signed rollover receiver")
+    body = exact(packet["body"], {*context, "transfer_public_key"}, "rollover receiver")
+    public_key = hex_bytes(packet["public_key"], 32, "selected Agent public key")
+    recipient = hex_bytes(body["transfer_public_key"], 32, "rollover transfer public key")
+    if (_digest(public_key) != context["node"] or any(body[key] != value for key, value in context.items())
+            or group_epoch(body["group_epoch"]) != context["group_epoch"] or recipient == bytes(32)):
+        raise SynProtocolError("Rollover receiver differs from the retained Agent and current epoch")
+    verify_ed25519(public_key, hex_bytes(packet["signature"], 64, "rollover receiver signature"),
+                   RECEIVER_DOMAIN + canonical(body))
+    return body["transfer_public_key"]
+
+
+def _receiver(backend, config):
+    stored = _read_keyring(backend, config["keyring_service"], config["keyring_account"], "transfer_private")
+    return X25519PrivateKey.from_private_bytes(hex_bytes(stored, 32, "retained group receiver"))
+
+
+def prepare_rollover(config_path):
+    from .service import AgentServer
+
+    server = AgentServer(config_path)
+    config = server.config
+    service, account = config["keyring_service"], config["keyring_account"]
+    with _agent_key_lock(server.directory, service, account + ".operator"):
+        server.state.read(recover=True)
+        certificate = load_group(config, server.expected_hash)
+        receiver = _receiver(_native_backend(), config)
+        body = _receiver_context(config["expected_operator"], config["network_id"], config["group_id"],
+                                 certificate["body"]["group_epoch"], server.expected_hash)
+        body["transfer_public_key"] = _x25519_public(receiver).hex()
+        return {"body": body, "public_key": server.signer.public_key.hex(),
+                "signature": server.signer.sign(RECEIVER_DOMAIN + canonical(body)).hex()}
 
 
 def _seal(server, packet, node, recipient, secret):
@@ -104,16 +135,15 @@ def roll_group(server, journal, payload, *, approve):
     request_digest = _digest(canonical(payload))
     if history and history[-1]["request_sha256"] == request_digest:
         return history[-1]["result"]
-    initial_epoch = history[0]["result"]["transition"]["body"]["previous_epoch"] if history else epoch
-    assignments = _initial_assignments(journal, identifier, initial_epoch)
     prior = history[-1]["result"]["transition"]["body"] if history else None
-    current = set(prior["retained"] if prior else assignments)
+    current = set(prior["retained"]) if prior else _initial_members(journal, identifier, epoch)
     if (prior and epoch != prior["epoch"]) or not set(revoked) < current or len(current) > MAX_PEERS:
         raise SynProtocolError("Revocation must remove members of the current epoch and leave a retained cohort")
     next_epoch = group_epoch(epoch + 1)
     retained = sorted(current - set(revoked))
-    requests = exact(payload["requests"], set(retained), "retained Agent adoption requests")
-    recipients = {node: _transfer_public(requests[node], assignments[node]) for node in retained}
+    requests = exact(payload["requests"], set(retained), "retained Agent rollover receivers")
+    recipients = {node: _transfer_public(requests[node], _receiver_context(
+        server.expected_hash, server.config["network_id"], identifier, epoch, node)) for node in retained}
     body = {"profile": PROFILE, "operator": server.expected_hash, "network_id": server.config["network_id"],
             "group_id": identifier, "previous_epoch": epoch, "epoch": next_epoch,
             "retained": retained, "revoked": revoked}
@@ -154,9 +184,7 @@ def _unseal(transfer, transition, backend, config, node, epoch):
                         expected_group=config["group_id"], expected_epoch=epoch)
     if header["transition_sha256"] != _digest(canonical(transition)) or body["network_id"] != config["network_id"]:
         raise SynProtocolError("Epoch key is bound to another transition")
-    stored = _read_keyring(backend, config["keyring_service"], config["keyring_account"], "transfer_private")
-    recipient = X25519PrivateKey.from_private_bytes(hex_bytes(stored, 32, "retained group receiver"))
-    key = _transfer_key(recipient, header["sender"], hex_bytes(header["salt"], 32, "epoch salt"), header, certificate)
+    key = _transfer_key(_receiver(backend, config), header["sender"], hex_bytes(header["salt"], 32, "epoch salt"), header, certificate)
     try:
         secret = AESGCM(key).decrypt(hex_bytes(header["nonce"], 12, "epoch nonce"),
             hex_bytes(transfer["ciphertext"], 48, "sealed epoch secret"), canonical(header) + canonical(certificate))

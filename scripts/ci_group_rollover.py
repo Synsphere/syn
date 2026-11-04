@@ -14,7 +14,7 @@ from syn_client.operator_protocol import SynProtocolError, canonical, receive, s
 from syn_client.pubsub_client import private_connect, request
 
 
-def qualify_rollover(stack, session_factory, nodes, config, requests):
+def qualify_rollover(stack, session_factory, nodes, config):
     survivor, revoked = (entry[0] for entry in nodes)
     old_status, revoked_status = (entry[2]["status"] for entry in nodes)
     old_cert, revoked_cert = (status["group_certificate"] for status in (old_status, revoked_status))
@@ -28,6 +28,20 @@ def qualify_rollover(stack, session_factory, nodes, config, requests):
         assert session.answered == {0}
         assert session.initial["configuration_sha256"] == node.initial["configuration_sha256"]
         return session
+
+    def maintenance(session, operation, payload=None):
+        # The pinned Potbot adapter predates these two maintenance operations.
+        raw = canonical({"operation": operation, "payload": payload}) + b"\n"
+        session.process.stdin.write(raw)
+        session.process.stdin.flush()
+        return session.api.read(timeout=30)
+
+    requests = {}
+    for node, selected in ((survivor, retained_node), (revoked, revoked_node)):
+        session = reopen(node, 1)
+        requests[selected] = maintenance(session, "prepare-group-rollover")
+        session.close()
+        assert session.process.returncode == 0
 
     payload = {"group_id": group, "expected_epoch": 1, "revoke": [revoked_node],
                "requests": {retained_node: requests[retained_node]}}
@@ -51,15 +65,9 @@ def qualify_rollover(stack, session_factory, nodes, config, requests):
 
     for node, selected in ((survivor, retained_node), (revoked, revoked_node)):
         with_update = reopen(node, 2)
-        frame = {"operation": "apply-group-rollover", "payload": {
+        applied = maintenance(with_update, "apply-group-rollover", {
             "transition": transition, "transfer": update["transfers"].get(selected),
-        }}
-        # Test the native maintenance entry point through its owned pipe.
-        # The pinned Potbot adapter predates this operation.
-        raw = canonical(frame) + b"\n"
-        with_update.process.stdin.write(raw)
-        with_update.process.stdin.flush()
-        applied = with_update.api.read(timeout=30)
+        })
         assert applied["node"] == selected and applied["group_epoch"] == 2
         assert applied["retained"] is (selected == retained_node)
         assert applied["transition_sha256"] == hashlib.sha256(canonical(transition)).hexdigest()

@@ -120,9 +120,10 @@ supervision and treats possibly dispatched effects as requiring reconciliation.
 The `syn.agent-group-rollover/1` profile adds planned maintenance for a group
 with one initial epoch and at most eight members. It removes one or more
 members and keeps at least one. The operator reads the current cohort from the
-native enrollment journal. Each retained member's original signed adoption
-request must match the journal's recorded digest. Keep those public requests
-with the private deployment records.
+native enrollment journal. With the nodes stopped, each retained member runs
+`syn-agent prepare-group-rollover --config FILE` or uses the private session
+operation `prepare-group-rollover` with a null payload. This signs its native
+transfer public key for the current group and epoch using the enrolled leaf.
 
 ```mermaid
 sequenceDiagram
@@ -146,7 +147,7 @@ operator's private terminal. The request has four fields.
 | `group_id` | Existing group UUID |
 | `expected_epoch` | Currently committed positive epoch |
 | `revoke` | Sorted selected public key hashes to remove |
-| `requests` | Map from each retained selected public key hash to its original signed adoption request |
+| `requests` | Map from each retained selected public key hash to its signed rollover receiver |
 
 Confirm the exact retained and revoked members in the private prompt. Syn
 commits the signed transition and sealed deliveries before returning them. If

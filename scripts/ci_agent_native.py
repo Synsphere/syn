@@ -263,7 +263,6 @@ def main():
                 from syn.operator import lan_inbox
                 lan_inbox.initialize(config)
             nodes=[]
-            group_requests = {}
             for uid in (53102,53103):
                 host=provision(ROOT,agent_id=uuid4(),uid=uid)
                 hosts.append(host)
@@ -281,7 +280,6 @@ def main():
                     choice=node.command('choose',candidates)
                     grant=operate(config,'agent-grant',{'offer':offer,'candidates':candidates,'selection':choice},approve=lambda _:True)
                 request=node.command('prepare',grant)
-                group_requests[grant["grant"]["selected_public_key_hash"]] = request
                 sealed=operate(config,'agent-seal',{'grant':grant,'request':request})
                 proof=node.command('adopt',{'grant':grant,'request':request,'envelope':sealed})
                 receipt=operate(config,'agent-confirm',{'grant':grant,'key_proof':proof['key_proof']})
@@ -370,7 +368,7 @@ def main():
             if 'group-member-revocation' in runtimeContract().capabilities and not ARGS.official_policy:
                 native.stop(running_operator)
                 from ci_group_rollover import qualify_rollover
-                rollover = qualify_rollover(stack, Session, nodes, config, group_requests)
+                rollover = qualify_rollover(stack, Session, nodes, config)
                 (evidence/'group-rollover.json').write_bytes(canonical(rollover))
             wheelroot=ARGS.source_wheels
             receipt={'profile':('syn.agent-official-native-acceptance/1' if ARGS.official_policy else 'syn.agent-source-native-acceptance/1'),'result':'passed',

@@ -171,6 +171,11 @@ def _run_locked(args, observed):
                     exact(payload, {"grant", "request", "group"}, "initial group handoff")
                     value = adopt_group_key(config, directory, grant_packet=payload["grant"], request_packet=payload["request"],
                                              envelope=payload["group"], now=int(time.time()))
+                elif op == "prepare-group-rollover":
+                    from .group_rollover import prepare_rollover
+                    if payload is not None:
+                        raise SynProtocolError("Rollover receiver preparation takes no payload")
+                    value = prepare_rollover(config_path)
                 elif op == "apply-group-rollover":
                     from .group_rollover import apply_rollover
                     value = apply_rollover(config_path, payload)
