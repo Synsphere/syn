@@ -171,7 +171,10 @@ class Session:
         os.close(slave)
         stack.callback(self.close)
         self.initial = self.read()
-        self.api = AgentSession(self.process)
+        if ARGS.group_rollover:
+            self.api = AgentSession(self.process, group_rollover=True)
+        else:
+            self.api = AgentSession(self.process)
 
     def read(self):
         deadline = time.monotonic()+25
