@@ -21,11 +21,14 @@ def main(argv=None):
     create.add_argument("--group-epoch", type=int, required=True)
     create.add_argument("--approved-device-profile", required=True)
     create.add_argument("--new-identity", action="store_true", required=True)
-    for operation in ("offer", "choose", "prepare", "adopt", "adopt-group", "activate", "serve"):
+    for operation in ("offer", "lan-offer", "choose", "prepare", "adopt", "adopt-group", "activate", "serve"):
         sub = commands.add_parser(operation)
         sub.add_argument("--config", type=Path, required=True)
         if operation != "serve":
             sub.add_argument("--request", type=Path, required=True)
+        if operation == "lan-offer":
+            sub.add_argument("--host", required=True)
+            sub.add_argument("--port", type=int, required=True)
     args = parser.parse_args(argv)
     try:
         from syn.operator.custody import private_read
@@ -47,6 +50,12 @@ def main(argv=None):
             from .enrollment import choose, create_offer, prepare
             if args.operation == "offer":
                 value = create_offer(config, args.config.parent, payload)
+            elif args.operation == "lan-offer":
+                from .lan_enrollment import submit_offer
+                from syn_client.operator_protocol import canonical
+                value = submit_offer(config, args.config.parent, payload, host=args.host, port=args.port)
+                sys.stdout.buffer.write(canonical(value))
+                return 0
             elif args.operation == "choose":
                 value = choose(config, args.config.parent, payload)
             elif args.operation == "prepare":

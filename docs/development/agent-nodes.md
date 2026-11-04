@@ -79,6 +79,53 @@ The operator retains the ability to derive the assigned leaf. Separate Agent
 custody therefore establishes an actual independently running holder, not
 exclusive custody against the trusted operator or evidence of separate humans.
 
+## Signed LAN pledge wire contract
+
+This source increment adds three commands for a private, file-based wire
+check. Use a disposable operator and an initialized Agent, each with its own
+native keystore. The operator selects a literal RFC1918 IPv4 address and TCP
+port. Both parties take that endpoint from their trusted configuration.
+
+```mermaid
+flowchart LR
+    A[Operator signs endpoint and fresh confidential pulse] --> B[Agent verifies operator and endpoint pins]
+    B --> C[Agent encrypts its pledge and authenticates the signed route]
+    C --> D[Operator validates the signed route and encrypted pledge]
+    D --> E[Return a validation receipt with no activation]
+```
+
+The diagram describes the source commands. They do not open network sockets.
+Use owner-private files and transfer the advertisement and encrypted
+submission through an authorized courier between the examples below.
+
+```sh
+umask 077
+syn-operator lan-advertise --config /operator/operator.json \
+  --host 192.168.1.7 --port 45121 > advertisement.json
+syn-agent lan-offer --config /agent/agent.json --request advertisement.json \
+  --host 192.168.1.7 --port 45121 > submission.json
+syn-operator lan-validate --config /operator/operator.json --request submission.json \
+  --host 192.168.1.7 --port 45121
+```
+
+The advertisement covers the selected endpoint and the exact existing
+confidential pulse under a separate signature domain. The Agent checks its
+independent operator hash and network pins, the endpoint, the pulse expiry
+and the signatures before it writes a pledge commitment. The encrypted pledge
+uses the signed advertisement digest as authenticated header data. Replacing
+the route therefore requires forging the ciphertext even when both routes
+were signed by the same operator. The ordinary local pledge profile continues
+to use its existing header and ciphertext format.
+
+Validation returns the offer digest with `pending_persisted=false` and
+`agent_activation_authorized=false`. It leaves the operator allocation and
+adoption journals untouched. UDP discovery, authenticated TCP transport,
+bounded durable pending intake and replay handling are separate increments.
+The signed LAN retirement gate still requires official-package acceptance
+with two disposable Agents. The source test exercises the real cryptographic
+path and CLI with fixture custody. This headless check uses a diagram and
+canonical command outputs. Private terminal or keystore footage is excluded.
+
 ## Group membership is a separate authority
 
 Account identity remains stable while group membership refers to a named group

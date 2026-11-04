@@ -123,6 +123,69 @@ def test_real_provider_encrypted_adoption_retains_selected_identity(scenario):
     assert operate(scenario["operator"], "agent-confirm", {"grant": granted, "key_proof": result["key_proof"]}) == receipt
 
 
+def test_signed_lan_pledge_cli_checks_route_without_admitting_agent(scenario, capsysbinary):
+    import json
+
+    from syn.agent import lan_enrollment
+    from syn.agent.__main__ import main as agent_cli
+    from syn.operator.__main__ import main as operator_cli
+    from syn_client.lan_enrollment import ADVERTISEMENT_DOMAIN
+    from syn_client.operator_protocol import parse
+
+    agent = scenario["root"] / "lan-agent"
+    agent.mkdir(mode=0o700)
+    device.initialize(agent, service="syn.fixture.agent", account="lan",
+        expected_operator=scenario["config"]["expected_operator"], network_id="fixture", group_id=GROUP_ID,
+        group_epoch=1, approved_profile=device.PROFILE)
+    agent_config = agent / "agent.json"
+    operator_config = scenario["operator"]
+    authority = operator_config.parent / "authority.json"
+    adoptions = operator_config.parent / "adoptions.json"
+    original = authority.read_bytes(), adoptions.read_bytes()
+    route = ["--host", "192.168.1.7", "--port", "45121"]
+    assert operator_cli(["lan-advertise", "--config", str(operator_config), *route]) == 0
+    raw = capsysbinary.readouterr().out
+    advertisement = parse(raw)
+    ad_file = agent / "advertisement.json"
+    ad_file.write_bytes(raw)
+    ad_file.chmod(0o600)
+    args = ["lan-offer", "--config", str(agent_config), "--request", str(ad_file)]
+    assert agent_cli([*args, "--host", "192.168.1.8", "--port", "45121"]) == 2
+    refused = capsysbinary.readouterr()
+    assert refused.out == b""
+    assert scenario["backend"].get_password("syn.fixture.agent", "lan.agent.pledge.v1") is None
+    assert agent_cli([*args, *route]) == 0
+    packet = capsysbinary.readouterr().out
+    submission = parse(packet)
+    assert submission["route"] == advertisement
+    config, _ = device.load_config(agent_config)
+    assert device.device_id(config).hex().encode() not in packet
+    assert submission["offer"]["header"]["profile"] == enrollment.LAN_SEAL_PROFILE
+    request = operator_config.parent / "submission.json"
+    request.write_bytes(packet)
+    request.chmod(0o600)
+    validate = ["lan-validate", "--config", str(operator_config), "--request", str(request), *route]
+    assert operator_cli(validate) == 0
+    receipt = json.loads(capsysbinary.readouterr().out)
+    assert receipt["pending_persisted"] is receipt["agent_activation_authorized"] is False
+    assert receipt["pledge_offer_sha256"] == json.loads(
+        scenario["backend"].get_password("syn.fixture.agent", "lan.agent.pledge.v1")
+    )["offer_sha256"]
+    assert (authority.read_bytes(), adoptions.read_bytes()) == original
+
+    # Even a separately signed route for the same pulse cannot be transplanted
+    # into the encrypted offer by replacing the visible route commitment.
+    moved = copy.deepcopy(submission)
+    body = moved["route"]["advertisement"]
+    body["endpoint"]["port"] = 45122
+    operator = operator_service.OperatorServer(operator_config)
+    moved["route"]["signature"] = operator.signer.sign(ADVERTISEMENT_DOMAIN + canonical(body)).hex()
+    moved["offer"]["header"]["advertisement_sha256"] = lan_enrollment._digest(moved["route"])
+    with pytest.raises(SynProtocolError, match="authentication failed"):
+        lan_enrollment.validate_submission(operator_config, moved, host="192.168.1.7", port=45122)
+    assert (authority.read_bytes(), adoptions.read_bytes()) == original
+
+
 def test_hardware_stays_encrypted_and_temporary_hash_is_not_inheritance(scenario):
     hardware = device.device_id(scenario["config"])
     assert hardware.hex().encode() not in canonical(scenario["offer"])

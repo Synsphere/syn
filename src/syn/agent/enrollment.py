@@ -17,16 +17,18 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from syn.operator.custody import _agent_key_lock, _native_backend
-from syn.operator.enrollment import CANDIDATE_DOMAIN, OFFER_DOMAIN, _verified_offer, pulse, reserve
+from syn.operator.enrollment import CANDIDATE_DOMAIN, OFFER_DOMAIN, _signed_pulse, _verified_offer, reserve
 from syn.operator.adoption_state import SELECTION_DOMAIN, EnrollmentJournal
 from syn.operator.service import OperatorServer
 from syn_client.custody import verify_ed25519
+from syn_client.lan_enrollment import CONFIDENTIAL_PULSE_DOMAIN as PULSE_DOMAIN
+from syn_client.lan_enrollment import verify_enrollment_pulse as _pulse_body
 from syn_client.operator_protocol import SynProtocolError, canonical, exact, hex_bytes, parse
 from .adoption import _verify_grant, prepare_agent_request
 from .device import PROFILE, device_id, temporary_signer
 
-PULSE_DOMAIN = b"syn.operator.confidential-enrollment.v1\0"
 SEAL_PROFILE = "syn.confidential-pledge/1"
+LAN_SEAL_PROFILE = "syn.lan-confidential-pledge/1"
 KDF_DOMAIN = b"syn.confidential-pledge.aes256gcm.v1\0"
 
 
@@ -47,19 +49,24 @@ def _key(private, peer, salt, digest):
 
 
 def operator_pulse(config_path):
-    signed = pulse(config_path)
     server = OperatorServer(config_path)
     with _agent_key_lock(server.directory, server.signer.service, server.signer.account + ".operator"):
-        journal = EnrollmentJournal(server.directory, server.signer.service, server.signer.account, server.expected_hash)
-        journal.read(recover=True)
-        backend = _native_backend()
-        encoded = backend.get_password(server.signer.service, server.signer.account + ".operator.enrollment-receiver.v1")
-        if encoded is None:
-            raise SynProtocolError("Confidential enrollment receiver has not been initialized")
-        key = X25519PrivateKey.from_private_bytes(hex_bytes(encoded, 32, "operator receiver"))
-        body = {"profile": "syn.confidential-enrollment-pulse/1", "signed_pulse": signed,
-                "encryption_public_key": _public(key).hex(), "device_profile": PROFILE}
-        return {"body": body, "signature": server.signer.sign(PULSE_DOMAIN + canonical(body)).hex()}
+        return _operator_pulse(server)
+
+
+def _operator_pulse(server):
+    server.state.read(recover=True)
+    journal = EnrollmentJournal(server.directory, server.signer.service, server.signer.account, server.expected_hash)
+    journal.read(recover=True)
+    backend = _native_backend()
+    encoded = backend.get_password(server.signer.service, server.signer.account + ".operator.enrollment-receiver.v1")
+    if encoded is None:
+        raise SynProtocolError("Confidential enrollment receiver has not been initialized")
+    key = X25519PrivateKey.from_private_bytes(hex_bytes(encoded, 32, "operator receiver"))
+    signed = _signed_pulse(server, now=int(time.time()))
+    body = {"profile": "syn.confidential-enrollment-pulse/1", "signed_pulse": signed,
+            "encryption_public_key": _public(key).hex(), "device_profile": PROFILE}
+    return {"body": body, "signature": server.signer.sign(PULSE_DOMAIN + canonical(body)).hex()}
 
 
 def initialize_operator_enrollment(server):
@@ -79,34 +86,17 @@ def initialize_operator_enrollment(server):
         return {"profile": "syn.operator-enrollment-created/1", "hardware_attested": False}
 
 
-def _pulse_body(packet, expected_operator, network_id, now):
-    outer = exact(packet, {"body", "signature"}, "confidential operator pulse")
-    body = exact(outer["body"], {"profile", "signed_pulse", "encryption_public_key", "device_profile"}, "enrollment pulse")
-    signed = exact(body["signed_pulse"], {"pulse", "operator_public_key", "signature"}, "operator pulse")
-    pub = hex_bytes(signed["operator_public_key"], 32, "operator public key")
-    inner = exact(signed["pulse"], {"schema_version", "type_ref", "network_id", "master_public_key_hash",
-                  "challenge", "issued_at", "expires_at"}, "operator pulse fields")
-    if (hashlib.sha256(pub).hexdigest() != expected_operator
-            or type(inner["schema_version"]) is not int or inner["schema_version"] != 1
-            or inner["type_ref"] != "synny://type/syn-operator-pulse-v1"
-            or body["profile"] != "syn.confidential-enrollment-pulse/1" or body["device_profile"] != PROFILE
-            or inner["master_public_key_hash"] != expected_operator or inner["network_id"] != network_id
-            or type(inner["issued_at"]) is not int or type(inner["expires_at"]) is not int
-            or not 0 < inner["issued_at"] <= now <= inner["expires_at"]
-            or not 1 <= inner["expires_at"] - inner["issued_at"] <= 300):
-        raise SynProtocolError("Confidential pulse is stale or differs from independently pinned operator")
-    verify_ed25519(pub, hex_bytes(outer["signature"], 64, "enrollment pulse signature"), PULSE_DOMAIN + canonical(body))
-    from syn.operator.enrollment import PULSE_DOMAIN as INNER_DOMAIN
-    verify_ed25519(pub, hex_bytes(signed["signature"], 64, "pulse signature"), INNER_DOMAIN + canonical(inner))
-    hex_bytes(body["encryption_public_key"], 32, "encryption public key")
-    if hex_bytes(inner["challenge"], 32, "pulse nonce") == bytes(32):
-        raise SynProtocolError("Enrollment pulse nonce cannot be zero")
-    return body
+def _pledge_context(advertisement_sha256):
+    if advertisement_sha256 is None:
+        return {"profile": SEAL_PROFILE}
+    hex_bytes(advertisement_sha256, 32, "signed advertisement digest")
+    return {"profile": LAN_SEAL_PROFILE, "advertisement_sha256": advertisement_sha256}
 
 
-def create_offer(config, directory, packet, *, now=None):
+def create_offer(config, directory, packet, *, now=None, advertisement_sha256=None):
     at = int(time.time()) if now is None else now
     body = _pulse_body(packet, config["expected_operator"], config["network_id"], at)
+    context = _pledge_context(advertisement_sha256)
     with _agent_key_lock(directory, config["keyring_service"], config["keyring_account"] + ".adoption"):
         backend = _native_backend()
         slot = config["keyring_account"] + ".agent.pledge.v1"
@@ -123,7 +113,7 @@ def create_offer(config, directory, packet, *, now=None):
         digest = hashlib.sha256(PULSE_DOMAIN + canonical(body)).digest()
         sender = X25519PrivateKey.generate()
         salt, nonce = os.urandom(32), os.urandom(12)
-        header = {"profile": SEAL_PROFILE, "pulse_sha256": digest.hex(), "sender_public_key": _public(sender).hex(),
+        header = {**context, "pulse_sha256": digest.hex(), "sender_public_key": _public(sender).hex(),
                   "salt": salt.hex(), "nonce": nonce.hex()}
         encrypted = AESGCM(_key(sender, body["encryption_public_key"], salt, digest)).encrypt(
             nonce, canonical(pledge), canonical(header))
@@ -134,12 +124,13 @@ def create_offer(config, directory, packet, *, now=None):
         return {"pulse": packet, "header": header, "ciphertext": encrypted.hex()}
 
 
-def open_offer(server, packet, *, now):
+def open_offer(server, packet, *, now, advertisement_sha256=None):
     outer = exact(packet, {"pulse", "header", "ciphertext"}, "confidential pledge")
     body = _pulse_body(outer["pulse"], server.expected_hash, server.config["network_id"], now)
-    header = exact(outer["header"], {"profile", "pulse_sha256", "sender_public_key", "salt", "nonce"}, "pledge header")
+    context = _pledge_context(advertisement_sha256)
+    header = exact(outer["header"], set(context) | {"pulse_sha256", "sender_public_key", "salt", "nonce"}, "pledge header")
     digest = hashlib.sha256(PULSE_DOMAIN + canonical(body)).digest()
-    if header["profile"] != SEAL_PROFILE or header["pulse_sha256"] != digest.hex():
+    if any(header[key] != value for key, value in context.items()) or header["pulse_sha256"] != digest.hex():
         raise SynProtocolError("Encrypted pledge changes its authenticated pulse")
     text = outer["ciphertext"]
     if not isinstance(text, str) or not 32 <= len(text) <= 8192 or len(text) % 2:
