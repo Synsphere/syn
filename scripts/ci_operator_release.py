@@ -150,7 +150,7 @@ raise SystemExit(pytest.main(["-c", str(test.parents[1] / "pyproject.toml"), "--
 """
     subprocess.run([
         str(native_python), "-I", "-B", "-c", runner, str(runtime), sysconfig.get_path("purelib"),
-        str(root / "consumer"), str(evidence / "legacy-archive.json"),
+        str(root / ".tmp-pytest/legacy-potbot"), str(evidence / "legacy-archive.json"),
         str(root / "tests/test_legacy_state.py"),
     ], check=True, timeout=120)
     if not (evidence / "legacy-archive.json").is_file():

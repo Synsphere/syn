@@ -81,6 +81,14 @@ jobs:
           ref: ${{ inputs.potbot_sha }}
           path: consumer
           persist-credentials: false
+      - name: Check out the exact legacy writer separately from the reviewed consumer
+        if: inputs.verify_legacy_archive
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: kieransimkin/potbot
+          ref: 70fa39c34404325d7499008e588ee958ba7186f8
+          path: .tmp-pytest/legacy-potbot
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
         with:
           version: "0.12.23"
@@ -99,7 +107,8 @@ jobs:
         run: |
           test "$(git -C consumer rev-parse HEAD)" = "$R03_POTBOT_SHA"
           if [[ "$R03_VERIFY_LEGACY_ARCHIVE" == true ]]; then
-            test "$(git -C consumer rev-parse HEAD:syn-node)" = ac34b663b65999744a74ac872931198dc3734e85
+            test "$(git -C .tmp-pytest/legacy-potbot rev-parse HEAD)" = 70fa39c34404325d7499008e588ee958ba7186f8
+            test "$(git -C .tmp-pytest/legacy-potbot rev-parse HEAD:syn-node)" = ac34b663b65999744a74ac872931198dc3734e85
           fi
           uv python install "$R03_PYTHON"
           uv sync --locked --project consumer --dev --extra security
