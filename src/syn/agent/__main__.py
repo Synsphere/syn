@@ -29,6 +29,15 @@ def main(argv=None):
         if operation == "lan-offer":
             sub.add_argument("--host", required=True)
             sub.add_argument("--port", type=int, required=True)
+    for operation in ("lan-discover", "lan-send"):
+        sub = commands.add_parser(operation)
+        sub.add_argument("--config", type=Path, required=True)
+        sub.add_argument("--local-address", required=True)
+        sub.add_argument("--subnet", required=True)
+        if operation == "lan-discover":
+            sub.add_argument("--port", type=int, required=True)
+        else:
+            sub.add_argument("--request", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         from syn.operator.custody import private_read
@@ -44,6 +53,16 @@ def main(argv=None):
             from .service import run
             run(args.config)
             return 0
+        elif args.operation in ("lan-discover", "lan-send"):
+            from syn_client.operator_protocol import canonical
+            from .lan_transport import deliver, discover
+
+            config, _ = load_config(args.config)
+            scope = {"local_address": args.local_address, "subnet": args.subnet}
+            if args.operation == "lan-discover":
+                sys.stdout.buffer.write(canonical(discover(config, port=args.port, **scope)))
+                return 0
+            value = deliver(config, parse(private_read(args.request)), **scope)
         else:
             config, _ = load_config(args.config)
             payload = parse(private_read(args.request))

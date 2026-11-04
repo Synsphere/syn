@@ -36,6 +36,18 @@ jobs:
         run: uv run --locked python -m compileall -q src packages/syn-client/src
       - name: Test application, HTTP and shared contracts
         run: uv run --locked python -m pytest -q tests packages/syn-client/tests -m 'not database' -o cache_dir=.tmp-pytest/cache
+      - name: Test live pledge discovery and delivery in a disposable LAN
+        shell: bash
+        run: |
+          sudo unshare --net bash -euc '
+            ip link set lo up
+            ip link add syn-lan0 type veth peer name syn-lan1
+            ip addr add 192.168.77.1/24 brd + dev syn-lan0
+            ip addr add 192.168.77.2/24 brd + dev syn-lan0
+            ip link set syn-lan1 up
+            ip link set syn-lan0 up
+            exec runuser -u "$SUDO_USER" -- env SYN_TEST_DISPOSABLE_LAN=1 "$1" -m pytest -q tests/test_agent.py -k test_live_lan_transport -p no:cacheprovider
+          ' syn-lan "$GITHUB_WORKSPACE/.venv/bin/python"
       - name: Build official package candidates and hashed third-party lock
         shell: bash
         run: |

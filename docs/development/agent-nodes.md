@@ -151,13 +151,80 @@ bounded to eight pending entries, 128 replay records and the existing
 reconciliation.
 
 A pending receipt carries no authority to select a leaf or activate an Agent.
-UDP discovery, authenticated TCP transport and the bridge from a pending
-record into explicit operator reservation remain separate increments.
-The signed LAN retirement gate still requires official-package acceptance
-with two disposable Agents. The source test exercises the real cryptographic
-path and CLI with fixture custody, including restart, expiry and stale-state
-refusal. This headless check uses a diagram and canonical command outputs.
-Private terminal or keystore footage is excluded.
+The bridge from a pending record into explicit operator reservation remains
+a separate increment.
+
+### Discover and deliver on a live LAN
+
+On a Linux LAN that supports directed broadcast, run the listener explicitly
+under the operator's native account after initializing the inbox. Use its
+assigned private IPv4 address and subnet. Keep other enrollment maintenance
+quiesced while the listener runs. This listener is separate from general
+Syn peer discovery; it does not configure routing, forwarding, NAT or
+firewall exceptions. WSL requires network access to the selected LAN;
+the WSL address and host address are not interchangeable.
+
+```sh
+syn-operator lan-serve --config /operator/operator.json \
+  --host 192.168.1.7 --subnet 192.168.1.0/24 --port 45121
+```
+
+On the Agent, use an address assigned in the same subnet. The example
+operator endpoint in the offer command comes from the verified
+advertisement. Run the Agent commands within its existing sandbox.
+
+```sh
+umask 077
+syn-agent lan-discover --config /agent/agent.json --local-address 192.168.1.8 \
+  --subnet 192.168.1.0/24 --port 45121 > advertisement.json
+syn-agent lan-offer --config /agent/agent.json --request advertisement.json \
+  --host 192.168.1.7 --port 45121 > submission.json
+syn-agent lan-send --config /agent/agent.json --local-address 192.168.1.8 \
+  --subnet 192.168.1.0/24 --request submission.json
+```
+
+```mermaid
+sequenceDiagram
+    participant A as Agent sandbox
+    participant O as Pinned Syn operator
+    participant I as Protected pending inbox
+    A->>O: UDP subnet broadcast with random probe
+    O-->>A: Untrusted UDP hint
+    A->>O: TCP discovery challenge
+    O-->>A: Signed proof and fresh signed advertisement
+    Note over A: Check operator and network pins, route and challenge
+    A->>O: New TCP delivery challenge
+    O-->>A: Signed proof for this connection
+    A->>O: Encrypted pledge bound to the original signed route
+    O->>I: Validate and persist, or recognize exact retry
+    I-->>O: Pending digest
+    O-->>A: Signed receipt for this challenge and packet digest
+```
+
+UDP carries no identity or pledge data. A reply only identifies a candidate.
+The Agent verifies a fresh operator signature over each TCP challenge and
+checks its independent operator hash and network pins before sending the
+pledge. The pledge's existing encryption protects its contents; TCP
+addresses, traffic timing and the public advertisement are visible on the
+LAN. The listener limits discovery replies, connections, frame sizes and
+session time. This scope limits exposure but does not grant trust to local
+peers.
+
+A successful delivery reports the pending digest only after checking the
+operator's signed receipt for the current challenge and exact packet. If
+the receipt is lost, retry `lan-send` with the same saved packet before the
+original advertisement expires. Do not generate a second pledge to retry
+delivery. The operator's pending list remains the local record of intake.
+
+The source integration test uses real UDP and TCP sockets on an isolated
+Linux network with two Agent identities and fixture custody. It checks
+an incorrect operator pin, a signed receipt with the wrong packet digest,
+and exact retries. The retirement gate still requires the reservation bridge
+and acceptance with two disposable Agents using pinned official packages.
+Keep Potbot's transitional `syn-node` until that gate passes. The sequence
+diagram and CLI examples cover the headless flow; keystore terminal
+screenshots and recordings would expose private setup without adding
+verification evidence.
 
 ## Group membership is a separate authority
 

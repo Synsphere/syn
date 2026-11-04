@@ -137,19 +137,17 @@ def initialize(config_path):
 
 def intake(config_path, packet, *, host, port):
     with _locked(config_path) as (server, inbox):
-        now = int(time.time())
-        pulse, pledge, authority = _checked_submission(
-            server, packet, host=host, port=port, now=now
-        )
-        device = server.signer.device_commitment(
-            bytes.fromhex(pledge["offer"]["hardware_unique_id"])
-        )
-        offer = offer_digest(pledge)
-        if any(row["device_commitment"] == device for row in authority["reservations"]):
-            raise SynProtocolError("LAN pledge device already has an operator allocation")
-        inbox.add(
-            packet, offer=offer, device=device, expires_at=pulse["pulse"]["expires_at"], now=now
-        )
+        return _intake_locked(server, inbox, packet, host=host, port=port)
+
+
+def _intake_locked(server, inbox, packet, *, host, port):
+    now = int(time.time())
+    pulse, pledge, authority = _checked_submission(server, packet, host=host, port=port, now=now)
+    device = server.signer.device_commitment(bytes.fromhex(pledge["offer"]["hardware_unique_id"]))
+    offer = offer_digest(pledge)
+    if any(row["device_commitment"] == device for row in authority["reservations"]):
+        raise SynProtocolError("LAN pledge device already has an operator allocation")
+    inbox.add(packet, offer=offer, device=device, expires_at=pulse["pulse"]["expires_at"], now=now)
     return {
         "profile": "syn.lan-pledge-pending/1",
         "pledge_offer_sha256": offer,
