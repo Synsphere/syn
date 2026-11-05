@@ -272,6 +272,13 @@ def main():
             node = base / "node"
             node.mkdir(mode=0o700)
             created = initialize(node, service=service, account=account, network_id="ci-native")
+            from syn.operator.recovery import transition_preflight
+
+            proof = transition_preflight(node / "operator.json")
+            assert proof["base_public_key_hash"] == created["identity"]["base_public_key_hash"]
+            assert proof["configuration_sha256"] == created["configuration_sha256"]
+            assert set(proof["state_sha256"]) == {"control"}
+            assert proof["agent_activation_authorized"] is False
             print("Native OS keystore initialized in a disposable fixture", flush=True)
             public_hash = created["identity"]["base_public_key_hash"]
             attestations = []
@@ -310,7 +317,8 @@ def main():
                 receipt = {"profile": "syn.operator-native-acceptance/1", "result": "passed", "custody": backend_profile(),
                            "runtime": runtimeContract().to_dict(), "same_identity_after_graceful_restart": True,
                            "same_identity_after_crash": True, "locked_native_store_refused": True,
-                           "implicit_reinitialization_refused": True, "agent_activation_authorized": False,
+                           "implicit_reinitialization_refused": True, "native_transition_preflight": True,
+                           "agent_activation_authorized": False,
                            "qualification": "disposable_native_software_keystore_and_real_operator_process",
                            "attestations": attestations}
                 output.write_text(json.dumps(receipt, sort_keys=True) + "\n")
