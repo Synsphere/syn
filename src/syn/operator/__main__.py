@@ -23,7 +23,7 @@ def main(argv=None) -> int:
     create.add_argument("--keyring-account", required=True)
     create.add_argument("--network-id", required=True)
     create.add_argument("--new-identity", action="store_true", required=True)
-    for name in ("preflight", "serve"):
+    for name in ("preflight", "transition-preflight", "serve"):
         sub = commands.add_parser(name)
         sub.add_argument("--config", type=Path, required=True)
     pulse_parser = commands.add_parser("enrollment-pulse", help="Exclusive maintenance: sign a fresh public pulse")
@@ -154,6 +154,10 @@ def main(argv=None) -> int:
                 backup=args.backup, expected_base_hash=args.expected_base_public_key_hash,
                 expected_backup_sha256=args.expected_backup_sha256,
             )
+        elif args.operation == "transition-preflight":
+            from .recovery import transition_preflight
+
+            value = transition_preflight(args.config)
         elif args.operation == "preflight":
             server = OperatorServer(args.config)
             current = server.state.read()
