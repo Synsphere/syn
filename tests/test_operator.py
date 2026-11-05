@@ -100,6 +100,56 @@ def test_first_creation_returns_public_pin_and_never_recreates_existing_identity
                                       "root_public_key", "base_public_key", "root_public_key_hash", "base_public_key_hash"}
 
 
+def test_transition_preflight_accounts_for_anchored_enrollment(installed, monkeypatch, capsys):
+    from syn.operator import adoption_state, recovery
+    from syn.operator.__main__ import main
+    from syn.operator.lan_inbox import LanInbox
+
+    node, backend, created = installed
+    pin = created["identity"]["base_public_key_hash"]
+    config = node / "operator.json"
+    for module in (adoption_state, recovery):
+        monkeypatch.setattr(module, "_native_backend", lambda: backend)
+    control = OperatorState(node, "syn.test", "fixture", pin)
+    journal = adoption_state.EnrollmentJournal(node, "syn.test", "fixture", pin)
+
+    command = ["transition-preflight", "--config", str(config)]
+    assert main(command) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result == {
+        "profile": "syn.operator-transition-preflight/1",
+        "base_public_key_hash": pin,
+        "configuration_sha256": created["configuration_sha256"],
+        "state_sha256": {"control": control.digest(control.read())},
+        "agent_activation_authorized": False,
+    }
+
+    # A keyring-only partial enrollment is incompatible with an operator-only rollback.
+    receiver_slot = "fixture" + recovery.RECEIVER_SUFFIX
+    backend.set_password("syn.test", receiver_slot, "09" * 32)
+    assert main(command) == 2
+    assert capsys.readouterr().out == ""
+    journal.create()
+    inbox = LanInbox(node, "syn.test", "fixture", pin)
+    inbox.create()
+
+    native_before = dict(backend.values)
+    files_before = {path.name: path.read_bytes() for path in node.iterdir()}
+    assert main(command) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["state_sha256"] == {
+        "control": control.digest(control.read()),
+        "adoption": journal.digest(journal.read()),
+        "lan": inbox.digest(inbox.read()),
+    }
+    assert backend.values == native_before
+    assert {path.name: path.read_bytes() for path in node.iterdir()} == files_before
+
+    journal.path.unlink()
+    assert main(command) == 2
+    assert capsys.readouterr().out == ""
+
+
 def test_anchored_state_refuses_file_rollback_missing_anchor_and_path_copy(installed):
     node, backend, created = installed
     store = OperatorState(node, "syn.test", "fixture", created["identity"]["base_public_key_hash"])

@@ -76,6 +76,33 @@ def _validate_states(states, bodies, receiver):
         raise SynProtocolError("Recovery LAN inbox has no adoption journal")
 
 
+def transition_preflight(config_path: Path) -> dict[str, object]:
+    """Read the stopped operator's anchored state without exporting custody material."""
+    config, _ = load_config(config_path)
+    directory = config_path.parent
+    service, account = config["keyring_service"], config["keyring_account"]
+    with _agent_key_lock(directory, service, account + ".operator"):
+        server = OperatorServer(config_path)
+        if server.config != config:
+            raise SynProtocolError("Operator configuration changed before transition preflight")
+        if server.path.exists() or server.path.is_symlink():
+            raise SynProtocolError("Operator socket still exists; stop it cleanly before preflight")
+        backend = _native_backend()
+        states = _states(directory, service, account, server.expected_hash)
+        bodies = {name: _existing_state(state, backend) for name, state in states.items()}
+        receiver = backend.get_password(service, account + RECEIVER_SUFFIX)
+        _validate_states(states, bodies, receiver)
+        return {
+            "profile": "syn.operator-transition-preflight/1",
+            "base_public_key_hash": server.expected_hash,
+            "configuration_sha256": server.config_sha,
+            "state_sha256": {
+                name: states[name].digest(body) for name, body in bodies.items() if body is not None
+            },
+            "agent_activation_authorized": False,
+        }
+
+
 def _cipher(entropy, header):
     salt = header[len(MAGIC) : len(MAGIC) + 32]
     return AESGCM(HKDF(algorithm=hashes.SHA256(), length=32, salt=salt, info=MAGIC).derive(entropy))

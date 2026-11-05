@@ -81,6 +81,25 @@ It does not offer arbitrary signing or private key export over IPC. A crashed
 socket is removed only when its retained device/inode matches and the kernel
 refuses connection. Foreign or ambiguous endpoints remain untouched.
 
+## Read protected state before a package transition
+
+Stop the operator and quiesce enrollment maintenance before running this check.
+
+```bash
+syn-operator transition-preflight --config /private/operator/operator.json
+```
+
+The `syn.operator-transition-preflight/1` receipt binds the retained public operator
+and configuration to the digests of the journals authenticated by the native
+keystore. It always includes `control`. It includes `adoption` and `lan` when those
+journals have been initialized. The command checks enrollment receiver custody
+and refuses inconsistent files, anchors, pending updates, or a live socket.
+
+An operator-only rollback policy can require the exact journal set
+`{"control"}`. A package that supports more journals needs its own reviewed
+compatibility policy. Keep maintenance quiesced between preflight and package
+selection. The command neither selects packages nor authorizes activation.
+
 ## Protected enrollment authority
 
 Stop the supervised operator before exclusive maintenance. Generate a fresh
