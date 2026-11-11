@@ -16,7 +16,7 @@ def runtimeContract() -> RuntimeContract:
             "syn.agent-group-rollover/1", "syn.agent-group/1", "syn.agent-local/1", "syn.communication/1", "syn.consensus-policy/1",
             "syn.dag-hashgraph-finality/1", "syn.dag-hashgraph-finality/2",
             "syn.governed-policy-record/1", "syn.governed-policy-record/2",
-            "syn.lan-enrollment-request/1", "syn.legacy-state-archive/1", "syn.operator-local/1", "syn.operator-recovery/1",
+            "syn.lan-enrollment-request/1", "syn.legacy-state-archive/1", "syn.operator-local-rpc/1", "syn.operator-local/1", "syn.operator-recovery/1",
             "syn.operator-transition-preflight/1",
             "syn.private-pubsub/1",
         ),

@@ -26,6 +26,8 @@ def main(argv=None) -> int:
     for name in ("preflight", "transition-preflight", "serve"):
         sub = commands.add_parser(name)
         sub.add_argument("--config", type=Path, required=True)
+        if name == "serve":
+            sub.add_argument("--rpc-config", type=Path)
     pulse_parser = commands.add_parser("enrollment-pulse", help="Exclusive maintenance: sign a fresh public pulse")
     pulse_parser.add_argument("--config", type=Path, required=True)
     reservation = commands.add_parser("reserve", help="Exclusive maintenance: private human approval of eight public candidates")
@@ -165,7 +167,7 @@ def main(argv=None) -> int:
                      "configuration_sha256": server.config_sha, "state_sha256": server.state.digest(current),
                      "agent_activation_authorized": False}
         else:
-            run(args.config)
+            run(args.config, rpc_config=args.rpc_config)
             return 0
         print(json.dumps(value, sort_keys=True, separators=(",", ":")))
         return 0

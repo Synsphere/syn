@@ -325,3 +325,108 @@ def test_invalid_pledge_and_expired_pulse_cannot_allocate(installed):
     signed_pulse["pulse"]["expires_at"] = 1
     with pytest.raises(SynProtocolError, match="stale"):
         reserve(config, signed_pulse, offer, 23, approve=lambda _: pytest.fail("Expired pulse reached permission"))
+
+
+def test_directed_local_rpc_through_running_operator(installed):
+    import socket
+    from uuid import uuid4
+
+    from syn.release import runtimeContract
+    from syn_client.local_rpc import DISPATCH_PROFILE, MAX_PAYLOAD_BYTES, SERVICE_REPLY_PROFILE, call
+    from syn_client.operator_protocol import peer_uid, read_exact, receive, send
+
+    if os.getuid() == 0:
+        pytest.skip("Run the local service fixture under a non-root UID")
+
+    node, _, created = installed
+    service_path = node / "service.sock"
+    workspace_id = str(uuid4())
+    route = {
+        "profile": "syn.local-rpc-route/1", "workspace_id": workspace_id,
+        "method": "context.read", "service_socket": str(service_path), "service_uid": os.getuid(),
+    }
+    route_path = node / "rpc.json"
+    route_bytes = canonical(route)
+    route_path.write_bytes(route_bytes)
+    route_path.chmod(0o600)
+    server = OperatorServer(node / "operator.json", rpc_config=route_path)
+    thread = threading.Thread(target=server.serve)
+    request_id = str(uuid4())
+    request_bytes = b"a" * (MAX_PAYLOAD_BYTES - 1) + b"b"
+    reply_bytes = b"c" * (MAX_PAYLOAD_BYTES - 1) + b"d"
+    pins = {
+        "socket_path": node / "operator.sock",
+        "owner_uid": os.getuid(),
+        "expected_hash": created["identity"]["base_public_key_hash"],
+        "expected_version": runtimeContract().runtime_version,
+        "configuration_sha256": server.config_sha,
+    }
+    request = {**pins, "route_sha256": hashlib.sha256(route_bytes).hexdigest(),
+               "workspace_id": workspace_id, "method": "context.read", "request_id": request_id}
+    service_requests = []
+    service_failures = []
+
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as destination:
+        destination.bind(str(service_path))
+        service_path.chmod(0o600)
+        destination.listen(1)
+        destination.settimeout(5)
+
+        def serve_destination():
+            try:
+                for response_id in (request_id, str(uuid4())):
+                    channel, _ = destination.accept()
+                    with channel:
+                        channel.settimeout(3)
+                        assert peer_uid(channel) == os.getuid()
+                        header = receive(channel)
+                        assert header == {
+                            "profile": DISPATCH_PROFILE, "workspace_id": workspace_id, "method": "context.read",
+                            "request_id": request_id, "size": MAX_PAYLOAD_BYTES, "boot_id": server.boot_id,
+                            "caller_uid": os.getuid(),
+                        }
+                        service_requests.append(read_exact(channel, header["size"]))
+                        send(channel, {"profile": SERVICE_REPLY_PROFILE, "request_id": response_id,
+                                       "size": len(reply_bytes)})
+                        if response_id == request_id:
+                            channel.sendall(reply_bytes)
+            except Exception as error:
+                service_failures.append(error)
+
+        thread.start()
+        service_thread = threading.Thread(target=serve_destination)
+        service_thread.start()
+        try:
+            deadline = time.monotonic() + 4
+            while True:
+                try:
+                    operator_status(**pins)
+                    break
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.01)
+
+            for changed in ({"workspace_id": str(uuid4())}, {"route_sha256": "aa" * 32},
+                            {"method": "context.update"}, {"expected_hash": "aa" * 32}):
+                with pytest.raises(SynProtocolError):
+                    call(request_bytes, **(request | changed))
+            with pytest.raises(SynProtocolError, match="payload length"):
+                call(request_bytes + b"x", **request)
+
+            result = call(request_bytes, **request)
+            assert result.payload == reply_bytes
+            assert result.receipt["body"]["boot_id"] == server.boot_id
+            assert result.receipt["body"]["reply_sha256"] == hashlib.sha256(reply_bytes).hexdigest()
+            with pytest.raises(SynProtocolError):
+                call(request_bytes, **request)
+
+            route_path.write_bytes(canonical({**route, "method": "context.update"}))
+            with pytest.raises(SynProtocolError):
+                call(request_bytes, **request)
+        finally:
+            server.stopped.set()
+            thread.join(5)
+            service_thread.join(6)
+    assert not thread.is_alive() and not service_thread.is_alive() and not service_failures
+    assert service_requests == [request_bytes, request_bytes]

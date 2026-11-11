@@ -7,6 +7,7 @@ import re
 import socket
 import struct
 import sys
+import time
 from typing import Any
 from uuid import UUID
 
@@ -93,9 +94,18 @@ def parse(raw: bytes) -> dict[str, Any]:
     return payload
 
 
-def read_exact(conn: socket.socket, count: int) -> bytes:
+def set_deadline(conn: socket.socket, deadline: float | None) -> None:
+    if deadline is not None:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("SYN local wire deadline elapsed")
+        conn.settimeout(remaining)
+
+
+def read_exact(conn: socket.socket, count: int, *, deadline: float | None = None) -> bytes:
     out = bytearray()
     while len(out) < count:
+        set_deadline(conn, deadline)
         data = conn.recv(count - len(out))
         if not data:
             raise SynProtocolError("truncated SYN local wire frame")
@@ -103,15 +113,16 @@ def read_exact(conn: socket.socket, count: int) -> bytes:
     return bytes(out)
 
 
-def receive(conn: socket.socket) -> dict[str, Any]:
-    count = struct.unpack(">I", read_exact(conn, 4))[0]
+def receive(conn: socket.socket, *, deadline: float | None = None) -> dict[str, Any]:
+    count = struct.unpack(">I", read_exact(conn, 4, deadline=deadline))[0]
     if not 0 < count <= MAX_FRAME_BYTES:
         raise SynProtocolError("SYN local message length rejected")
-    return parse(read_exact(conn, count))
+    return parse(read_exact(conn, count, deadline=deadline))
 
 
-def send(conn: socket.socket, payload: dict[str, Any]) -> None:
+def send(conn: socket.socket, payload: dict[str, Any], *, deadline: float | None = None) -> None:
     data = canonical(payload)
     if not 0 < len(data) <= MAX_FRAME_BYTES:
         raise SynProtocolError("SYN local response exceeds message limit")
+    set_deadline(conn, deadline)
     conn.sendall(struct.pack(">I", len(data)) + data)

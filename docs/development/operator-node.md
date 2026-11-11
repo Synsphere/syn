@@ -81,6 +81,9 @@ It does not offer arbitrary signing or private key export over IPC. A crashed
 socket is removed only when its retained device/inode matches and the kernel
 refuses connection. Foreign or ambiguous endpoints remain untouched.
 
+The optional [directed local RPC route](local-rpc.md) lets a trusted local client
+request a reply from one configured service through the native operator.
+
 ## Read protected state before a package transition
 
 Stop the operator and quiesce enrollment maintenance before running this check.
