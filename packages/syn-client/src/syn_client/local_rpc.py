@@ -23,6 +23,7 @@ from .operator_protocol import (
 )
 
 RPC_PROFILE = "syn.operator-local-rpc/1"
+ROUTE_TABLE_PROFILE = "syn.local-rpc-routes/1"
 REQUEST_PROFILE = "syn.local-rpc-request/1"
 READY_PROFILE = "syn.local-rpc-ready/1"
 DISPATCH_PROFILE = "syn.local-rpc-dispatch/1"

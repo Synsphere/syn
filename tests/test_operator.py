@@ -327,12 +327,15 @@ def test_invalid_pledge_and_expired_pulse_cannot_allocate(installed):
         reserve(config, signed_pulse, offer, 23, approve=lambda _: pytest.fail("Expired pulse reached permission"))
 
 
-def test_directed_local_rpc_through_running_operator(installed):
+@pytest.mark.parametrize("route_table", [False, True], ids=["single-route", "route-table"])
+def test_directed_local_rpc_through_running_operator(installed, route_table):
     import socket
     from uuid import uuid4
 
     from syn.release import runtimeContract
-    from syn_client.local_rpc import DISPATCH_PROFILE, MAX_PAYLOAD_BYTES, SERVICE_REPLY_PROFILE, call
+    from syn_client.local_rpc import (
+        DISPATCH_PROFILE, MAX_PAYLOAD_BYTES, ROUTE_TABLE_PROFILE, SERVICE_REPLY_PROFILE, call,
+    )
     from syn_client.operator_protocol import peer_uid, read_exact, receive, send
 
     if os.getuid() == 0:
@@ -340,18 +343,23 @@ def test_directed_local_rpc_through_running_operator(installed):
 
     node, _, created = installed
     service_path = node / "service.sock"
+    browser_path = node / "browser.sock"
     workspace_id = str(uuid4())
     route = {
-        "profile": "syn.local-rpc-route/1", "workspace_id": workspace_id,
+        "workspace_id": workspace_id,
         "method": "context.read", "service_socket": str(service_path), "service_uid": os.getuid(),
     }
+    browser = {**route, "method": "browser.command", "service_socket": str(browser_path)}
     route_path = node / "rpc.json"
-    route_bytes = canonical(route)
+    policy = ({"profile": ROUTE_TABLE_PROFILE, "routes": [route, browser]} if route_table
+              else {"profile": "syn.local-rpc-route/1", **route})
+    route_bytes = canonical(policy)
     route_path.write_bytes(route_bytes)
     route_path.chmod(0o600)
     server = OperatorServer(node / "operator.json", rpc_config=route_path)
     thread = threading.Thread(target=server.serve)
     request_id = str(uuid4())
+    browser_id = str(uuid4())
     request_bytes = b"a" * (MAX_PAYLOAD_BYTES - 1) + b"b"
     reply_bytes = b"c" * (MAX_PAYLOAD_BYTES - 1) + b"d"
     pins = {
@@ -363,14 +371,21 @@ def test_directed_local_rpc_through_running_operator(installed):
     }
     request = {**pins, "route_sha256": hashlib.sha256(route_bytes).hexdigest(),
                "workspace_id": workspace_id, "method": "context.read", "request_id": request_id}
+    browser_request = {**request, "method": "browser.command", "request_id": browser_id}
     service_requests = []
     service_failures = []
 
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as destination:
+    with (socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as destination,
+          socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as browser_destination):
         destination.bind(str(service_path))
         service_path.chmod(0o600)
         destination.listen(1)
         destination.settimeout(5)
+        if route_table:
+            browser_destination.bind(str(browser_path))
+            browser_path.chmod(0o600)
+            browser_destination.listen(1)
+            browser_destination.settimeout(5)
 
         def serve_destination():
             try:
@@ -390,6 +405,20 @@ def test_directed_local_rpc_through_running_operator(installed):
                                        "size": len(reply_bytes)})
                         if response_id == request_id:
                             channel.sendall(reply_bytes)
+                if route_table:
+                    channel, _ = browser_destination.accept()
+                    with channel:
+                        channel.settimeout(3)
+                        assert peer_uid(channel) == os.getuid()
+                        header = receive(channel)
+                        assert header == {
+                            "profile": DISPATCH_PROFILE, "workspace_id": workspace_id, "method": "browser.command",
+                            "request_id": browser_id, "size": len(b"sample"), "boot_id": server.boot_id,
+                            "caller_uid": os.getuid(),
+                        }
+                        assert read_exact(channel, header["size"]) == b"sample"
+                        send(channel, {"profile": SERVICE_REPLY_PROFILE, "request_id": browser_id, "size": 6})
+                        channel.sendall(b"pixels")
             except Exception as error:
                 service_failures.append(error)
 
@@ -421,7 +450,19 @@ def test_directed_local_rpc_through_running_operator(installed):
             with pytest.raises(SynProtocolError):
                 call(request_bytes, **request)
 
-            route_path.write_bytes(canonical({**route, "method": "context.update"}))
+            with pytest.raises(SynProtocolError):
+                call(b"sample", **(browser_request | {"workspace_id": str(uuid4())}))
+            if route_table:
+                result = call(b"sample", **browser_request)
+                assert result.payload == b"pixels"
+                assert result.receipt["body"]["method"] == "browser.command"
+                assert result.receipt["body"]["workspace_id"] == workspace_id
+                assert result.receipt["body"]["route_sha256"] == request["route_sha256"]
+            else:
+                with pytest.raises(SynProtocolError):
+                    call(b"sample", **browser_request)
+
+            route_path.write_bytes(canonical({**policy, "changed": True}))
             with pytest.raises(SynProtocolError):
                 call(request_bytes, **request)
         finally:
@@ -430,3 +471,32 @@ def test_directed_local_rpc_through_running_operator(installed):
             service_thread.join(6)
     assert not thread.is_alive() and not service_thread.is_alive() and not service_failures
     assert service_requests == [request_bytes, request_bytes]
+
+
+def test_directed_local_rpc_rejects_ambiguous_or_oversized_tables(installed):
+    from uuid import uuid4
+
+    from syn.operator.local_rpc import MAX_ROUTES, LocalRpcRoutes
+    from syn_client.local_rpc import ROUTE_TABLE_PROFILE
+
+    node, _, _ = installed
+    path = node / "rpc.json"
+    route = {
+        "workspace_id": str(uuid4()), "method": "context.read",
+        "service_socket": str(node / "context.sock"), "service_uid": 1000,
+    }
+    browser = {**route, "method": "browser.command", "service_socket": str(node / "browser.sock")}
+
+    def write(routes):
+        path.write_bytes(canonical({"profile": ROUTE_TABLE_PROFILE, "routes": routes}))
+        path.chmod(0o600)
+
+    for rows in ([], [route] * (MAX_ROUTES + 1), [route, {**route, "service_socket": browser["service_socket"]}],
+                 [route, {**browser, "fallback": True}], [route, {**browser, "service_uid": True}]):
+        write(rows)
+        with pytest.raises(SynProtocolError):
+            LocalRpcRoutes.load(path)
+
+    write([route, {**browser, "service_socket": str(node / "operator.sock")}])
+    with pytest.raises(SynProtocolError, match="operator socket"):
+        OperatorServer(node / "operator.json", rpc_config=path)

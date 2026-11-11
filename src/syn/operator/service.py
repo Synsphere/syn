@@ -73,13 +73,15 @@ class OperatorServer:
 
     def __init__(self, config_path: Path, *, rpc_config: Path | None = None):
         if rpc_config is not None:
-            from .local_rpc import LocalRpcRoute
-            self.local_rpc = LocalRpcRoute.load(rpc_config)
+            from .local_rpc import LocalRpcRoutes
+            self.local_rpc = LocalRpcRoutes.load(rpc_config)
         self.config_path = config_path
         self.config, self.config_sha = load_config(config_path)
         self.directory = config_path.parent
         self.path = Path(self.config["socket"])
-        if self.local_rpc is not None and self.local_rpc.service == self.path:
+        if self.local_rpc is not None and any(
+            destination.service == self.path for destination in self.local_rpc.destinations.values()
+        ):
             raise SynProtocolError("Syn RPC cannot route to the operator socket")
         self.expected_hash = self.config["expected_base_public_key_hash"]
         self.signer = PythonHdOperatorSigner(self.config["keyring_service"], self.config["keyring_account"], bytes.fromhex(self.expected_hash))
