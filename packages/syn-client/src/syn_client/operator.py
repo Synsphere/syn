@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -65,12 +66,10 @@ def verify_status(value, *, challenge: str, expected_hash: str, expected_version
     return body
 
 
-def operator_status(*, socket_path: Path, expected_hash: str, expected_version: str,
-                    configuration_sha256: str, owner_uid: int):
+@contextmanager
+def _operator_connection(socket_path: Path, owner_uid: int):
     if os.name != "posix" or type(owner_uid) is not int or owner_uid < 0:
         raise SynProtocolError("Operator IPC requires an explicit native host owner")
-    hex_bytes(expected_hash, 32, "independently pinned operator identity")
-    hex_bytes(configuration_sha256, 32, "configuration digest")
     if (not socket_path.is_absolute() or socket_path.resolve() != socket_path
             or socket_path.is_symlink() or len(os.fsencode(socket_path)) > 103):
         raise SynProtocolError("Operator socket must be canonical, private and bounded")
@@ -78,12 +77,20 @@ def operator_status(*, socket_path: Path, expected_hash: str, expected_version: 
     if (not stat.S_ISDIR(parent.st_mode) or parent.st_uid != owner_uid or parent.st_mode & 0o077
             or not stat.S_ISSOCK(entry.st_mode) or entry.st_uid != owner_uid or entry.st_mode & 0o077):
         raise SynProtocolError("Operator socket is not privately owned")
-    nonce = secrets.token_hex(32)
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
         conn.settimeout(3)
         conn.connect(str(socket_path))
-        if peer_uid(conn) != owner_uid:
-            raise SynProtocolError("Operator process has the wrong OS identity")
+        if peer_uid(conn) != owner_uid or not os.path.samestat(entry, socket_path.lstat()):
+            raise SynProtocolError("Operator socket peer changed or has the wrong OS identity")
+        yield conn
+
+
+def operator_status(*, socket_path: Path, expected_hash: str, expected_version: str,
+                    configuration_sha256: str, owner_uid: int):
+    hex_bytes(expected_hash, 32, "independently pinned operator identity")
+    hex_bytes(configuration_sha256, 32, "configuration digest")
+    nonce = secrets.token_hex(32)
+    with _operator_connection(socket_path, owner_uid) as conn:
         send(conn, {"profile": CHALLENGE_PROFILE, "challenge": nonce,
                     "expected_base_public_key_hash": expected_hash,
                     "configuration_sha256": configuration_sha256})

@@ -69,11 +69,18 @@ def initialize(directory: Path, *, service: str, account: str, network_id: str):
 
 
 class OperatorServer:
-    def __init__(self, config_path: Path):
+    local_rpc = None
+
+    def __init__(self, config_path: Path, *, rpc_config: Path | None = None):
+        if rpc_config is not None:
+            from .local_rpc import LocalRpcRoute
+            self.local_rpc = LocalRpcRoute.load(rpc_config)
         self.config_path = config_path
         self.config, self.config_sha = load_config(config_path)
         self.directory = config_path.parent
         self.path = Path(self.config["socket"])
+        if self.local_rpc is not None and self.local_rpc.service == self.path:
+            raise SynProtocolError("Syn RPC cannot route to the operator socket")
         self.expected_hash = self.config["expected_base_public_key_hash"]
         self.signer = PythonHdOperatorSigner(self.config["keyring_service"], self.config["keyring_account"], bytes.fromhex(self.expected_hash))
         self.state = OperatorState(self.directory, self.config["keyring_service"], self.config["keyring_account"], self.expected_hash)
@@ -134,7 +141,14 @@ class OperatorServer:
         return uid == os.getuid()
 
     def dispatch(self, conn, request):
-        send(conn, self.status(request))
+        from syn_client.local_rpc import REQUEST_PROFILE
+
+        if request.get("profile") == REQUEST_PROFILE:
+            if self.local_rpc is None:
+                raise SynProtocolError("Directed RPC has no configured local route")
+            self.local_rpc.dispatch(conn, request, self)
+        else:
+            send(conn, self.status(request))
 
     def close_resources(self):
         pass
@@ -172,7 +186,7 @@ class OperatorServer:
                         try:
                             if not self.caller_allowed(peer_uid(conn)):
                                 raise SynProtocolError("Operator caller has the wrong native user")
-                            self.dispatch(conn, receive(conn))
+                            self.dispatch(conn, receive(conn, deadline=time.monotonic() + 2))
                         except (SynProtocolError, OSError, ValueError):
                             # No diagnostic oracle or arbitrary signer is offered over IPC.
                             continue
@@ -193,8 +207,8 @@ class OperatorServer:
                     self.state.commit({**current, "socket": None})
 
 
-def run(config_path: Path):
-    server = OperatorServer(config_path)
+def run(config_path: Path, *, rpc_config: Path | None = None):
+    server = OperatorServer(config_path, rpc_config=rpc_config)
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda *_: server.stopped.set())
     server.serve()
