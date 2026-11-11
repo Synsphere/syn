@@ -20,7 +20,7 @@ def runtimeContract() -> RuntimeContract:
             "syn.lan-enrollment-request/1", "syn.legacy-state-archive/1", ROUTE_TABLE_PROFILE,
             "syn.operator-local-rpc/1", "syn.operator-local/1", "syn.operator-recovery/1",
             "syn.operator-transition-preflight/1",
-            "syn.private-pubsub/1",
+            "syn.private-gossipsub-config/1", "syn.private-pubsub/1",
         ),
         capabilities=(
             "authenticated-agent-ipc", "authenticated-lan-enrollment", "authenticated-operator-ipc", "authenticated-private-pubsub", "confidential-selected-key-adoption",
