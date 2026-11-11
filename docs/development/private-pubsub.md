@@ -52,7 +52,7 @@ sequenceDiagram
 The additive runtime profile is `syn.private-pubsub/1`, capability
 `authenticated-private-pubsub`. Qualification targets Linux x86-64, including
 managed WSL2. Existing native Agent sandbox, custody and deployment requirements
-remain mandatory. macOS Agent isolation and remote IP transport are unqualified.
+remain mandatory. macOS Agent isolation remains unqualified.
 
 The controller starts the official `python -I -B -m syn.mesh --config FILE`.
 Its root-private configuration has profile `syn.private-relay-config/1`, a
@@ -66,6 +66,60 @@ operator hash, network ID, group UUID, current group epoch and signed member
 certificates. Every certificate must have the same current group commitment.
 Signed hellos bind each selected leaf to its live boot and this exact session.
 An Agent cannot be silently rebound to another mesh while running.
+
+## GossipSub across hosts
+
+The optional `syn.private-gossipsub-config/1` profile gives each host its own
+relay. Each relay attaches to the local Agent sockets and uses GossipSub
+over authenticated TCP peer connections to reach the other relays. Configure
+the same fresh scope on every host and assign each Agent to exactly one
+relay. The relays exchange signed Agent hellos and compare the resulting
+roster before any local Agent becomes ready.
+
+```mermaid
+flowchart LR
+    AgentA[Native Syn Agent A] <-->|Private Unix socket| RelayA[Host A relay]
+    RelayA <-->|GossipSub signed ciphertext| RelayB[Host B relay]
+    RelayB <-->|Private Unix socket| AgentB[Native Syn Agent B]
+```
+
+*Deployment diagram. The two-host acceptance harness exercises both TCP
+directions with synthetic custody and verifies the signed receive result.*
+
+Prepare a private directory owned by the relay account. Generate a separate
+32-byte relay identity in it with `umask 077` and
+`openssl rand -out relay.seed 32`. Run
+`python -m syn.mesh --peer-id /private/relay/relay.seed` to obtain the public
+libp2p peer ID. Exchange peer IDs and addresses with the other host through
+the operator. The identity file stays local to its relay.
+
+Run `python -m syn.mesh --config /private/relay/gossip.json` as the privileged
+local controller, using canonical JSON and mode `0600`. The configuration
+contains these fields:
+
+| Field | Value |
+| --- | --- |
+| `profile` | `syn.private-gossipsub-config/1` |
+| `scope` | The complete group, workspace, fresh session and certificate roster |
+| `endpoints` | Local Agent records with `node`, `socket` and `owner_uid` |
+| `identity_path` | Absolute path to this relay’s private seed |
+| `listen` | Explicit IP/TCP multiaddress to listen on |
+| `peers` | Other relays with `peer_id`, `nodes` and an IP/TCP `address` |
+
+Use a reachable listen address for each connection. At least one side of
+each pair needs the other side’s address. The receiving side can set the
+peer’s `address` to null when it cannot dial back. All configured relays
+must participate in the scope. Each relay accepts signed libp2p traffic
+from selected peers and verifies that the sending Agent belongs to that
+peer’s assignment. The receiving Agent checks the same group membership,
+signature, boot, epoch and sequence before decryption.
+
+GossipSub delivery is volatile. The relay discards duplicate, reordered
+and invalid remote envelopes. Loss of a selected relay fences the live
+session. Start a fresh scope to recover. A publish acknowledgement records
+local submission, and an Agent’s signed receive result establishes
+reception. Context and browser RPC continue to use [directed
+request and reply](local-rpc.md).
 
 The public `syn_client.pubsub_client` module exposes `request(...)` and a CLI:
 
