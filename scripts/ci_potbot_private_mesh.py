@@ -1,7 +1,8 @@
 """Qualify the complete public Potbot mesh adapter against installed Syn bytes.
 
-This proves native identity-bound admission and real heartbeat transport. It does
-not qualify a Cog image, cgroup/TASKSTATS backend, provider or production host.
+This proves native identity-bound admission and real heartbeat transport.
+An optional reviewed consumer probe can exercise a disposable monitored Cog
+while the official release cohort is still live.
 """
 from __future__ import annotations
 
@@ -23,7 +24,10 @@ from potbot.tools.sandbox_cog_worker import SandboxedCogExecutor, SandboxedCogOp
 from syn_client.agent import agent_status
 
 
-def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None, source_contract=None):
+def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None,
+            source_contract=None, monitored_worker_probe=None):
+    if monitored_worker_probe is not None and store is None:
+        raise ValueError("Monitored worker authorization requires the installed official release")
     certificates = [item[2]["status"]["group_certificate"] for item in nodes]
     body = certificates[0]["body"]
     participants = {}
@@ -65,7 +69,18 @@ def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None, 
 
     class RecordedTransport(SynPrivateMesh):
         def call(self, agent_id, operation, payload=None):
-            value = super().call(agent_id, operation, payload)
+            try:
+                value = super().call(agent_id, operation, payload)
+            except StateMismatchError as error:
+                if monitored_worker_probe is not None:
+                    public = str(error)
+                    if public in {
+                        "Native Syn command capacity deadline exceeded",
+                        "Upstream Syn operation exceeded its deadline",
+                        "Upstream Syn refused; reconcile native keystore and state",
+                    }:
+                        print("Official native operation failed:", operation, public, flush=True)
+                raise
             if operation == "receive" and value["reply"]["result"]["messages"] and len(receptions) < 8:
                 receptions.append(value)
             return value
@@ -73,7 +88,10 @@ def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None, 
     receptions = []
     workspace = uuid4()
     transport = RecordedTransport(base / "potbot-private-mesh", workspace_id=workspace, participants=participants)
-    workers = ReleasedSynWorkerNodeMesh(transport, interval_seconds=1)
+    workers = (
+        ReleasedSynWorkerNodeMesh(transport) if monitored_worker_probe is not None
+        else ReleasedSynWorkerNodeMesh(transport, interval_seconds=1)
+    )
     actor = WorkspaceContext(workspace, uuid4())
     policy_pin = ExecutionPolicy("a" * 64, "b" * 64, "c" * 64, "native-admission-fixture")
     operation = SandboxedCogOperation(WorkBinding("tool", "syn://thing/undispatched-fixture",
@@ -82,8 +100,10 @@ def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None, 
     source = TypedCogValue("syn://type/fixture-input", {"fixture": True})
     context = CogRunContext("f" * 64, uuid4(), uuid4(), uuid4())
     first, second = transport.agents
+    monitored_evidence = None
 
     async def exercise():
+        nonlocal monitored_evidence
         grant = workers.authorize(operation, source, context, actor, first)
         workers.consume(grant, operation, source, context, actor, first)
         try:
@@ -109,6 +129,9 @@ def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None, 
             pass
         else:
             raise AssertionError("Executor dispatched without a task authorization")
+        if monitored_worker_probe is not None:
+            monitored_evidence = await monitored_worker_probe(workers, base)
+            assert monitored_evidence.get("result") == "passed"
         async with workers.node(workspace, first, uuid4()) as left:
             async with workers.node(workspace, second, uuid4()) as right:
                 deadline = time.monotonic() + 20
@@ -135,11 +158,17 @@ def qualify(nodes, base, *, root, store=None, policy=None, source_runtime=None, 
         assert session.process.wait(timeout=15) == 2, "Native Syn process did not fence after relay loss"
         assert not (root / UUID(session.host["agent_id"]).hex / "home/syn/agent.sock").exists()
     print("Real Potbot public mesh adapter, signed native heartbeats, task-grant rejection and relay-loss fencing passed", flush=True)
-    return {"profile": "syn.potbot-private-mesh-acceptance/1", "result": "passed", "scope": transport.scope,
+    evidence = {"profile": "syn.potbot-private-mesh-acceptance/1", "result": "passed", "scope": transport.scope,
         "native_adapter_verified": True, "heartbeat_receptions": receptions,
         "official_release_installation_verified": store is not None,
         "source_fixture_substitutions": ([] if store is not None else ["package installation registry", "retained assignment registry"]),
         "one_use_and_changed_task_grants_rejected": True,
         "executor_without_task_grant_rejected_before_dispatch": True,
         "relay_loss_fenced_both_native_nodes_and_cog_monitors": True,
-        "cog_process_dispatched": False, "host_cog_kernel_qualification": "independent_required_gate"}
+        "cog_process_dispatched": monitored_evidence is not None,
+        "host_cog_kernel_qualification": (
+            "disposable_monitored_worker" if monitored_evidence else "independent_required_gate"
+        )}
+    if monitored_evidence is not None:
+        evidence["monitored_worker_authorization"] = monitored_evidence
+    return evidence

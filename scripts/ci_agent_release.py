@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--consumer-dir", type=Path)
     parser.add_argument("--lan-enrollment", action="store_true")
     parser.add_argument("--group-rollover", action="store_true")
+    parser.add_argument("--monitored-worker", action="store_true")
     args = parser.parse_args()
     if sys.platform != "linux" or os.getuid() != 0:
         raise SystemExit("Official native Agent qualification requires disposable Linux root")
@@ -86,11 +87,13 @@ def main():
         argv = ["/usr/bin/unshare", "--net", "--", *argv, "--lan-enrollment"]
     if args.group_rollover:
         argv.append("--group-rollover")
+    if args.monitored_worker:
+        argv.append("--monitored-worker")
     if args.local_disposable_fixture:
         argv.append("--local-disposable-fixture")
     environment = {name: item for name, item in os.environ.items() if name not in {"PYTHONPATH", "PYTHONHOME", "POTBOT_SYN_GITHUB_TOKEN"}}
     environment["XDG_RUNTIME_DIR"] = str(base)
-    timeout = 720 if args.group_rollover else 420
+    timeout = 720 if args.group_rollover else (600 if args.monitored_worker else 420)
     result = subprocess.run(argv, env=environment, timeout=timeout, check=False)
     if result.returncode:
         raise AssertionError("Exact official-package Agent controller acceptance failed")
