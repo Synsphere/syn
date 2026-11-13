@@ -189,3 +189,44 @@ def test_group_roster_rejects_duplicates_different_epochs_and_malformed_certific
     changed["group_epoch"] = 2
     with pytest.raises(SynProtocolError):
         scope(changed)
+
+def test_gossipsub_receive_finishes_after_subscription_poll_deadline():
+    import trio
+    from trio.testing import MockClock
+
+    from syn.mesh_gossipsub import GossipRelay
+
+    async def scenario():
+        stopped = threading.Event()
+        delivered = []
+        packet = object()
+
+        async def publish(*_):
+            pass
+
+        async def get():
+            await trio.sleep(0.09)
+            return packet
+
+        async def receive(message):
+            # The subscription already consumed the message. Processing it must
+            # survive the deadline used to keep the idle relay responsive.
+            await trio.sleep(0.02)
+            delivered.append(message)
+            stopped.set()
+
+        relay = SimpleNamespace(
+            active=True,
+            stopped=stopped,
+            hellos={},
+            peers={},
+            expected=1,
+            topic="fixture",
+            pubsub=SimpleNamespace(peer_topics={}, publish=publish),
+            _receive=receive,
+        )
+        with trio.fail_after(1):
+            await GossipRelay._serve(relay, None, SimpleNamespace(get=get), None)
+        assert delivered == [packet]
+
+    trio.run(scenario, clock=MockClock(autojump_threshold=0))
