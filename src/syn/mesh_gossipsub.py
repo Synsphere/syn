@@ -218,5 +218,8 @@ class GossipRelay(PrivateRelay):
                                     continue
                             on_ready()
                 next_publish = now + 0.5
-            with trio.move_on_after(0.1):
-                await self._receive(await subscription.get())
+            # Once dequeued, a message must outlive the idle poll deadline.
+            with trio.move_on_after(0.1) as poll:
+                message = await subscription.get()
+            if not poll.cancelled_caught:
+                await self._receive(message)
