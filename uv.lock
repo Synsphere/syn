@@ -1921,7 +1921,7 @@ wheels = [
 
 [[package]]
 name = "syn"
-version = "0.10.0"
+version = "0.10.1"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -1984,7 +1984,7 @@ dev = [
 
 [[package]]
 name = "syn-client"
-version = "0.10.0"
+version = "0.10.1"
 source = { editable = "packages/syn-client" }
 
 [package.optional-dependencies]
