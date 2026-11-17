@@ -67,7 +67,10 @@ def main(arguments: Sequence[str] | None = None) -> None:
     )
     try:
         sessions = createSessionFactory(engine)
-        app = createApp(sessions, defaultJobHandlers(config.database.url), config.p2p)
+        from .positions.runtime import PositionRuntime
+        runtime = PositionRuntime(sessions, config.database.url, config.position)
+        handlers = {**defaultJobHandlers(config.database.url), **runtime.handlers()}
+        app = createApp(sessions, handlers, config.p2p, positionRuntime=runtime)
         uvicorn.run(
             app,
             host=options.host,

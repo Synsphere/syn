@@ -1,0 +1,37 @@
+# Merge [position] into config.toml, or use this as a native node's position.toml.
+# Keep this file private when it contains a database password.
+[database]
+url = "postgresql+psycopg://syn:CHANGE_ME@127.0.0.1/syn"
+echo = false
+autoMigrate = true
+
+[position]
+# Optional, stable explicit node identity. Different hosts/nodes need distinct refs.
+# nodeRef = "syn://thing/my-syn-node"
+stateDirectory = ".syn"
+# Normally use the system IANA timezone, not a manually inferred location.
+# timezone = "Europe/London"
+# timezoneCatalogue = "/absolute/path/timezone-position-catalogue.json"
+pollSeconds = 5.0
+rescanSeconds = 300.0
+probeSeconds = 2.0
+readSeconds = 3.0
+maxAgeSeconds = 120.0
+futureToleranceSeconds = 5.0
+driftMetersPerSecond = 2.0
+uereMeters = 5.0
+maxDevices = 64
+maxConcurrentJobs = 4
+gpsdHosts = ["127.0.0.1:2947", "[::1]:2947"]
+serialProbe = true
+# Empty means enumerate all accessible OS serial ports; nonempty is an allowlist.
+serialPorts = []
+# Exclude sensitive consoles, control equipment, and ports used by other software.
+excludedSerialPorts = []
+serialBaudRates = [4800, 9600, 38400, 115200]
+nativeServices = true
+bluetoothLE = true
+# Explicit numeric-IP endpoints ONLY; no subnet scans, DNS, or credentials.
+# TCP connects to a receiver; UDP binds a local listener, it does not send probes.
+networkNmea = []
+# networkNmea = ["tcp://127.0.0.1:10110", "udp://127.0.0.1:10111"]
