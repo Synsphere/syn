@@ -8,6 +8,11 @@ authors = [
 ]
 requires-python = ">=3.12,<3.14"
 dependencies = [
+    "pyserial>=3.5,<4",
+    "tzlocal>=5.3,<6",
+    "tzdata>=2025.2",
+    "geonamescache>=2,<4",
+    "timezonefinder>=6.5,<9",
     "syn-client[governance]==0.10.1",
     "keyring==25.7.0",
     "mnemonic==0.21",
@@ -27,7 +32,16 @@ dependencies = [
     "uvicorn[standard]>=0.52.0",
 ]
 
+[project.optional-dependencies]
+position-native = [
+    "bleak>=1,<3",
+    "dbus-next>=0.2.3,<1; sys_platform == 'linux'",
+    "pyobjc-framework-CoreLocation>=11; sys_platform == 'darwin'",
+    "winrt-Windows.Devices.Geolocation>=3; sys_platform == 'win32'",
+]
+
 [project.scripts]
+syn-position = "syn.positions.__main__:main"
 syn-server = "syn.server:main"
 syn-operator = "syn.operator.__main__:main"
 syn-agent = "syn.agent.__main__:main"

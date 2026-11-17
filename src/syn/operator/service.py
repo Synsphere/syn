@@ -164,7 +164,12 @@ class OperatorServer:
             listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.listener = listener
             previous = os.umask(0o077)
+            position_runtime = None
             try:
+                from syn.positions.runtime import NativePositionRuntime, native_position_configured
+                if native_position_configured(self.directory):
+                    position_runtime = NativePositionRuntime(self)
+                    position_runtime.start()
                 listener.bind(str(self.path))
                 os.chmod(self.path, 0o600)
                 entry = self.path.lstat()
@@ -177,6 +182,8 @@ class OperatorServer:
                     if time.monotonic() - last_health > 2:
                         # A missing/locked key, altered config or state fences readiness
                         # and terminates this process; supervisors never regenerate it.
+                        if position_runtime is not None:
+                            position_runtime.check()
                         self.status(self.health_request())
                         last_health = time.monotonic()
                     try:
@@ -194,19 +201,23 @@ class OperatorServer:
                             continue
             finally:
                 os.umask(previous)
-                self.close_resources()
-                listener.close()
-                if self.owned_inode is not None:
-                    try:
-                        entry = self.path.lstat()
-                        if (stat.S_ISSOCK(entry.st_mode)
-                                and {"device": entry.st_dev, "inode": entry.st_ino} == self.owned_inode):
-                            self.path.unlink()
-                            sync_directory(self.directory)
-                    except FileNotFoundError:
-                        pass
-                    current = self.state.read()
-                    self.state.commit({**current, "socket": None})
+                try:
+                    self.close_resources()
+                    listener.close()
+                    if self.owned_inode is not None:
+                        try:
+                            entry = self.path.lstat()
+                            if (stat.S_ISSOCK(entry.st_mode)
+                                    and {"device": entry.st_dev, "inode": entry.st_ino} == self.owned_inode):
+                                self.path.unlink()
+                                sync_directory(self.directory)
+                        except FileNotFoundError:
+                            pass
+                        current = self.state.read()
+                        self.state.commit({**current, "socket": None})
+                finally:
+                    if position_runtime is not None:
+                        position_runtime.close()
 
 
 def run(config_path: Path, *, rpc_config: Path | None = None):

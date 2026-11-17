@@ -72,65 +72,75 @@ class MessageStore:
         self.sessions = sessions
 
     def append(self, workspace: str, body: dict[str, Any]) -> dict[str, Any]:
+        with self.sessions.begin() as session:
+            return self.appendInTransaction(session, workspace, body)
+
+    def appendInTransaction(
+        self, session: Session, workspace: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Append using the caller's transaction; never commit or roll back here.
+
+        Callers must lock their domain state before calling this method. The
+        workspace head remains the common serialization point for every writer.
+        """
         uuid_text(workspace)
         message = validate_message(body)
-        with self.sessions.begin() as session:
-            dialect = session.get_bind().dialect.name
-            insert = pgInsert if dialect == "postgresql" else sqliteInsert
+        dialect = session.get_bind().dialect.name
+        insert = pgInsert if dialect == "postgresql" else sqliteInsert
+        session.execute(
+            insert(heads)
+            .values(workspace_id=workspace, sequence=0, hash=GENESIS_HASH)
+            .on_conflict_do_nothing(index_elements=["workspace_id"])
+        )
+        head = (
             session.execute(
-                insert(heads)
-                .values(workspace_id=workspace, sequence=0, hash=GENESIS_HASH)
-                .on_conflict_do_nothing(index_elements=["workspace_id"])
-            )
-            head = (
-                session.execute(
-                    select(heads)
-                    .where(heads.c.workspace_id == workspace)
-                    .with_for_update()
-                )
-                .mappings()
-                .one()
-            )
-            existing = (
-                session.execute(
-                    select(messages).where(
-                        messages.c.workspace_id == workspace,
-                        messages.c.message_id == message["message_id"],
-                    )
-                )
-                .mappings()
-                .first()
-            )
-            if existing is not None:
-                if canonical({key: existing[key] for key in message}) != canonical(
-                    message
-                ):
-                    raise MessageConflict("Message ID already has different contents")
-                return {"schema_version": 1, **dict(existing)}
-            receipt = {
-                "schema_version": 1,
-                "workspace_id": workspace,
-                "sequence": head["sequence"] + 1,
-                **message,
-                "recorded_at": datetime.now(UTC).isoformat(),
-                "previous_hash": head["hash"],
-            }
-            receipt["hash"] = receipt_hash(receipt)
-            session.execute(
-                messages.insert().values(
-                    **{
-                        key: value
-                        for key, value in receipt.items()
-                        if key != "schema_version"
-                    }
-                )
-            )
-            session.execute(
-                heads.update()
+                select(heads)
                 .where(heads.c.workspace_id == workspace)
-                .values(sequence=receipt["sequence"], hash=receipt["hash"])
+                .with_for_update()
             )
-            return receipt
+            .mappings()
+            .one()
+        )
+        existing = (
+            session.execute(
+                select(messages).where(
+                    messages.c.workspace_id == workspace,
+                    messages.c.message_id == message["message_id"],
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if existing is not None:
+            if canonical({key: existing[key] for key in message}) != canonical(
+                message
+            ):
+                raise MessageConflict("Message ID already has different contents")
+            return {"schema_version": 1, **dict(existing)}
+        receipt = {
+            "schema_version": 1,
+            "workspace_id": workspace,
+            "sequence": head["sequence"] + 1,
+            **message,
+            "recorded_at": datetime.now(UTC).isoformat(),
+            "previous_hash": head["hash"],
+        }
+        receipt["hash"] = receipt_hash(receipt)
+        session.execute(
+            messages.insert().values(
+                **{
+                    key: value
+                    for key, value in receipt.items()
+                    if key != "schema_version"
+                }
+            )
+        )
+        session.execute(
+            heads.update()
+            .where(heads.c.workspace_id == workspace)
+            .values(sequence=receipt["sequence"], hash=receipt["hash"])
+        )
+        return receipt
 
     def head(self, workspace: str) -> dict[str, Any]:
         uuid_text(workspace)

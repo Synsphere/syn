@@ -51,18 +51,27 @@ def createApp(
     sessions: sessionmaker[Session], handlers: dict[str, JobHandler],
     p2pConfig: P2PConfig | None = None,
     *, communicationTokens: Mapping[str, str] | None = None,
+    positionRuntime=None,
 ) -> FastAPI:
-    scheduler = ProcessScheduler(sessions, handlers)
+    scheduler = ProcessScheduler(sessions, handlers,
+        maxConcurrentJobs=positionRuntime.config.maxConcurrentJobs if positionRuntime else 4)
     p2pNode = Libp2pNode(p2pConfig or P2PConfig())
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        await p2pNode.start()
+        # A prior is committed before advertising this node or serving requests.
+        if positionRuntime is not None:
+            from starlette.concurrency import run_in_threadpool
+            await run_in_threadpool(positionRuntime.prepare, scheduler)
+            await scheduler.start()
         try:
-            yield
+            await p2pNode.start()
+            try:
+                yield
+            finally:
+                await p2pNode.stop()
         finally:
             await scheduler.stop()
-            await p2pNode.stop()
 
     app = FastAPI(title="Syn API", lifespan=lifespan)
     app.state.processScheduler = scheduler

@@ -4,6 +4,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from .positions.config import PositionConfig
+
 
 @dataclass(frozen=True, slots=True)
 class DatabaseConfig:
@@ -29,6 +31,7 @@ class P2PConfig:
 class SynConfig:
     database: DatabaseConfig
     p2p: P2PConfig = P2PConfig()
+    position: PositionConfig = PositionConfig()
 
 
 def loadConfig(path: str | Path = "config.toml") -> SynConfig:
@@ -80,7 +83,10 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
     if not isinstance(startupTimeoutSeconds, (int, float)) or startupTimeoutSeconds <= 0:
         raise ValueError(f"{configPath} p2p.startupTimeoutSeconds must be positive")
 
+    position = PositionConfig.from_dict(raw.get("position", {}))
+
     return SynConfig(
+        position=position,
         database=DatabaseConfig(url=url, echo=echo, autoMigrate=autoMigrate),
         p2p=P2PConfig(
             enabled=enabled,
