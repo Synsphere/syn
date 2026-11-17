@@ -15,7 +15,9 @@ from syn import buildFeedImportPlan, importFeedPlan
 from syn.api import createApp
 from test_feeds import feedRow, writeBundle
 
-from conftest import MODEL_TABLES
+from syn.models import modelByObjectTable
+
+MODEL_TABLES = {kind: model.__tablename__ for kind, model in modelByObjectTable.items()}
 
 
 pytestmark = pytest.mark.database

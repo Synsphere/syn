@@ -1,5 +1,4 @@
 """Clock persistence contracts; SQLite exercises logic, not PostgreSQL triggers."""
-import json
 
 import pytest
 from sqlalchemy import func, select

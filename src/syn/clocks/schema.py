@@ -1,5 +1,5 @@
 """Clock projections use native Syn Events/Embers and the existing node ledger."""
-from sqlalchemy import BigInteger, CheckConstraint, Column, ForeignKey, JSON, String, Table, Text
+from sqlalchemy import BigInteger, CheckConstraint, Column, ForeignKey, String, Table, Text
 from syn.positions.schema import metadata, insert_ignore, primitive, typeParents, typeProperties
 from .types import KINDS
 

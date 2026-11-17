@@ -34,16 +34,19 @@ def test_four_timestamp_offset_sign_and_delay():
 
 @pytest.mark.parametrize("index,value", [(0,0x23),(0,0xe4),(1,16),(1,0)])
 def test_invalid_server_flags(index,value):
-    data=packet();data[index]=value
+    data=packet()
+    data[index]=value
     with pytest.raises(ValueError):
         decode(data)
 
 
 def test_origin_and_zero_times_rejected():
-    data=packet();data[24:32]=bytes(8)
+    data=packet()
+    data[24:32]=bytes(8)
     with pytest.raises(ValueError,match="origin"):
         decode(data)
-    data=packet();data[40:48]=bytes(8)
+    data=packet()
+    data[40:48]=bytes(8)
     with pytest.raises(ValueError,match="zero"):
         decode(data)
 
@@ -68,7 +71,8 @@ def test_era_unfolding(year):
 def test_real_loopback_udp_exchange():
     errors=[]
     with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as server:
-        server.bind(("127.0.0.1",0));server.settimeout(3)
+        server.bind(("127.0.0.1",0))
+        server.settimeout(3)
         port=server.getsockname()[1]
         def serve():
             try:
@@ -80,7 +84,8 @@ def test_real_loopback_udp_exchange():
                 server.sendto(data,address)
             except BaseException as error:
                 errors.append(error)
-        thread=threading.Thread(target=serve);thread.start()
+        thread=threading.Thread(target=serve)
+        thread.start()
         result=poll("127.0.0.1",2,port=port)
         thread.join(3)
     assert not errors
