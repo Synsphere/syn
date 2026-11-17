@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from sqlalchemy import BigInteger, Column, MetaData, String, Table, Text, UniqueConstraint, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -124,6 +125,13 @@ def _verify_records(rows, sources, identity, network):
     return seen, graph, last, offer_heads
 
 
+def _anchor_adapter():
+    if not os.environ.get("SYN_HOST_CUSTODY_PIPE"):
+        return None
+    from . import dag_anchor
+    return dag_anchor
+
+
 def sync(sessions, server, *, schedulerKey=None):
     """Idempotently reconcile and attest one Operator DAG from private journals.
 
@@ -135,6 +143,13 @@ def sync(sessions, server, *, schedulerKey=None):
     public = server.signer.public_key
     if hashlib.sha256(public).hexdigest() != identity:
         raise ValueError("Operator DAG signer differs from installed identity")
+    adapter = _anchor_adapter()
+    if adapter is not None:
+        from .dag_evidence import _checkpoint as public_checkpoint, checkpoint_digest
+        pinned = adapter.read(server)
+    else:
+        pinned = None
+    to_anchor = []
     with sessions.begin() as session:
         dialect = session.get_bind().dialect.name
         insert = pg_insert if dialect == "postgresql" else sqlite_insert
@@ -175,6 +190,14 @@ def sync(sessions, server, *, schedulerKey=None):
             previous_checkpoint_sequence = checkpoint["sequence"]
         if not all_checkpoints or previous_checkpoint_sequence != len(rows):
             raise ValueError("Operator DAG checkpoint history is incomplete")
+        if pinned is not None:
+            # A restored/replaced database must contain the exact Windows-host
+            # checkpoint. Fail closed before adding leaves or signing anything.
+            pinned_size = pinned["body"]["sequence"]
+            matched = next((row for row in all_checkpoints
+                            if row["sequence"] == pinned_size), None)
+            if matched is None or checkpoint_digest(public_checkpoint(matched)) != checkpoint_digest(pinned):
+                raise ValueError("PostgreSQL DAG does not extend the retained Windows anchor")
         # Preserve a deterministic replay order for incremental per-source logs;
         # actual chronology across sources is not fabricated.
         added = 0
@@ -207,8 +230,22 @@ def sync(sessions, server, *, schedulerKey=None):
                 operatorHash=identity, sequence=len(graph), root=new_root,
                 publicKey=public.hex(), networkId=network,
                 signature=signature.hex(), body=canonical(body).decode("ascii")))
-        return {"operator": identity, "nodes": len(graph), "added": added,
-                "root": merkle_root(graph), "signed": bool(graph)}
+        if adapter is not None:
+            if pinned is None:
+                to_anchor = [public_checkpoint(row) for row in all_checkpoints if row["sequence"] > 0]
+            else:
+                to_anchor = [public_checkpoint(row) for row in all_checkpoints
+                             if row["sequence"] > pinned["body"]["sequence"]]
+            if added:
+                to_anchor.append({"body": body, "public_key": public.hex(), "signature": signature.hex()})
+        result = {"operator": identity, "nodes": len(graph), "added": added,
+                  "root": merkle_root(graph), "signed": bool(graph)}
+    # PostgreSQL has committed before the host anchor is advanced. A crash in
+    # this window is safely recoverable by replaying existing signed checkpoints.
+    # A host failure is surfaced to the existing startup readiness fence.
+    for checkpoint in to_anchor:
+        adapter.advance(server, checkpoint)
+    return result
 
 
 def run_sync(databaseUrl, configPath, *, schedulerKey=None):

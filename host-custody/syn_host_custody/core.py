@@ -62,7 +62,8 @@ def safe_slot(value):
 def root_slot(slot):
     """Never expose any historical HD slots via a generic keystore RPC."""
     return (isinstance(slot, str) and
-            re.search(r"\.operator\.(?:" + "|".join(ROOT_SUFFIXES) + r")\.v1$", slot) is not None)
+            (re.search(r"\.operator\.(?:" + "|".join(ROOT_SUFFIXES) + r")\.v1$", slot) is not None
+             or slot.endswith(DAG_ANCHOR_SUFFIX)))
 
 
 def check_account(service, account):
@@ -143,6 +144,45 @@ def group_key(entropy, operator_hash, network_id, group_id, epoch):
                 info=DERIVE_DOMAIN+context).derive(entropy)
 
 
+DAG_ANCHOR_DOMAIN = b"syn.operator.dag.checkpoint/1\0"
+DAG_ANCHOR_SUFFIX = ".operator.dag-anchor.v1"
+
+
+def verified_dag_checkpoint(packet, expected_pin):
+    """Verify a public-only DAG checkpoint without trusting WSL or PostgreSQL."""
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    if not isinstance(packet, dict) or set(packet) != {"body", "public_key", "signature"}:
+        raise ValueError("Invalid host anchor checkpoint envelope")
+    body = packet["body"]
+    if not isinstance(body, dict) or set(body) != {
+            "profile", "operator", "network_id", "sequence", "root", "previous_checkpoint"}:
+        raise ValueError("Invalid host anchor checkpoint body")
+    hex64 = lambda v: isinstance(v, str) and re.fullmatch(r"[0-9a-f]{64}", v) is not None
+    if (body["profile"] != "syn.operator-dag-checkpoint/1"
+            or body["operator"] != expected_pin or not hex64(body["root"])
+            or (body["previous_checkpoint"] is not None and not hex64(body["previous_checkpoint"]))
+            or type(body["sequence"]) is not int or not 1 <= body["sequence"] < 2**63
+            or not isinstance(body["network_id"], str)
+            or re.fullmatch(r"[a-z][a-z0-9-]{0,63}", body["network_id"]) is None):
+        raise ValueError("Invalid signed DAG checkpoint scope")
+    public_hex, signature_hex = packet["public_key"], packet["signature"]
+    if (not hex64(public_hex) or not isinstance(signature_hex, str)
+            or re.fullmatch(r"[0-9a-f]{128}", signature_hex) is None):
+        raise ValueError("Invalid DAG checkpoint cryptographic fields")
+    public = bytes.fromhex(public_hex)
+    if hashlib.sha256(public).hexdigest() != expected_pin:
+        raise ValueError("DAG checkpoint differs from Operator identity")
+    try:
+        Ed25519PublicKey.from_public_bytes(public).verify(
+            bytes.fromhex(signature_hex), DAG_ANCHOR_DOMAIN + canonical(body))
+    except (InvalidSignature, ValueError) as error:
+        raise ValueError("DAG checkpoint signature is invalid") from error
+    commitment = hashlib.sha256(DAG_ANCHOR_DOMAIN + canonical(body)
+                                + bytes.fromhex(signature_hex)).hexdigest()
+    return body, commitment
+
+
 class Authority:
     """Pure request dispatcher; store supplies transactional DPAPI-backed records."""
 
@@ -185,6 +225,34 @@ class Authority:
         pin = req.get("pin")
         if not isinstance(pin, str) or not hmac.compare_digest(identity["base_public_key_hash"], pin):
             raise ValueError("Operator identity does not match the pinned hash")
+        if op == "dag_anchor":
+            # The generic get/set RPCs cannot read or rewrite this monotonic
+            # host-only anchor. The broker is single-threaded under a vault lock.
+            slot = account + DAG_ANCHOR_SUFFIX
+            action = req.get("action")
+            saved = self.store.get_slot(service, slot)
+            previous = json.loads(saved) if saved is not None else None
+            if previous is not None:
+                old_body, old_commitment = verified_dag_checkpoint(previous, pin)
+            if action == "read":
+                return previous
+            if action != "advance":
+                raise ValueError("Unknown DAG anchor action")
+            packet = req.get("checkpoint")
+            body, commitment = verified_dag_checkpoint(packet, pin)
+            if previous is None:
+                if not self.approve("Retain this Syn Operator DAG checkpoint in the Windows host vault? "
+                                    "Only approve if the displayed Operator is yours: " + pin):
+                    raise ValueError("First independent DAG anchor was declined")
+            else:
+                if packet == previous:
+                    return {"sequence": body["sequence"], "digest": commitment}
+                if (body["network_id"] != old_body["network_id"]
+                        or body["sequence"] <= old_body["sequence"]
+                        or body["previous_checkpoint"] != old_commitment):
+                    raise ValueError("DAG anchor cannot rewind, fork or skip a checkpoint")
+            self.store.set_slot(service, slot, canonical(packet).decode("ascii"))
+            return {"sequence": body["sequence"], "digest": commitment}
         if op == "identity":
             return identity
         if op == "sign":
