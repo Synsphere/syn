@@ -51,3 +51,7 @@ unit tests do not qualify those platform properties.
 Signed checkpoints are *current attestations*: backfilled journal events were
 not individually signed at their original event time. Do not advertise them
 as a fully distributed, independently anchored BFT transaction DAG.
+
+## Milestone 2: public Merkle proofs
+
+See [operator-dag-proofs.md](operator-dag-proofs.md) for signed checkpoint, inclusion and consistency proof APIs and the independent witness verifier.

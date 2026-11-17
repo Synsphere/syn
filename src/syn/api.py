@@ -130,6 +130,9 @@ def createApp(
     tokens = loadCommunicationTokens() if communicationTokens is None else communicationTokens
     if tokens:
         app.include_router(communicationRouter(sessions, tokens))
+    if operatorRuntime is not None:
+        from .operator.dag_http import build_router
+        app.include_router(build_router(sessions, operatorRuntime.server.expected_hash))
 
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:
