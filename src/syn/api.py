@@ -82,11 +82,22 @@ def createApp(
                     await scheduler.stop()
                     return
         try:
+            # All recurring work uses the existing node scheduler and lease.
+            def prepare(manager):
+                if positionRuntime is not None:
+                    positionRuntime.prepare(manager)
+                if operatorRuntime is not None and "operator-dag-sync" in handlers:
+                    manager.every("operator-dag-" + operatorRuntime.server.expected_hash,
+                                  "operator-dag-sync", {"schedulerKey": manager.schedulerKey}, 120)
+
             # Acquire scheduler ownership before resetting clock session or records.
             if positionRuntime is not None:
-                await scheduler.start(prepare=positionRuntime.prepare)
+                await scheduler.start(prepare=prepare)
             if operatorRuntime is not None:
                 await run_in_threadpool(operatorRuntime.start)
+                if "operator-dag-sync" in handlers:
+                    # Attest existing history before advertising API/P2P readiness.
+                    await run_in_threadpool(handlers["operator-dag-sync"], schedulerKey=scheduler.schedulerKey)
             await p2pNode.start()
             watchdog = asyncio.create_task(supervise())
             yield

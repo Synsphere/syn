@@ -25,6 +25,7 @@ MAX_REQUEST = 140_000
 # transcripts have a domain prefix from the installed version of Syn.
 SIGN_DOMAINS = (
     b"syn.operator-status/1\0",
+    b"syn.operator.dag.checkpoint/1\0",
     b"syn.operator.pulse.v1\0",
     b"syn.operator.confidential-enrollment.v1\0",
     b"syn.agent.candidates.v2\0",

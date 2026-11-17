@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from functools import partial
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -88,6 +89,8 @@ def main(arguments: Sequence[str] | None = None) -> None:
         handlers = {**defaultJobHandlers(config.database.url), **runtime.handlers()}
         app_args = {"positionRuntime": runtime}
         if operator is not None:
+            from .operator.dag import run_sync as sync_operator_dag
+            handlers["operator-dag-sync"] = partial(sync_operator_dag, config.database.url, operator_path)
             app_args["operatorRuntime"] = operator
         app = createApp(sessions, handlers, config.p2p, **app_args)
         uvicorn.run(
