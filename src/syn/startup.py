@@ -136,13 +136,18 @@ def handoff_windows(options):
     bootstrap = next((p for p in candidates if p.is_file()), None)
     if bootstrap is None:
         raise RuntimeError("Syn's WSL bootstrap script is missing. Run from a full Syn source checkout.")
-    cwd, config = translate(bootstrap.parent.parent), translate(options.config)
+    cwd = translate(bootstrap.parent.parent)
     bootstrapPath = translate(bootstrap)
-    args = ["syn-server", "--config", config, "--host", options.host, "--port", str(options.port),
+    args = ["syn-server", "--host", options.host, "--port", str(options.port),
             "--log-level", options.logLevel]
+    # A fresh installation stores its credentials/config in the native Linux
+    # home, not on the Windows mounted checkout. Preserve existing project
+    # configs and explicitly supplied --config paths without alteration.
+    if options.config != Path("config.toml") or options.config.exists():
+        args += ["--config", translate(options.config)]
     if options.operator_config is not None:
         args += ["--operator-config", translate(options.operator_config)]
-    print("Starting Syn in WSL; Linux uv will be installed for this user if missing.", flush=True)
+    print("Starting Syn in WSL; missing OS packages, Linux uv, PostgreSQL and Secret Service will be provisioned as needed.", flush=True)
     command = _WSL_UV_COMMAND
     result = subprocess.run([executable, "--exec", "sh", "-c", command,
                              "syn-wsl", cwd, bootstrapPath, *args], check=False)

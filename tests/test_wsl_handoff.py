@@ -59,3 +59,30 @@ def test_windows_missing_checkout_script_rejected(monkeypatch, tmp_path):
             api_only=False, config=tmp_path / "config.toml",
             host="127.0.0.1", port=8000, logLevel="info", operator_config=None,
         ))
+
+
+def test_windows_first_run_does_not_force_windows_config_location(monkeypatch, tmp_path):
+    """The bootstrap chooses a private native Linux config on first run."""
+    from pathlib import Path
+
+    monkeypatch.setattr("syn.startup.platform.system", lambda: "Windows")
+    monkeypatch.setattr("syn.startup.shutil.which", lambda _: r"C:\Windows\System32\wsl.exe")
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    (scripts / "bootstrap-wsl.sh").write_text("#!/bin/sh\nexit 0\n")
+    monkeypatch.chdir(tmp_path)
+    invocations = []
+
+    def fake_run(argv, **kwargs):
+        invocations.append(argv)
+        if argv[2] == "wslpath":
+            return SimpleNamespace(stdout="/mnt/c/source/Syn\n", returncode=0)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("syn.startup.subprocess.run", fake_run)
+    options = SimpleNamespace(
+        api_only=False, config=Path("config.toml"), host="127.0.0.1",
+        port=8000, logLevel="info", operator_config=None,
+    )
+    assert handoff_windows(options) is True
+    assert "--config" not in invocations[-1]
