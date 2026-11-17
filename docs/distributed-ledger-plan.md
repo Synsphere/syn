@@ -1,5 +1,20 @@
 # Syn distributed ledger: research and implementation plan
 
+<<<<<<< HEAD
+=======
+> **Superseded recommendation, reconciled 1 November 2026.** This document retains
+> the 23 October research snapshot. Its CometBFT-first experiment and one-domain
+> default do not override the later owner-directed architecture: explicit policy
+> in each canonical Type, simpler authenticated agreement within verified common
+> custody, and BFT DAG/Hashgraph-family agreement across independent custody.
+> Nodes use their own public-key hashes; each operator and Agent has a real Syn
+> instance installed from official upstream releases. See the
+> [current architecture and decision index](architecture.md) and
+> [release/deployment gates](development/release-and-node-deployment.md).
+> Earlier statements that chat-only decisions were unavailable describe this
+> historical research run, not the completed 1 November reconciliation.
+
+>>>>>>> 64cdf17aca6b0afe4174eb0c78a6fab59fa55f3d
 Research date: **23 October 2026, Europe/London**. Status: **proposed architecture for review; no distributed consensus implemented by this task**. Source baseline: commit `57da1be`, with the current source and historical project reports inspected separately from external research.
 
 The companion [comprehensive consensus review](consensus-comparative-review.md) compares nineteen approach categories, their strengths and weaknesses, and direct Syn workloads. Its assessment refines this plan: signed causal knowledge exchange is a first-class workstream, and community-finalised admission is required where a declared endorsement or shared-state invariant needs it. Backend selection remains provisional.

@@ -1,0 +1,448 @@
+{
+  "active": [
+    {
+      "id": "christmas-tat-final-render-monitor",
+      "name": "Christmas Tat direct-platform publishing monitor",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "daily-outreach-response-monitor",
+      "name": "Daily outreach response monitor",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "daily-overdue-task-unblocker",
+      "name": "Daily overdue task unblocker",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "daily-spotify-for-artists-release-report",
+      "name": "Music platform monitoring",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "rrule",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": false
+    },
+    {
+      "id": "danceflow-and-potbot-plugin-discovery-research",
+      "name": "DanceFlow marketing and agent discovery",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "dancemoves-wordpress-review",
+      "name": "DanceMoves WordPress review",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "hell-gondola-daily-pre-release",
+      "name": "Song marketing operations",
+      "kind": "cron",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "monthly-publicity-audit-and-blog",
+      "name": "Monthly publicity audit and blog",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "verify-arcadians-blog-publication",
+      "name": "Verify Arcadians blog publication",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "verify-danceflow-article-after-publication",
+      "name": "Verify DanceFlow article after publication",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "weekly-future-release-marketing-calendar",
+      "name": "Weekly future-release marketing calendar",
+      "kind": "cron",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    },
+    {
+      "id": "weekly-release-and-epk-sync",
+      "name": "Weekly release, EPK and MP3 metadata sync",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_exact": true,
+      "exclusion_rule_present": true,
+      "preserved_controls": true
+    }
+  ],
+  "paused": [
+    {
+      "id": "arcadians-launch-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "arcadians-year-one-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "blame-putin-release-and-follow-up-checks",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "bum-goblin-marketing-campaign",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "clay-4k60-reserved-space-restart",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-a-whole-new-christmas-campaign",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-amazon-music-for-artists-report",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-birth-stories-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-california-screamin-marketing-campaign",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-chips-and-ketchup-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-competency-and-work-venue-scan",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-contra-profile-monitoring",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-dying-for-a-diagnosis-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-excessive-stuffing-campaign",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-faded-dreams-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-free-danny-tommo-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-freelancer-profile-monitoring",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-fully-nocturnal-marketing-operator",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-light-will-win-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-made-from-the-clay-and-the-stars-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-meta-business-suite-report",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-moderate-or-good-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-november-christmas-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-out-of-tokens-marketing-campaign",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-paper-dreams-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-patriotic-revolution-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-presents-chocolate-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-santa-flies-tonight-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-signed-in-job-opportunity-search",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-silly-sausage-britain-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-singin-the-ai-blues-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-syn-research-and-moltbook-update",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-the-truth-is-a-virus-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-upwork-profile-and-contract-monitor",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-walk-with-me-marketing-operator",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-we-don-t-need-no-room-to-roll-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "daily-youtube-studio-performance-report",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "emerald-shooting-star-marketing-operator",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "etsy-competency-opportunity-monitor",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "fighting-entropy-marketing-drive",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "finish-clay-full-film-cross-platform-publication",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "gilt-trip-marketing-operator",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "headphones-on-daily-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "hell-gondola-year-one-marketing",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "hourly-dmitri-discussion-engagement",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "moltbook-daily-submolt-study",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "monitor-codex-stability-and-resources",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "monitor-google-search-console",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "monitor-light-will-win-4k-render",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "publish-approved-danceflow-ecosystem-page-batch",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "silly-sausage-hook-seven-day-review",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "verify-all-eighteen-danceflow-pages",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "weekly-cross-platform-release-presence-audit",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "weekly-synced-lyrics-timing-recovery",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "weekly-tiktok-traction-report",
+      "changed_fields": [],
+      "status": "PAUSED"
+    },
+    {
+      "id": "weekly-universal-credit-work-search-and-to-dos",
+      "changed_fields": [],
+      "status": "PAUSED"
+    }
+  ],
+  "counts": {
+    "active_verified": 11,
+    "paused_unchanged": 56,
+    "paused_total": 56
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "owner_chat": "01a19a0f-2359-7830-8a2f-263f78c8a55a",
+  "prepared_at": "2026-11-02T02:29:00.274385+00:00",
+  "changes": [
+    {
+      "path": "Z:\\My Songs\\.codex-relocated-home\\AGENTS.md",
+      "before_sha256": "e348f9aa45e0367aa4a32b76b68a6498f7aa543506fc442e86b170300253887c",
+      "after_sha256": "2ff2686370a850eec51aa8cf32c69ce3a7cdabd9f23a697fb9353305eced5823",
+      "backup": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\orphan-scan-cause-20261102-01a19a0f\\instructions-before-0.bin",
+      "candidate": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\orphan-scan-cause-20261102-01a19a0f\\instructions-candidate-0.bin",
+      "insertion_byte_offset": 2939,
+      "added_bytes": 3128
+    },
+    {
+      "path": "Z:\\My Songs\\AGENTS.md",
+      "before_sha256": "ba6d7e691d23e5012a5efec62fbd803c7f82852a4a81f8f0f8348b552637c4e8",
+      "after_sha256": "3e8e0d1824183b610bb45fb3d96d4ed549b658f81cb5777d3529a0659c44d5a4",
+      "backup": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\orphan-scan-cause-20261102-01a19a0f\\instructions-before-1.bin",
+      "candidate": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\orphan-scan-cause-20261102-01a19a0f\\instructions-candidate-1.bin",
+      "insertion_byte_offset": 500,
+      "added_bytes": 3128
+    }
+  ]
+}

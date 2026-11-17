@@ -1,5 +1,15 @@
 # Consensus approaches for Syn: comprehensive comparative review
 
+<<<<<<< HEAD
+=======
+> **Historical comparison; backend recommendation superseded.** The later
+> owner-directed [architecture](architecture.md) selects consensus per canonical
+> Type, distinguishing same-custody operator agreement from independent-custody
+> BFT DAG/Hashgraph. The CometBFT-first preference below is preserved as dated
+> research, not the current implementation direction. No production engine is
+> selected or qualified by this comparison.
+
+>>>>>>> 64cdf17aca6b0afe4174eb0c78a6fab59fa55f3d
 **23 October 2026, Europe/London.** Research and architectural assessment; no consensus engine was installed, benchmarked or deployed. This review expands the [distributed-ledger plan](distributed-ledger-plan.md). Protocol facts are attributed to primary research or official documentation. Fit assessments, proposed priorities and workload classifications are design judgements for Syn, rather than measured product rankings.
 
 ## 1. Findings and recommendation

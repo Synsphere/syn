@@ -1,0 +1,13 @@
+{
+  "id": "monthly-publicity-audit-and-blog",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a15161-f29d-7863-b68c-ee5d62a643ec",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

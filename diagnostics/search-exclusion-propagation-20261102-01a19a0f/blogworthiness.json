@@ -1,0 +1,12 @@
+{
+  "task": "Propagate intelligent search exclusions to running chats and active automations without interruptions",
+  "decision": "FAIL",
+  "reason": "Administrative propagation of the already-recorded orphan-search diagnosis; no distinct reader-interest development beyond that passing technical story.",
+  "evidence": [
+    "running-chat-instruction-receipts.json",
+    "automation-final-verification.json",
+    "filter-inheritance-verification.json",
+    "../orphan-scan-cause-20261102-01a19a0f/cause-report.html"
+  ],
+  "related_story": "The earlier technical diagnosis remains PASS with its existing named article continuation and media blocker; this configuration follow-through is not a new article."
+}

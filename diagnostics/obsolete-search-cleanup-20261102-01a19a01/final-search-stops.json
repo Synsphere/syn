@@ -1,0 +1,21 @@
+[
+  {
+    "Pid": 43240,
+    "Action": "stopped obsolete search wrapper first to prevent unrelated trailing commands",
+    "Thread": "01a19959-dc0e-7a43-a239-787d0d3d4995"
+  },
+  {
+    "Pid": 27812,
+    "Thread": "01a19959-dc0e-7a43-a239-787d0d3d4995",
+    "Reason": "Superseded SpaceSleuth search; article published and owner idle",
+    "Outcome": "stop_requested",
+    "At": "2026-11-02T02:17:58.1436028Z"
+  },
+  {
+    "Pid": 24848,
+    "Thread": "01a1999a-f51a-7520-bc55-582d57b83f7c",
+    "Reason": "Superseded Polyphony article lookup; exact returned document already handed off and owner idle",
+    "Outcome": "stop_requested",
+    "At": "2026-11-02T02:17:58.1481891Z"
+  }
+]

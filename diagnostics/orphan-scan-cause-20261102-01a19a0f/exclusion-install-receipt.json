@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "Z:\\My Songs\\.rgignore",
+      "sha256": "04d079f2f2e72b0b9bfc63f2f95996e8f5c505569cee3c6bee92ae537bb41e33",
+      "readback_verified": true
+    },
+    {
+      "path": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\.rgignore",
+      "sha256": "04d079f2f2e72b0b9bfc63f2f95996e8f5c505569cee3c6bee92ae537bb41e33",
+      "readback_verified": true
+    }
+  ],
+  "limits": [
+    "Positive rg inclusion globs and directly named paths can override ignores",
+    "PowerShell recursion does not use rgignore",
+    "Not evidence of adoption by an already-running command"
+  ]
+}

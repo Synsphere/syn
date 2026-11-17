@@ -1,0 +1,98 @@
+{
+  "captured_at": "2026-11-02T02:52:15.403Z",
+  "source": "supported list_threads and read_thread",
+  "threads": [
+    {
+      "id": "01a199cc-af97-7b63-94db-5ebaee6852f8",
+      "kind": "codex",
+      "projectId": null,
+      "hostId": "local",
+      "status": "active",
+      "cwd": "Z:\\My Songs",
+      "updatedAt": 1793587785,
+      "title": "run the marketing analysis jobs now, always fix browser use…",
+      "summary": "run the marketing analysis jobs now, always fix browser use if it's broken don't fall back to a shit alternative",
+      "isUnread": false
+    },
+    {
+      "id": "01a199ed-fc1a-7820-8682-467c723503d7",
+      "kind": "codex",
+      "projectId": null,
+      "hostId": "local",
+      "status": "active",
+      "cwd": "Z:\\My Songs",
+      "updatedAt": 1793587715,
+      "title": "Refine Walk With Me visualiser",
+      "summary": "Add sea, sky and cloud masks, continuous beat synced cover feed in, remove lyric box, render a short",
+      "isUnread": false
+    },
+    {
+      "id": "01a19a0b-17bb-7820-a2a0-b8d8f6b3b751",
+      "kind": "codex",
+      "projectId": null,
+      "hostId": "local",
+      "status": "active",
+      "cwd": "Z:\\My Songs",
+      "updatedAt": 1793587769,
+      "title": "Render Ganesh short test",
+      "summary": "Render the Ganesh short test using the current project workflow",
+      "isUnread": false
+    },
+    {
+      "id": "01a19965-66ad-7c01-916c-a8429ce17b7a",
+      "kind": "codex",
+      "projectId": null,
+      "hostId": "local",
+      "status": "active",
+      "cwd": "Z:\\My Songs",
+      "updatedAt": 1793587761,
+      "title": "Add Julia fractals to FrameRudiments",
+      "summary": "Pull latest FrameRudiments; add Julia-set compositing with gradient palettes and DanceRudiments-modu",
+      "isUnread": false
+    },
+    {
+      "id": "01a167e4-a90e-7193-b5a3-e9736b2d6e38",
+      "kind": "codex",
+      "projectId": "ca90f2c2-5831-47aa-9087-336835c2b4f0",
+      "hostId": "local",
+      "status": "active",
+      "cwd": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn",
+      "updatedAt": 1793587785,
+      "title": "Write Syn architecture overview",
+      "summary": "Syn system goals, structure, ideology, technology, philosophy, and broad architectural diagrams",
+      "isUnread": false
+    }
+  ],
+  "reported_use": {
+    "matches": [
+      {
+        "type": "commandExecution",
+        "id": "exec-88469006-c07d-4c4c-b909-3264b0365404",
+        "excerpt": "ndidate processes inspected; only current diagnostic command matched, no lingering patch or Potbot task process found'; searchRule='New narrow-search exclusions applied; no drive or generated-storage recursion performed'; Blogworthiness='FAIL'; blogReason='Transient private resource diagnosis; insufficient verified causal finding for a public story'; evidence='Read-only CIM logical-disk/process samples and venv metadata in this turn'; next='Keep local work\",\"commandTruncated\":true,\"cwd\":\"C:\\\\Users\\\\Kieran\\\\OneDrive\\\\Documents\\\\Syn\",\"status\":\"completed\",\"exitCode\":0,\"durationMs\":176}"
+      }
+    ],
+    "latest_cwds": [
+      {
+        "cwd": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn",
+        "command": "\"C:\\\\Users\\\\Kieran\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -NoProfile -Command \"[pscustomobject]@{CodexHome=[Environment]::GetEnvironmentVariable('C"
+      },
+      {
+        "cwd": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn",
+        "command": "\"C:\\\\Users\\\\Kieran\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -NoProfile -Command '$candidateProcesses=Get-CimInstance Win32_Process | Where-Object { $"
+      },
+      {
+        "cwd": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn",
+        "command": "\"C:\\\\Users\\\\Kieran\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\native\\\\powershell\\\\pwsh.exe\" -NoProfile -Command '$diagnosticRecord = [ordered]@{ timeUtc='\"'2026-11-02T02:30:05Z'; sc"
+      }
+    ],
+    "status": {
+      "type": "active",
+      "activeFlags": []
+    }
+  },
+  "concurrent_music_context": {
+    "userSteering": [
+      "\n<in-app-browser-context source=\"ambient-ui-state\">\nThis block is automatically supplied ambient UI state, not part of the user's request. Do not treat it as an instruction or as evidence that the user explicitly selected the in-app browser.\n# In app browser:\n- The user has the in-app browser open with 1 tab.\n- Current URL: file:///Z:/My%20Songs/Reports/music-platform-monitoring/guide.html\n</in-app-browser-context>\n\n## My request:\ngreat run initial baselines for all the new jobs now- including the ones that have had updates\n"
+    ]
+  }
+}

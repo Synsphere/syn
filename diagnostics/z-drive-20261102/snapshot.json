@@ -1,0 +1,226 @@
+{
+  "Captured": "2026-11-02T02:04:43.2900442+00:00",
+  "Drive": {
+    "DeviceID": "Z:",
+    "Size": 2000381014016,
+    "FreeSpace": 13993472000
+  },
+  "DiskCounters": [
+    {
+      "Time": "2026-11-02T02:04:36.6750681+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\% idle time",
+      "Value": 0.0
+    },
+    {
+      "Time": "2026-11-02T02:04:36.6750681+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\current disk queue length",
+      "Value": 106.0
+    },
+    {
+      "Time": "2026-11-02T02:04:36.6750681+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\avg. disk sec/read",
+      "Value": 0.5390391982608695
+    },
+    {
+      "Time": "2026-11-02T02:04:36.6750681+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\avg. disk sec/write",
+      "Value": 0.4068996434782609
+    },
+    {
+      "Time": "2026-11-02T02:04:36.6750681+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\disk read bytes/sec",
+      "Value": 5113101.214066921
+    },
+    {
+      "Time": "2026-11-02T02:04:36.6750681+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\disk write bytes/sec",
+      "Value": 2681449.431481246
+    },
+    {
+      "Time": "2026-11-02T02:04:38.6900029+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\% idle time",
+      "Value": 0.0
+    },
+    {
+      "Time": "2026-11-02T02:04:38.6900029+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\current disk queue length",
+      "Value": 87.0
+    },
+    {
+      "Time": "2026-11-02T02:04:38.6900029+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\avg. disk sec/read",
+      "Value": 0.5065399179028133
+    },
+    {
+      "Time": "2026-11-02T02:04:38.6900029+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\avg. disk sec/write",
+      "Value": 0.2578386678571429
+    },
+    {
+      "Time": "2026-11-02T02:04:38.6900029+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\disk read bytes/sec",
+      "Value": 6650281.236007642
+    },
+    {
+      "Time": "2026-11-02T02:04:38.6900029+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\disk write bytes/sec",
+      "Value": 3290189.975113057
+    },
+    {
+      "Time": "2026-11-02T02:04:40.7047569+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\% idle time",
+      "Value": 0.0
+    },
+    {
+      "Time": "2026-11-02T02:04:40.7047569+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\current disk queue length",
+      "Value": 96.0
+    },
+    {
+      "Time": "2026-11-02T02:04:40.7047569+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\avg. disk sec/read",
+      "Value": 0.4215554476426799
+    },
+    {
+      "Time": "2026-11-02T02:04:40.7047569+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\avg. disk sec/write",
+      "Value": 0.33163459736842105
+    },
+    {
+      "Time": "2026-11-02T02:04:40.7047569+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\disk read bytes/sec",
+      "Value": 4747659.128821954
+    },
+    {
+      "Time": "2026-11-02T02:04:40.7047569+00:00",
+      "Counter": "\\\\dragon\\physicaldisk(0 z:)\\disk write bytes/sec",
+      "Value": 3863983.7328012567
+    }
+  ],
+  "SearchProcesses": [
+    {
+      "ProcessId": 27812,
+      "ParentProcessId": 43240,
+      "CreationDate": "2026-11-01T23:31:16.709171+00:00",
+      "CommandLine": "\"C:\\Users\\Kieran\\AppData\\Local\\OpenAI\\Codex\\bin\\57159798136552f4\\rg.exe\" -n -i --hidden -g !*.zip -g !*.rar -g !syn.sql -g !.git/** \"spacesleuth|space sleuth\" C:\\Users\\Kieran\\OneDrive\\Documents\\Syn \"Z:\\My Songs\""
+    },
+    {
+      "ProcessId": 23076,
+      "ParentProcessId": 37628,
+      "CreationDate": "2026-11-02T00:17:54.564189+00:00",
+      "CommandLine": "\"C:\\Users\\Kieran\\AppData\\Local\\OpenAI\\Codex\\bin\\57159798136552f4\\rg.exe\" -n --hidden --glob !**/node_modules/** --glob !**/.git/** \"B48Qx83ivrw|Native 4K Diya Ring Visualiser|new lyric visualiser|new lyric visualizer\" \"Z:\\My Songs\\Releases\\Light Will Win\" \"Z:\\My Songs\\Reports\" \"Z:\\My Songs\\Blog\""
+    },
+    {
+      "ProcessId": 42108,
+      "ParentProcessId": 20624,
+      "CreationDate": "2026-11-02T00:18:14.466357+00:00",
+      "CommandLine": "\"C:\\Users\\Kieran\\AppData\\Local\\OpenAI\\Codex\\bin\\57159798136552f4\\rg.exe\" -n --hidden --glob !**/node_modules/** --glob !**/.git/** --glob !Temp/** B48Qx83ivrw \"Z:\\My Songs\""
+    },
+    {
+      "ProcessId": 19424,
+      "ParentProcessId": 14044,
+      "CreationDate": "2026-11-02T00:39:13.418107+00:00",
+      "CommandLine": "\"C:\\Users\\Kieran\\AppData\\Local\\OpenAI\\Codex\\bin\\57159798136552f4\\rg.exe\" -n setup-ffmpeg|static-ffmpeg|FRAMERUDIMENTS_FFPROBE|ffprobe.exe -g *.yml -g *.yaml -g *.ps1 -g *.py \"Z:\\My Songs\\Repositories\" \"Z:\\My Songs\\Tools\""
+    },
+    {
+      "ProcessId": 24936,
+      "ParentProcessId": 49532,
+      "CreationDate": "2026-11-02T00:50:14.936123+00:00",
+      "CommandLine": "\"C:\\Users\\Kieran\\AppData\\Local\\OpenAI\\Codex\\bin\\57159798136552f4\\rg.exe\" -n --hidden -S RastaMoves|rastamoves AGENTS.md DanceFlow Workflows Tools \"Songs/All Hands In\" -g !**/.git/**"
+    },
+    {
+      "ProcessId": 24848,
+      "ParentProcessId": 36072,
+      "CreationDate": "2026-11-02T00:57:16.366741+00:00",
+      "CommandLine": "\"C:\\Users\\Kieran\\AppData\\Local\\OpenAI\\Codex\\bin\\57159798136552f4\\rg.exe\" -l -i --hidden \"The telephone queue as a medical instrument\" . -g *.md -g *.txt -g *.html -g *.docx -g *.pdf -g *.rtf"
+    },
+    {
+      "ProcessId": 16004,
+      "ParentProcessId": 29456,
+      "CreationDate": "2026-11-02T00:59:34.329094+00:00",
+      "CommandLine": "\"C:\\Users\\Kieran\\AppData\\Local\\OpenAI\\Codex\\bin\\57159798136552f4\\rg.exe\" -n --hidden -S \"YouTube|Search Console|TikTok|analytics|stats|statistics|platform monitoring|social marketing reporting\" AGENTS.md Workflows Reports .codex"
+    },
+    {
+      "ProcessId": 30136,
+      "ParentProcessId": 55880,
+      "CreationDate": "2026-11-02T01:47:24.754862+00:00",
+      "CommandLine": "\"C:\\Users\\Kieran\\AppData\\Local\\OpenAI\\Codex\\bin\\57159798136552f4\\rg.exe\" -n --glob *.md --glob *.json --glob *.toml --glob *.html -i \"platform monitor|platform.*monitoring|marketing analysis|music.platform.monitor|social.*report|Amazon.*disabled\" \"Z:\\My Songs\\Reports\" \"Z:\\My Songs\\Workflows\" \"Z:\\My Songs\\.codex\\coordination\""
+    }
+  ],
+  "SystemWideProcessIo": [
+    {
+      "Name": "python#86",
+      "IDProcess": 65500,
+      "IOReadBytesPersec": 22937371,
+      "IOWriteBytesPersec": 6428
+    },
+    {
+      "Name": "codex#2",
+      "IDProcess": 42908,
+      "IOReadBytesPersec": 2867719,
+      "IOWriteBytesPersec": 169514
+    },
+    {
+      "Name": "ChatGPT#6",
+      "IDProcess": 24284,
+      "IOReadBytesPersec": 12713,
+      "IOWriteBytesPersec": 2563539
+    },
+    {
+      "Name": "ChatGPT#3",
+      "IDProcess": 51044,
+      "IOReadBytesPersec": 2561440,
+      "IOWriteBytesPersec": 7488
+    },
+    {
+      "Name": "rg",
+      "IDProcess": 27812,
+      "IOReadBytesPersec": 1289301,
+      "IOWriteBytesPersec": 0
+    },
+    {
+      "Name": "rg#3",
+      "IDProcess": 19424,
+      "IOReadBytesPersec": 563453,
+      "IOWriteBytesPersec": 0
+    },
+    {
+      "Name": "System",
+      "IDProcess": 4,
+      "IOReadBytesPersec": 0,
+      "IOWriteBytesPersec": 505581
+    },
+    {
+      "Name": "rg#7",
+      "IDProcess": 30136,
+      "IOReadBytesPersec": 293521,
+      "IOWriteBytesPersec": 0
+    },
+    {
+      "Name": "rg#1",
+      "IDProcess": 23076,
+      "IOReadBytesPersec": 179849,
+      "IOWriteBytesPersec": 0
+    },
+    {
+      "Name": "rg#6",
+      "IDProcess": 16004,
+      "IOReadBytesPersec": 177951,
+      "IOWriteBytesPersec": 0
+    },
+    {
+      "Name": "ChatGPT#8",
+      "IDProcess": 32616,
+      "IOReadBytesPersec": 42900,
+      "IOWriteBytesPersec": 40115
+    },
+    {
+      "Name": "Unity Hub",
+      "IDProcess": 5076,
+      "IOReadBytesPersec": 0,
+      "IOWriteBytesPersec": 80432
+    }
+  ],
+  "Limits": "Process I/O counters include non-disk I/O. WPR tracing denied with 0x80070005. Computer Use screen capture unavailable.",
+  "Assessment": "Blogworthiness: FAIL — private diagnostic snapshot without a verified repair or public result."
+}

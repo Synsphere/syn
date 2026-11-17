@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+export SPACE_SLEUTH_HOME=/var/lib/space-sleuth
+exec /bin/bash /opt/space-sleuth/start.sh "$@"

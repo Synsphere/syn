@@ -1,0 +1,118 @@
+
+> cip54-playground@1.0.0 build
+> rm -rfv node_modules/.cache/* && next build
+
+info  - Linting and checking validity of types...
+
+./pages/_document.js
+16:11  Warning: Synchronous scripts should not be used. See: https://nextjs.org/docs/messages/no-sync-scripts  @next/next/no-sync-scripts
+17:11  Warning: Synchronous scripts should not be used. See: https://nextjs.org/docs/messages/no-sync-scripts  @next/next/no-sync-scripts
+
+./pages/help.js
+200:19  Warning: Do not use `<img>` element. Use `<Image />` from `next/image` instead. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/AvatarPreview.js
+253:11  Warning: Assignments to the 'stage' variable from inside React Hook useEffect will be lost after each render. To preserve the value over time, store it in a useRef Hook and keep the mutable value in the '.current' property. Otherwise, you can move this variable directly inside useEffect.  react-hooks/exhaustive-deps
+256:12  Warning: Assignments to the 'circle' variable from inside React Hook useEffect will be lost after each render. To preserve the value over time, store it in a useRef Hook and keep the mutable value in the '.current' property. Otherwise, you can move this variable directly inside useEffect.  react-hooks/exhaustive-deps
+
+./components/ExampleCard.js
+78:7  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./components/Header.js
+129:27  Warning: React Hook useCallback does nothing when called with only one argument. Did you forget to pass an array of dependencies?  react-hooks/exhaustive-deps
+195:7  Warning: React Hook useEffect has missing dependencies: 'connectWallet', 'doOnWalletChange', 'onThemeChange', 'onWalletChange', and 'walletCtx'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+216:10  Warning: React Hook useCallback has missing dependencies: 'launchpadDialogIsOpen' and 'toggleVisibility'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/LaunchpadCard.js
+78:7  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+
+./components/MetadataEditor.js
+67:3  Warning: React Hook useEffect contains a call to 'setMetadata'. Without a list of dependencies, this can lead to an infinite chain of updates. To fix this, pass [defaultMetadata, metadata, onChange] as a second argument to the useEffect Hook.  react-hooks/exhaustive-deps
+
+./components/Playground.js
+236:5  Warning: React Hook useEffect has missing dependencies: 'metadataJSON' and 'simulation'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/VideoCard.js
+77:6  Warning: React Hook useEffect has missing dependencies: 'autoplay' and 'onLoad'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/WalletSelector.js
+72:27  Warning: React Hook useEffect has a missing dependency: 'pollWallets'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/dialogs/MintSmartAvatarDialog.js
+262:3  Warning: React Hook useEffect contains a call to 'setTransaction'. Without a list of dependencies, this can lead to an infinite chain of updates. To fix this, pass [isActive, transaction, wallet, spec] as a second argument to the useEffect Hook.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+info  - Creating an optimized production build...
+info  - Disabled SWC as replacement for Babel because of custom Babel configuration "babel.config.js" https://nextjs.org/docs/messages/swc-disabled
+Browserslist: caniuse-lite is outdated. Please run:
+  npx browserslist@latest --update-db
+  Why you should do it regularly: https://github.com/browserslist/browserslist#browsers-data-updating
+info  - Using external babel configuration from /var/www/looking-glass.nft-playground.dev/babel.config.js
+Browserslist: caniuse-lite is outdated. Please run:
+  npx browserslist@latest --update-db
+  Why you should do it regularly: https://github.com/browserslist/browserslist#browsers-data-updating
+warn  - Compiled with warnings
+
+./node_modules/@emurgo/cardano-serialization-lib-browser/cardano_serialization_lib_bg.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./node_modules/@emurgo/cardano-serialization-lib-browser/cardano_serialization_lib_bg.js
+./node_modules/@emurgo/cardano-serialization-lib-browser/cardano_serialization_lib.js
+./utils/CSLBrowser.js
+./components/SimulationSelector.js
+./components/Playground.js
+
+./node_modules/@emurgo/cardano-serialization-lib-browser/cardano_serialization_lib_bg.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./node_modules/@emurgo/cardano-serialization-lib-browser/cardano_serialization_lib_bg.js
+./node_modules/@emurgo/cardano-serialization-lib-browser/cardano_serialization_lib.js
+./utils/CSLBrowser.js
+./components/SimulationSelector.js
+./components/Playground.js
+
+info  - Collecting page data...
+info  - Generating static pages (0/11)
+info  - Generating static pages (2/11)
+info  - Generating static pages (5/11)
+info  - Generating static pages (8/11)
+info  - Generating static pages (11/11)
+info  - Finalizing page optimization...
+
+Route (pages)                                 Size     First Load JS
+┌ ○ / (8010 ms)                               14 kB           423 kB
+├   /_app                                     0 B             409 kB
+├ ○ /404                                      1.64 kB         411 kB
+├ λ /api/buy                                  0 B             409 kB
+├ λ /api/getFile                              0 B             409 kB
+├ λ /api/getFileObject                        0 B             409 kB
+├ λ /api/getHtmlTemplate                      0 B             409 kB
+├ λ /api/getMetadata                          0 B             409 kB
+├ λ /api/getSmartImports                      0 B             409 kB
+├ λ /api/getTokens                            0 B             409 kB
+├ λ /api/getTransactions                      0 B             409 kB
+├ λ /api/getUTXOs                             0 B             409 kB
+├ λ /api/loadAssets                           0 B             409 kB
+├ λ /api/spritesheets/[...filename]           0 B             409 kB
+├ λ /api/tokenImageFromUnit                   0 B             409 kB
+├ λ /api/wit                                  0 B             409 kB
+├ ○ /examples (7908 ms)                       3.51 kB         412 kB
+├ ○ /help (8050 ms)                           7.19 kB         416 kB
+├ ○ /launchpad (7572 ms)                      3.69 kB         413 kB
+├ ○ /launchpad/adaquote/about (7783 ms)       3.55 kB         412 kB
+├ ○ /launchpad/smart-avatars/about (8056 ms)  4.38 kB         413 kB
+├ ○ /launchpad/smart-life/about (7965 ms)     3.93 kB         413 kB
+├ ○ /play (8459 ms)                           651 B           872 kB
+└ ○ /play/[...filename] (8330 ms)             3.43 kB         874 kB
++ First Load JS shared by all                 411 kB
+  ├ chunks/framework-10382e76b5a4d659.js      45.6 kB
+  ├ chunks/main-d4297fb80933223b.js           30.6 kB
+  ├ chunks/pages/_app-6c746e045ee75a99.js     330 kB
+  ├ chunks/webpack-c3d680ab17d5b89d.js        2.84 kB
+  └ css/24916f9281d1c8fe.css                  2.42 kB
+
+λ  (Server)  server-side renders at runtime (uses getInitialProps or getServerSideProps)
+○  (Static)  automatically rendered as static HTML (uses no initial props)
+

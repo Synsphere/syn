@@ -1,0 +1,32 @@
+{
+  "task": "Identify the triggers and lifetime failure behind eight orphaned Z: searches; prevent wasteful generated-storage discovery",
+  "decision": "PASS",
+  "reason": "A verified technical failure diagnosis explains how broad context searches and lost child-process ownership caused hours of unnecessary storage activity; the cause can be explained without private filenames or task payloads.",
+  "angle": "How an apparently completed agent tool call left its disk search running, and how source-scoped discovery avoids crawling build and cache trees",
+  "evidence": [
+    "../z-drive-20261102/snapshot.json",
+    "../obsolete-search-cleanup-20261102-01a19a01/summary.json",
+    "saved-call-evidence.json",
+    "filter-verification.json",
+    "policy-change-receipt.json",
+    "exclusion-install-receipt.json"
+  ],
+  "duplicate_check": {
+    "source": "Fresh authenticated WordPress inventory of published, future, draft, pending and private posts",
+    "statuses": {
+      "future": 1,
+      "draft": 3,
+      "publish": 39
+    },
+    "searched_fields": [
+      "title",
+      "content"
+    ],
+    "terms": "ripgrep|orphan(?:ed)? (?:process|search|scan)|build.cache|disk contention|drive.scan|background.terminals",
+    "matching_posts": [],
+    "result": "No matching existing article or pending draft found"
+  },
+  "state": "blocked",
+  "blocker": "An article still needs a sanitised demonstration of command yield versus actual process lifetime and fresh pictorial featured artwork; private machine/session logs must not be published verbatim.",
+  "next_action": "Named continuation: Orphan-search diagnosis article. Prepare a short safe demonstration and article-specific artwork using project-blog-writer, then draft the public-safe explanation. No publication action was performed in this diagnostic task."
+}

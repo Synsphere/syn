@@ -1,0 +1,19 @@
+{
+  "owner": "Syn release chat 01a167e4-a90e-7193-b5a3-e9736b2d6e38",
+  "intended_recipients": [
+    "Owner of Syn PR13 Windows temp/line-ending hardening",
+    "Other active Syn release work"
+  ],
+  "scope": "Official release authority and signed draft/publication verification",
+  "repository": "Synsphere/syn",
+  "branch": "codex/syn-release-verification-pins",
+  "head": "08f41bec19a9ac1bc08501955ea7b1c37ad1bc66",
+  "pr": 16,
+  "version_owner": "Syn v0.1.0 published immutable from e08c1eeb0dc2a57f326f4d69a9f630e7eb082638; service mode only. Do not replace tag/assets or create a competing authority.",
+  "approval": "User requested tandem Syn/Potbot release work and explicitly chose preparation of a new dedicated Syn release authority",
+  "known_overlap": "PR13 and independent PR15 are preserved. PR16 merged as 6bbdbcbb43dfb5de10330d5015b23590f27cf64e after 14 exact-head checks. No source overlap remains.",
+  "authority": "Dedicated public identity is in release/authority.json, fingerprint a47f15e010613c0a839a48f2035b8f71d6f9e46ee3df07ed58487079d56ae216. Do not generate a competing authority, rotate this one or publish the same version without resolving ownership.",
+  "state": "COMPLETE: v0.1.0 immutable publication independently verified by read-only run41388890143/job125095749546. All seven assets, original e08c1ee source, retained manifest/authority pins, signature and direct tag commit confirmed. PR16 merged6bbdbcbb43dfb5de10330d5015b23590f27cf64e after14 passing checks; focused regression suite38 passed. GitHub master guide/image/Mermaid verified. All task browser tabs closed with fresh empty inventory. No operator/Agent host acceptance claimed; SYN-R02 through SYN-R07 remain.",
+  "handoff": "Final private evidence: .potbot-integration/artifacts/potbot-stage-one-2026-11-02/evidence/release-final-handoff.private.md. No receipt or acknowledgement by another chat is claimed. Dedicated release authority and immutable version ownership remain fixed.",
+  "time_utc": "2026-11-02T04:34:29.5404772Z"
+}

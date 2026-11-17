@@ -1,0 +1,16 @@
+[
+  {
+    "Pid": 19424,
+    "Thread": "01a19965-66ad-7c01-916c-a8429ce17b7a",
+    "Reason": "Original FFmpeg discovery superseded by applied CI changes and active tests",
+    "Outcome": "stop_requested",
+    "At": "2026-11-02T02:15:36.5362782Z"
+  },
+  {
+    "Pid": 24936,
+    "Thread": "01a199bb-7e59-7153-b6d2-d5f51dd24242",
+    "Reason": "RastaMoves discovery superseded by running RasterMoves upscale",
+    "Outcome": "stop_requested",
+    "At": "2026-11-02T02:15:36.5405140Z"
+  }
+]

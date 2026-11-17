@@ -1,0 +1,17 @@
+{
+  "path": "C:\\Users\\Kieran\\.codex\\automations\\verify-arcadians-blog-publication\\automation.toml",
+  "file_sha256": "1d4e7e256ceab3e7c6ce4a2617a3f729710ffdaebdc197fa393e7f46a6dbcd71",
+  "data": {
+    "version": 1,
+    "id": "verify-arcadians-blog-publication",
+    "kind": "heartbeat",
+    "name": "Verify Arcadians blog publication",
+    "prompt": "Blogworthiness completion check: assess this verification run and record Blogworthiness: PASS or FAIL with a short evidence-based reason and source evidence in the existing handoff; do not create another article about the verification itself. Before 10:00 Europe/London on 31 October 2026, take no external action and stay quiet. After that time, verify that WordPress post 2670, \ufffdLooking inside Arcadians, one stem at a time\ufffd, has actually published at https://kieransimkin.co.uk/?p=2670. Use the WordPress REST API and a bounded signed-out standalone browser, keeping the in-app browser disabled. Confirm the title, date, excerpt, Projects category, tags, featured artwork attachment 2665, both in-body images, the video poster and real user-controlled video progression, all links, and desktop, tablet and 390-pixel responsive rendering without horizontal overflow. Distinguish the persisted schedule from verified live publication. Record the public canonical URL and evidence in Z:\\My Songs\\Repositories\\stemlab-arcadians-stemmoves-20261021\\.work\\blog-media\\, close every browser page, context and process created for the check, and disable this automation once verified live. Stay quiet until publication succeeds, fails, or needs Kieran\ufffds action.\n\nQuiet blogworthiness record: before finishing, record Blogworthiness: PASS or FAIL with a short evidence-based reason and source evidence in the existing report or final handoff. For PASS also record the reader-interest angle, duplicate check and next action. Do not send or surface a standalone completion-check reminder.\n\nScheduled-job browser access \u2014 Kieran, 28 October 2026: This scheduled job is explicitly authorised to use the ChatGPT desktop app's built-in in-app browser (`@Browser`) whenever it is useful for its existing authorised work. This supersedes any older prompt or AGENTS.md rule that disables or limits the in-app browser for this scheduled job. Prefer a sufficient connector/API/CLI when it is more reliable; browser access does not add authority for sends, publication, account changes, spending, rights commitments or sensitive disclosure. Reuse or open only the tabs needed, preserve other owners' tabs and unsaved work, close completed job-created or released borrowed tabs, and verify a fresh browser-tab inventory before handoff. If `@Browser` is unavailable in the scheduled run, record the precise capability hold; do not claim access or completion and do not switch to native whole-PC control.",
+    "status": "ACTIVE",
+    "rrule": "RRULE:FREQ=DAILY;BYHOUR=10;BYMINUTE=15",
+    "notification_policy": "failed_runs_only",
+    "target_thread_id": "01a15b59-16be-7662-97fd-203c1512f815",
+    "created_at": 1792561309812,
+    "updated_at": 1793208259381
+  }
+}

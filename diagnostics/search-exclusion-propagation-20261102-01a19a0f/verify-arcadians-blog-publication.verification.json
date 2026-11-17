@@ -1,0 +1,13 @@
+{
+  "id": "verify-arcadians-blog-publication",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a15b59-16be-7662-97fd-203c1512f815",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

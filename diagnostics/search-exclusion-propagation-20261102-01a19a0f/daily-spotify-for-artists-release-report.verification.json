@@ -1,0 +1,13 @@
+{
+  "id": "daily-spotify-for-artists-release-report",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a1514d-68bb-75d1-bb4e-d874bf916e1b",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

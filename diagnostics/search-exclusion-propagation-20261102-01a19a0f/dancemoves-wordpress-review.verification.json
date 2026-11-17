@@ -1,0 +1,13 @@
+{
+  "id": "dancemoves-wordpress-review",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a118ef-cdfd-7533-a007-e9359ef383ff",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

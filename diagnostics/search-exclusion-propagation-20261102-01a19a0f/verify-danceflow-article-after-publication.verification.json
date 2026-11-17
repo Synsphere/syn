@@ -1,0 +1,13 @@
+{
+  "id": "verify-danceflow-article-after-publication",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a1677d-6c8c-78e1-be73-b692a45ae964",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

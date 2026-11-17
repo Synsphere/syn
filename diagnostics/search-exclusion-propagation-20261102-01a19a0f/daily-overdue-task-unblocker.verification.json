@@ -1,0 +1,13 @@
+{
+  "id": "daily-overdue-task-unblocker",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a1514c-78c7-7a32-955e-21b498e5f7d8",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

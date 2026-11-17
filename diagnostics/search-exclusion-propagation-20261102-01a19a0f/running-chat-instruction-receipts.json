@@ -1,0 +1,182 @@
+[
+  {
+    "thread_id": "01a199cc-af97-7b63-94db-5ebaee6852f8",
+    "file": "C:\\Users\\Kieran\\.codex\\sessions\\2026\\11\\02\\rollout-2026-11-02T01-08-11-01a199cc-af97-7b63-94db-5ebaee6852f8.jsonl",
+    "file_bytes": 10170455,
+    "tail_bytes_read": 3145728,
+    "latest_event_at": "2026-11-02T02:46:44.831Z",
+    "matches": [
+      {
+        "at": "2026-11-02T02:29:22.548Z",
+        "event_type": "response_item",
+        "payload_type": "message",
+        "role": "user",
+        "classification": "instruction_receipt",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ],
+        "excerpt": " My Songs or this package's `workflows/blogworthiness-completion.md`.\\r\\n\\r\\n## Search narrowly and exclude generated storage\\r\\n\\r\\nKieran, 2 November 2026: do not repeatedly scan drives for routine context. Be intelligent about search scope and exclude huge build/cache subfolders. Apply across chats, agents and automations; this limits discovery cost without preventing useful searches of the own"
+      },
+      {
+        "at": "2026-11-02T02:29:22.569Z",
+        "event_type": "world_state",
+        "payload_type": null,
+        "role": null,
+        "classification": "mention_or_command",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ],
+        "excerpt": " My Songs or this package's `workflows/blogworthiness-completion.md`.\\r\\n\\r\\n## Search narrowly and exclude generated storage\\r\\n\\r\\nKieran, 2 November 2026: do not repeatedly scan drives for routine context. Be intelligent about search scope and exclude huge build/cache subfolders. Apply across chats, agents and automations; this limits discovery cost without preventing useful searches of the own"
+      }
+    ],
+    "instruction_receipt_seen": true,
+    "explicit_applied_record_seen": false
+  },
+  {
+    "thread_id": "01a199ed-fc1a-7820-8682-467c723503d7",
+    "file": "C:\\Users\\Kieran\\.codex\\sessions\\2026\\11\\02\\rollout-2026-11-02T01-44-34-01a199ed-fc1a-7820-8682-467c723503d7.jsonl",
+    "file_bytes": 12795851,
+    "tail_bytes_read": 3145728,
+    "latest_event_at": "2026-11-02T02:46:31.991Z",
+    "matches": [
+      {
+        "at": "2026-11-02T02:29:57.146Z",
+        "event_type": "response_item",
+        "payload_type": "message",
+        "role": "user",
+        "classification": "instruction_receipt",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ]
+      }
+    ],
+    "instruction_receipt_seen": true,
+    "explicit_applied_record_seen": false,
+    "earlier_segment": {
+      "start_byte": 6504395,
+      "end_byte": 9650123,
+      "bytes_read": 3145728
+    }
+  },
+  {
+    "thread_id": "01a19a0b-17bb-7820-a2a0-b8d8f6b3b751",
+    "file": "C:\\Users\\Kieran\\.codex\\sessions\\2026\\11\\02\\rollout-2026-11-02T02-16-20-01a19a0b-17bb-7820-a2a0-b8d8f6b3b751.jsonl",
+    "file_bytes": 7081674,
+    "tail_bytes_read": 3145728,
+    "latest_event_at": "2026-11-02T02:46:21.455Z",
+    "matches": [
+      {
+        "at": "2026-11-02T02:29:58.220Z",
+        "event_type": "response_item",
+        "payload_type": "message",
+        "role": "user",
+        "classification": "instruction_receipt",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ],
+        "excerpt": " My Songs or this package's `workflows/blogworthiness-completion.md`.\\r\\n\\r\\n## Search narrowly and exclude generated storage\\r\\n\\r\\nKieran, 2 November 2026: do not repeatedly scan drives for routine context. Be intelligent about search scope and exclude huge build/cache subfolders. Apply across chats, agents and automations; this limits discovery cost without preventing useful searches of the own"
+      },
+      {
+        "at": "2026-11-02T02:29:58.230Z",
+        "event_type": "world_state",
+        "payload_type": null,
+        "role": null,
+        "classification": "mention_or_command",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ],
+        "excerpt": " My Songs or this package's `workflows/blogworthiness-completion.md`.\\r\\n\\r\\n## Search narrowly and exclude generated storage\\r\\n\\r\\nKieran, 2 November 2026: do not repeatedly scan drives for routine context. Be intelligent about search scope and exclude huge build/cache subfolders. Apply across chats, agents and automations; this limits discovery cost without preventing useful searches of the own"
+      }
+    ],
+    "instruction_receipt_seen": true,
+    "explicit_applied_record_seen": false
+  },
+  {
+    "thread_id": "01a19965-66ad-7c01-916c-a8429ce17b7a",
+    "file": "C:\\Users\\Kieran\\.codex\\sessions\\2026\\11\\01\\rollout-2026-11-01T23-15-22-01a19965-66ad-7c01-916c-a8429ce17b7a.jsonl",
+    "file_bytes": 11676599,
+    "tail_bytes_read": 3145728,
+    "latest_event_at": "2026-11-02T02:46:16.852Z",
+    "matches": [
+      {
+        "at": "2026-11-02T02:29:17.988Z",
+        "event_type": "response_item",
+        "payload_type": "message",
+        "role": "user",
+        "classification": "instruction_receipt",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ],
+        "excerpt": " My Songs or this package's `workflows/blogworthiness-completion.md`.\\r\\n\\r\\n## Search narrowly and exclude generated storage\\r\\n\\r\\nKieran, 2 November 2026: do not repeatedly scan drives for routine context. Be intelligent about search scope and exclude huge build/cache subfolders. Apply across chats, agents and automations; this limits discovery cost without preventing useful searches of the own"
+      },
+      {
+        "at": "2026-11-02T02:29:17.997Z",
+        "event_type": "world_state",
+        "payload_type": null,
+        "role": null,
+        "classification": "mention_or_command",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ],
+        "excerpt": " My Songs or this package's `workflows/blogworthiness-completion.md`.\\r\\n\\r\\n## Search narrowly and exclude generated storage\\r\\n\\r\\nKieran, 2 November 2026: do not repeatedly scan drives for routine context. Be intelligent about search scope and exclude huge build/cache subfolders. Apply across chats, agents and automations; this limits discovery cost without preventing useful searches of the own"
+      }
+    ],
+    "instruction_receipt_seen": true,
+    "explicit_applied_record_seen": false
+  },
+  {
+    "thread_id": "01a167e4-a90e-7193-b5a3-e9736b2d6e38",
+    "file": "C:\\Users\\Kieran\\.codex\\sessions\\2026\\10\\23\\rollout-2026-10-23T09-33-21-01a167e4-a90e-7193-b5a3-e9736b2d6e38.jsonl",
+    "file_bytes": 28589124,
+    "tail_bytes_read": 3145728,
+    "latest_event_at": "2026-11-02T02:46:40.754Z",
+    "matches": [
+      {
+        "at": "2026-11-02T02:29:16.441Z",
+        "event_type": "response_item",
+        "payload_type": "message",
+        "role": "user",
+        "classification": "instruction_receipt",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ],
+        "excerpt": " My Songs or this package's `workflows/blogworthiness-completion.md`.\\r\\n\\r\\n## Search narrowly and exclude generated storage\\r\\n\\r\\nKieran, 2 November 2026: do not repeatedly scan drives for routine context. Be intelligent about search scope and exclude huge build/cache subfolders. Apply across chats, agents and automations; this limits discovery cost without preventing useful searches of the own"
+      },
+      {
+        "at": "2026-11-02T02:29:16.451Z",
+        "event_type": "world_state",
+        "payload_type": null,
+        "role": null,
+        "classification": "mention_or_command",
+        "matched_terms": [
+          "Search narrowly and exclude generated storage"
+        ],
+        "excerpt": " My Songs or this package's `workflows/blogworthiness-completion.md`.\\r\\n\\r\\n## Search narrowly and exclude generated storage\\r\\n\\r\\nKieran, 2 November 2026: do not repeatedly scan drives for routine context. Be intelligent about search scope and exclude huge build/cache subfolders. Apply across chats, agents and automations; this limits discovery cost without preventing useful searches of the own"
+      },
+      {
+        "at": "2026-11-02T02:30:27.412Z",
+        "event_type": "response_item",
+        "payload_type": "custom_tool_call",
+        "role": null,
+        "classification": "explicit_applied_record",
+        "matched_terms": [
+          "New narrow-search exclusions applied"
+        ],
+        "excerpt": " command matched, no lingering patch or Potbot task process found'; searchRule='New narrow-search exclusions applied; no drive or generated-storage recursion performed'; Blogworthiness='FAIL'; blogReason='Transient private resource diagnosis; insufficient verified causal finding for a public story'; evidence='Read-only CIM logical-disk/process samples and venv metadata in this turn'; next='Keep lo"
+      },
+      {
+        "at": "2026-11-02T02:30:27.990Z",
+        "event_type": "event_msg",
+        "payload_type": "item_completed",
+        "role": null,
+        "classification": "explicit_applied_record",
+        "matched_terms": [
+          "New narrow-search exclusions applied"
+        ],
+        "excerpt": " command matched, no lingering patch or Potbot task process found'; searchRule='New narrow-search exclusions applied; no drive or generated-storage recursion performed'; Blogworthiness='FAIL'; blogReason='Transient private resource diagnosis; insufficient verified causal finding for a public story'; evidence='Read-only CIM logical-disk/process samples and venv metadata in this turn'; next='Keep lo"
+      }
+    ],
+    "instruction_receipt_seen": true,
+    "explicit_applied_record_seen": true
+  }
+]

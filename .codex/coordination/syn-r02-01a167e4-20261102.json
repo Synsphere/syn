@@ -1,0 +1,45 @@
+{
+  "owner": "Syn release chat01a167e4-a90e-7193-b5a3-e9736b2d6e38",
+  "scope": "SYN-R02 operator-owned Potbot installation and verification of official Syn packages",
+  "time_utc": "2026-11-02T06:54:09.3089608Z",
+  "status": "complete; merged and verified",
+  "repositories": [
+    "Synsphere/syn",
+    "kieransimkin/potbot"
+  ],
+  "potbot": {
+    "completed_checks": "32 passed,2 intentional optional skips",
+    "reviewed_source": "ec15bb3fe01dee0a774ac95c50f28cd673f91ab1",
+    "acceptance_counts": "51 Linux boundaries;3409 unit/Git;325 PostgreSQL;76 sandbox;331-source mypy; packaging andT01.1-T01.3 validators pass",
+    "main_merge": "59e91c89435a132f5e1d19129096f7c78bceb7ce",
+    "tested_tree_matches_main": true,
+    "pr": 17
+  },
+  "syn": {
+    "python_versions": [
+      "3.12",
+      "3.13"
+    ],
+    "master": "cba55c74082ecda4ce87757bed68346801c3383a",
+    "actual_official_installation_run": 41400576872,
+    "package_online_offline_verified": true,
+    "merged_prs": [
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "node_qualified": false
+  },
+  "version_ownership": "Existing immutable Synv0.1.0, release source, seven official assets and independently approved authority remain unchanged; no key, QR/PDF, identity or node state touched",
+  "conflicts": "Resolved by integrating mainPR16 canonical socket-root/timeout changes; retained actual AF_UNIX regression. Namespaced stage-reference validator corrected and fully reverified. No overlapping source mutation remains.",
+  "approval": "User explicitly requested SYN-R02 so Potbot can install and verify the official release",
+  "evidence": ".potbot-integration/artifacts/syn-r02-installation-2026-11-02/evidence/SYN-R02-handoff.md",
+  "tools": "Existing uv/cryptography/scratch/roadmap primitives reused; canonical inventory owner and stage-validation support added",
+  "next_gate": "SYN-R03 actual operator-mode package and host/node acceptance; Agent nodesSYN-R04",
+  "blogworthiness": "PASS; public feature angle and evidence recorded; duplicate coverage checked against retained43-post/draft inventory; private editorial handoff prepared for project-blog-writer continuation; no public article saved",
+  "browser_cleanup": "Owned raw-log and task tabs closed; fresh selected in-app browser inventory empty",
+  "handoff": "Private coordination record only; no other-chat receipt or acknowledgement claimed",
+  "source_worktrees": "Both clean and retained; original root checkout and unrelated work preserved"
+}

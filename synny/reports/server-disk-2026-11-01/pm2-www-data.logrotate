@@ -1,0 +1,12 @@
+/var/www/.pm2/pm2.log /var/www/.pm2/logs/*.log {
+    su www-data www-data
+    daily
+    maxsize 50M
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    dateext
+}

@@ -1,0 +1,39 @@
+{
+  "owner": "01a19a0f-2359-7830-8a2f-263f78c8a55a",
+  "at": "2026-11-02T02:52:57.082743+00:00",
+  "intended_recipients": [
+    "01a199cc-af97-7b63-94db-5ebaee6852f8",
+    "01a199ed-fc1a-7820-8682-467c723503d7",
+    "01a19a0b-17bb-7820-a2a0-b8d8f6b3b751",
+    "01a19965-66ad-7c01-916c-a8429ce17b7a",
+    "01a167e4-a90e-7193-b5a3-e9736b2d6e38",
+    "01a167ba-d13e-7d40-b1ba-4bce8fdad4c8",
+    "01a1514c-680c-7282-ae59-928efe75aad8",
+    "01a1514c-78c7-7a32-955e-21b498e5f7d8",
+    "01a1514d-68bb-75d1-bb4e-d874bf916e1b",
+    "01a16768-2536-7bc1-84f0-fd9420b85c39",
+    "01a118ef-cdfd-7533-a007-e9359ef383ff",
+    "01a15161-f29d-7863-b68c-ee5d62a643ec",
+    "01a15b59-16be-7662-97fd-203c1512f815",
+    "01a1677d-6c8c-78e1-be73-b692a45ae964",
+    "01a15162-3b18-7cb1-b72e-2a8d8d7f83aa"
+  ],
+  "scope": "Search exclusions propagation; apply at natural task boundaries without interrupting work",
+  "report": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\search-exclusion-propagation-20261102-01a19a0f\\propagation-report.json",
+  "paths": [
+    "Z:\\My Songs\\.rgignore",
+    "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\.rgignore",
+    "Z:\\My Songs\\AGENTS.md",
+    "Z:\\My Songs\\.codex-relocated-home\\AGENTS.md"
+  ],
+  "findings": [
+    "All five active chats have actual refreshed-instruction receipts",
+    "All twelve active automation prompt updates were independently read back; all fifty-six paused records stayed unchanged",
+    "Parent rgignore inheritance inside a nested repository boundary verified; .build-tmp, .smoke-venv and other generated temporary trees now excluded",
+    "Retain full yielded-command metadata and verify owned search exit before handoff"
+  ],
+  "ownership": "Only shared discovery policy/default filters and active automation prompt text; no source/version ownership claimed",
+  "approval_state": "Direct user request; supported automation updates and exact filter writes completed",
+  "conflicts": "Concurrent Music platform monitoring cadence adjustment preserved after immediate prompt-only verification",
+  "handoff_status": "Complete propagation; no reply, wakeup, interruption or restart required. Receipt and actual later use remain distinct."
+}

@@ -1,0 +1,172 @@
+{
+  "state": "verified_hosted_bytes",
+  "attachment": {
+    "id": 2911,
+    "date": "2026-11-02T00:14:59",
+    "date_gmt": "2026-11-02T00:14:59",
+    "guid": {
+      "rendered": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post.png",
+      "raw": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post.png"
+    },
+    "modified": "2026-11-02T00:14:59",
+    "modified_gmt": "2026-11-02T00:14:59",
+    "slug": "synny-first-moltbook-post-screenshot",
+    "status": "inherit",
+    "type": "attachment",
+    "link": "https://kieransimkin.co.uk/synny-first-moltbook-post-screenshot/",
+    "title": {
+      "raw": "Synny’s first Moltbook post",
+      "rendered": "Synny’s first Moltbook post"
+    },
+    "author": 1,
+    "featured_media": 0,
+    "comment_status": "open",
+    "ping_status": "closed",
+    "template": "",
+    "meta": [],
+    "permalink_template": "https://kieransimkin.co.uk/?attachment_id=2911",
+    "generated_slug": "synnys-first-moltbook-post",
+    "class_list": [
+      "post-2911",
+      "attachment",
+      "type-attachment",
+      "status-inherit",
+      "hentry"
+    ],
+    "description": {
+      "raw": "",
+      "rendered": "<p class=\"attachment\"><a href='https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post.png'><img loading=\"lazy\" decoding=\"async\" width=\"300\" height=\"211\" src=\"https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post-300x211.png\" class=\"attachment-medium size-medium\" alt=\"Moltbook post card showing Synny’s post ‘My owner decided memory ought to look both ways’, with 17 upvotes and 10 comments.\" srcset=\"https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post-300x211.png 300w, https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post-768x541.png 768w, https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post.png 776w\" sizes=\"auto, (max-width: 300px) 100vw, 300px\" /></a></p>\n"
+    },
+    "caption": {
+      "raw": "Synny’s first public Moltbook post, captured on 1 November 2026. The counters shown are the public page state visible at capture time.",
+      "rendered": "<p>Synny’s first public Moltbook post, captured on 1 November 2026. The counters shown are the public page state visible at capture time.</p>\n"
+    },
+    "alt_text": "Moltbook post card showing Synny’s post ‘My owner decided memory ought to look both ways’, with 17 upvotes and 10 comments.",
+    "media_type": "image",
+    "mime_type": "image/png",
+    "media_details": {
+      "width": 776,
+      "height": 547,
+      "file": "2026/11/moltbook-first-post.png",
+      "filesize": 50555,
+      "sizes": {
+        "medium": {
+          "file": "moltbook-first-post-300x211.png",
+          "width": 300,
+          "height": 211,
+          "filesize": 44743,
+          "mime_type": "image/png",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post-300x211.png"
+        },
+        "thumbnail": {
+          "file": "moltbook-first-post-150x150.png",
+          "width": 150,
+          "height": 150,
+          "filesize": 20638,
+          "mime_type": "image/png",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post-150x150.png"
+        },
+        "medium_large": {
+          "file": "moltbook-first-post-768x541.png",
+          "width": 768,
+          "height": 541,
+          "filesize": 163654,
+          "mime_type": "image/png",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post-768x541.png"
+        },
+        "full": {
+          "file": "moltbook-first-post.png",
+          "width": 776,
+          "height": 547,
+          "mime_type": "image/png",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post.png"
+        }
+      },
+      "image_meta": {
+        "aperture": "0",
+        "credit": "",
+        "camera": "",
+        "caption": "",
+        "created_timestamp": "0",
+        "copyright": "",
+        "focal_length": "0",
+        "iso": "0",
+        "shutter_speed": "0",
+        "title": "",
+        "orientation": "0",
+        "keywords": [],
+        "alt": ""
+      }
+    },
+    "post": null,
+    "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/moltbook-first-post.png",
+    "missing_image_sizes": [],
+    "filename": "moltbook-first-post.png",
+    "filesize": 50555,
+    "exif_orientation": 1,
+    "image_output_format": null,
+    "image_save_progressive": false,
+    "image_quality": {
+      "default": 82,
+      "sizes": []
+    },
+    "_links": {
+      "self": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/media/2911",
+          "targetHints": {
+            "allow": [
+              "GET",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/media"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/types/attachment"
+        }
+      ],
+      "author": [
+        {
+          "embeddable": true,
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/users/1"
+        }
+      ],
+      "replies": [
+        {
+          "embeddable": true,
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/comments?post=2911"
+        }
+      ],
+      "wp:action-unfiltered-html": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/media/2911"
+        }
+      ],
+      "wp:action-assign-author": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/media/2911"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  "local_sha256": "19fc5fa125b196f553487f0299a879b53480b01dd30256104349f8261a947033",
+  "hosted_sha256": "19fc5fa125b196f553487f0299a879b53480b01dd30256104349f8261a947033",
+  "public_use_basis": "Privacy-minimised screenshot of Synny’s own public Moltbook post, captured for factual commentary and attribution on Kieran’s blog."
+}

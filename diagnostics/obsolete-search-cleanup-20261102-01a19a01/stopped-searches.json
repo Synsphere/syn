@@ -1,0 +1,41 @@
+[
+  {
+    "Pid": 23076,
+    "Thread": "01a1999a-f51a-7520-bc55-582d57b83f7c",
+    "Topic": "Light Will Win schedule discovery",
+    "CheckedAt": "2026-11-02T02:13:25.7358126Z",
+    "Owner": "DRAGON\\Kieran",
+    "StartTime": "2026-11-02T00:17:54.5641898+00:00",
+    "Outcome": "stopped",
+    "WorkingSetBytes": 804790272
+  },
+  {
+    "Pid": 42108,
+    "Thread": "01a1999a-f51a-7520-bc55-582d57b83f7c",
+    "Topic": "Light Will Win video-ID discovery",
+    "CheckedAt": "2026-11-02T02:13:35.9905224Z",
+    "Owner": "DRAGON\\Kieran",
+    "StartTime": "2026-11-02T00:18:14.4663576+00:00",
+    "Outcome": "stopped",
+    "WorkingSetBytes": 222154752
+  },
+  {
+    "Pid": 16004,
+    "Thread": "01a199c4-9593-7aa2-b271-9a9865af6f9c",
+    "Topic": "Completed stats-analysis discovery",
+    "CheckedAt": "2026-11-02T02:13:36.0006280Z",
+    "Owner": "DRAGON\\Kieran",
+    "StartTime": "2026-11-02T00:59:34.3290949+00:00",
+    "Outcome": "stopped",
+    "WorkingSetBytes": 337391616
+  },
+  {
+    "Pid": 30136,
+    "Thread": "01a199f0-657c-72b0-96ad-6b7dc328bb84",
+    "Topic": "Completed platform-monitoring discovery",
+    "CheckedAt": "2026-11-02T02:13:36.1161659Z",
+    "Owner": null,
+    "StartTime": null,
+    "Outcome": "already_absent"
+  }
+]

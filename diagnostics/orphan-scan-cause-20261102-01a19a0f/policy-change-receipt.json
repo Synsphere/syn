@@ -1,0 +1,16 @@
+{
+  "checked_at": "2026-11-02T02:29:12.768026+00:00",
+  "changes": [
+    {
+      "path": "Z:\\My Songs\\.codex-relocated-home\\AGENTS.md",
+      "sha256": "2ff2686370a850eec51aa8cf32c69ce3a7cdabd9f23a697fb9353305eced5823",
+      "verified": true
+    },
+    {
+      "path": "Z:\\My Songs\\AGENTS.md",
+      "sha256": "3e8e0d1824183b610bb45fb3d96d4ed549b658f81cb5777d3529a0659c44d5a4",
+      "verified": true
+    }
+  ],
+  "running_chat_adoption": "not_established"
+}

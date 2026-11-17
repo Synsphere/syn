@@ -1,0 +1,13 @@
+{
+  "id": "danceflow-and-potbot-plugin-discovery-research",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a16768-2536-7bc1-84f0-fd9420b85c39",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

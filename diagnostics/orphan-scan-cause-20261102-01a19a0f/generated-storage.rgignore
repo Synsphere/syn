@@ -1,0 +1,28 @@
+# Default discovery exclusions, 2 November 2026.
+# Directly named files remain readable. Search generated material only when it is
+# the subject. Positive --glob options can override these rules: retain explicit
+# exclusion globs after inclusion globs in those commands.
+node_modules/
+.pnpm-store/
+.uv-cache/
+.venv/
+.venv-*/
+venv/
+site-packages/
+.git/
+build/
+dist/
+target/
+obj/
+.cache/
+.tmp/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+.hypothesis/
+.codex-pytest-temp*/
+.pytest-tmp*/
+.tmp-pytest/
+models/
+.codex-relocated-home/

@@ -1,0 +1,13 @@
+{
+  "id": "christmas-tat-final-render-monitor",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a167ba-d13e-7d40-b1ba-4bce8fdad4c8",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

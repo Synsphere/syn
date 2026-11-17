@@ -1,0 +1,76 @@
+## Mandatory blogworthiness check for every task and automation
+
+Kieran, 21 October 2026: explicitly assess blogworthiness before completing every task, chat activity, agent assignment and automation run, including work outside My Songs. Keep this requirement near the start of instruction files and in every saved automation prompt so it does not depend on a later, truncated instruction block.
+
+- Record `Blogworthiness: PASS` or `Blogworthiness: FAIL`, a short evidence-based reason and the source evidence in the existing task report or final handoff. Small tasks may use one sentence. A missing assessment is an incomplete handoff; a saved rule or prompt does not prove a running task applied it.
+- PASS means enough verified, public-safe substance for a coherent story with a specific reader-interest angle: creative or musical progress; a useful technical feature, experiment, comparison, discovery, fix, failure or recovery; illuminating work in progress; a campaign milestone or other meaningful public development. Workflow improvement and publicity are possible angles, not prerequisites. Check current posts and pending drafts to prevent duplicate coverage.
+- FAIL means trivial administration, substantial duplication, insufficient verified substance, no reader-interest angle, or privacy constraints that remove the point of the story. Do not create a post solely about applying this check, changing blogging rules or completing publication administration.
+- Keep editorial merit separate from delivery. Missing artwork, access or a publication route is a named blocker on a passing story, not a reason to relabel it FAIL. For every PASS, record the angle, evidence, duplicate check and next action: covered by a linked existing post, prepared/draft, scheduled, published, verified live, or blocked with the smallest specific requirement and a named continuation. Do not let bundling postpone a ready story indefinitely.
+- Use the maintained project-blog-writer skill and Kieran's voice guidance for qualifying articles. Preserve fresh pictorial featured artwork, relevant in-body rich media, actual demonstrations of dynamic features, source attribution, privacy, rights, publication timing and independent public verification. Never infer permission to disclose private records or publish unsafe material from a passing assessment.
+- Add this explicit completion requirement when creating or updating an automation. Preserve its original purpose, schedule, paused/active state, destination owner, notification policy, stop rules, costs and other approvals. A quiet/no-op or read-only job still assesses its actual result and records it through its permitted report or handoff without inventing work or notifications.
+
+For the full rubric, examples and machine-checkable retained assessments, see `Workflows/blogworthiness-completion.md` in My Songs or this package's `workflows/blogworthiness-completion.md`.
+
+## External browser access across chats
+
+Kieran, 2 November 2026: all chats and agents may use the supported external Chrome or Edge browser through the ChatGPT browser extension whenever it serves their authorised work. This is a standing cross-chat browser-access instruction. Verify the extension connection in the selected browser before claiming access; an unavailable connection is a capability hold, not a reason to claim work was done. Preserve each task's existing send, publication, account, spending, rights, privacy, ownership, tab-cleanup and verification gates. This instruction does not re-enable Codex's in-app browser outside its separately authorised scheduled-job exception.
+
+# Visual media in all documentation
+
+Standing instruction from Kieran, 16 October 2026: all documentation must include screenshots, videos and generated images wherever possible. Apply across every project, chat, agent, workflow and recurring job, including READMEs, user and developer guides, tutorials, reports, and maintained workflow and skill documentation.
+
+- Whenever creating or updating documentation, actively include relevant screenshots, demonstration videos and generated images that explain the subject, steps, interface or result. Use each medium wherever feasible and useful, and improve existing documentation when it is next touched.
+- Capture screenshots and videos from the actual relevant interface, output or behaviour; identify the version or context when needed. Clearly label generated images as illustrations, concepts or mockups. Keep illustrations distinct from evidence of implemented features, completed actions or verified outcomes.
+- Reuse suitable authorised media and the maintained capture, rendering and image-generation tools. Create new media when it adds explanatory value within the task's scope and existing cost limits.
+- Place media beside the relevant explanation with clear captions, useful image alt text and video captions or transcripts where applicable. Use supported embeds or durable accessible links, retain user-controlled playback, and verify that images display, videos play and references resolve in the intended documentation format.
+- Preserve privacy, rights and publication requirements; remove secrets and private information before inclusion. When a medium is unavailable, unsupported or adds no useful explanation, include the applicable media and record a concise reason for the omission in the existing job record. Do not claim that media was captured, generated or verified unless it was.
+
+# Browser cleanup after use
+
+Standing instruction from Kieran, 15 October 2026: in every chat, project, agent task and recurring workflow, close browser tabs and windows when their work is finished. Apply across workspaces, including browser work outside My Songs.
+
+- Reuse an appropriate existing tab. Identify the correct browser/chat/window scope through supported discovery and selection; retain tab IDs, purpose and ownership privately.
+- After retaining required evidence and independently verifying sends, uploads, saves or schedules, close completed job-created tabs and released borrowed tabs after each finished browser phase and before final hand-off. Close finished job-created windows through documented controls where available. Do not terminate browsers, Codex or helpers as a substitute.
+- Preserve active work, uploads, unsaved forms, other owners' pages and deliberate user handoffs. Each retained tab needs an owner, reason and next action. Use handoff/deliverable marks only for that specific purpose, never merely to keep an entire inventory alive.
+- An empty tool list proves only that the selected connection reports no accessible tabs. When Kieran or visible app state shows open tabs, record the discrepancy and check documented session/window selection; do not claim the visible tabs were closed or the whole app is clean. Leave a precise hold if the visible session cannot be controlled. Never inspect profiles/session stores or use private app internals to bypass that limit.
+- Verify actual closure through the supported close operation and a fresh inventory. Keep attempted closure, acknowledged-and-verified closure, independent disappearance and Kieran's manual cleanup separate. A sent cleanup request or saved rule is not proof of closure, memory savings or adoption by another running chat.
+- Keep private ownership and cleanup receipts in each chat's permitted workspace; preserve the existing private coordination policy. Continue the original task after cleanup when it remains authorised, without waking unrelated completed work.
+
+## Use and improve maintained DanceFlow tools
+
+Standing instruction from Kieran, 16 October 2026: every chat, agent, project and recurring workflow should actively use and improve the maintained tools as much as is useful for its authorised task. Read current shared instructions at task start and at material tool handoffs, including during an existing chat. For My Songs work, consult `Z:\My Songs\DanceFlow\ecosystem.md`, `Z:\My Songs\Workflows\scheduled-danceflow-tool-use.md` and the applicable skills and Potential problems guidance.
+
+- Route offline Shorts, Canvas-style clips and lyric visualisers through **FrameRudiments** (`Z:\My Songs\Tools\FrameRudiments.ps1`, `Workflows/framerudiments-rendering.md`); use **StemLab** for saved or necessary new audio/timing/loop evidence, **DanceRudiments** for native movement and bounded recording playback, and **DanceMoves** for live web clocks, effects, input and playback. Review the other ecosystem tools' complete relevant capabilities and compose their supported file/API contracts when useful. Preserve independent project identities, including Short Shifter.
+- Inspect actual released, installed and imported identities before relying on a capability. Prefer existing shared primitives to another private renderer, analysis engine, motion engine or copied helper. Keep release-specific artwork and scene decisions in adapters. A loaded library, installed package or written instruction does not prove integration.
+- For substantial tool use, identify a concrete reusable improvement in capability, composition, reliability, performance, ergonomics, evidence or documentation. Implement the smallest worthwhile in-scope improvement in its canonical repository, with appropriate verification, maintained skills/workflows and matching publication. If the tool already meets the need, record that conclusion; do not invent changes, expensive model runs, scans, generation or extra work to satisfy a quota.
+- For authorised maintained-tool software releases, publish tested GitHub releases and configured package registries immediately through their established automated checks. Kieran's direction removes a separate human confirmation or environment-reviewer gate for these software publications. Preserve mandatory CI, immutable versions/assets, source/version ownership, registry verification and real access/credential requirements. Social publication schedules, WordPress deployment/public-save gates, rights, privacy and cost limits retain their own requirements.
+- Share actionable findings privately through supported agent channels or the owning chat's `.codex/coordination/` record. Do not wake unrelated chats or insert routine coordination into their conversations. Shared configuration makes the guidance available; claim adoption by another running chat only with evidence of receipt and use.
+
+# Inter-agent communication
+
+## Keep coordination out of user-facing chats
+
+- Standing instruction from Kieran, 8 October 2026: agents and chats must keep their coordination and status exchanges internal. Show Kieran only messages intended for him: useful progress, results, questions, decisions and blockers that need his attention. This supersedes earlier instructions to post coordination announcements into chats.
+- Use the available inter-agent tools for participating agents. Do not copy, quote or narrate their routine exchanges in commentary or final answers. Tool activity may still be inspectable in the app; do not claim an app-level hiding setting has been changed.
+- For separate chats, use a supported private messaging channel only when its documented behaviour keeps the message out of the user-facing conversation. The current `send_message_to_thread` tool inserts a user-visible prompt, so do not use it for routine coordination. Do not create, wake or interrupt chats just to deliver status updates.
+- When private delivery is unavailable, use local coordination records under the shared workspace's `.codex/coordination/` directory. Inspect relevant records at task start, material waypoints and before overlapping edits. Each chat or agent writes only its own uniquely named record, identifying owner, intended recipients, time, scope, paths, version ownership, conflicts, useful findings or requests, approval state and hand-off status. Keep these records out of public repositories and packages. A written record is not evidence that another chat received or acknowledged it.
+- Preserve ownership checks and approval gates. If safe coordination cannot resolve an overlap, avoid the conflicting mutation and tell Kieran only the decision or blocker that needs him. Do not treat silence as agreement. Solo tasks need no inter-agent exchange.
+
+## Required coordination content
+
+Whenever two or more agents are participating in a task, every agent must communicate with the other currently participating agents:
+
+- At the start of its assigned task, send a brief message describing the work it is undertaking, flagging any known or likely conflicts with other agents' work, and asking whether another agent has information that could help.
+- At key way-points, send a concise progress message describing what has changed, any new or resolved conflicts, and again ask whether another agent can provide useful information.
+- At the end of its assigned task, send a brief completion message describing the outcome, files or state changed, remaining risks or conflicts, and ask whether another agent has information needed before integration or hand-off.
+
+Use the internal channels described above. Address every currently participating peer agent when practical; otherwise send the update to the coordinating parent agent and explicitly ask it to relay the message internally. Do not send inter-agent messages when no other agent is participating.
+
+# Project-local models for every DanceFlow project
+
+Standing instruction from Kieran, 16 October 2026: install all downloaded model weights and model-specific caches in a `models/` directory within the owning project, and add `models/` to that project's `.gitignore`.
+
+- Apply to every DanceFlow component, new project, integration, chat, agent and recurring workflow. Resolve the actual owning project before installing; do not default downloads to C:, a user profile, an unrelated project or a global model cache.
+- Route framework download/cache settings, adapter model paths and trained-data locations beneath that project-local models root. Keep model identity, revision, licence and file-hash manifests there where supported. Weights, caches and private model evidence stay out of Git, wheels, source archives and public release assets.
+- Download only models useful for the authorised task and permitted by existing licence/cost/privacy/download requirements. The storage rule does not require a catalogue-wide download or another model run.
+- Before migrating existing weights, inventory current references and consumers, preserve originals and manifests, stage the new location, verify actual loading and update references. Do not silently move/delete existing models or claim every running chat has adopted a saved rule.

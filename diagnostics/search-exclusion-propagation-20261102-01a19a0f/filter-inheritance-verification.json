@@ -1,0 +1,8 @@
+{
+  "fixture_only": true,
+  "parent_rgignore_inherited_inside_nested_git_boundary": true,
+  "sources_docs_tests_retained": true,
+  "temporary_venv_builds_excluded": true,
+  "positive_file_glob_did_not_reopen_excluded_directories": true,
+  "no_z_drive_scan": true
+}

@@ -1,0 +1,9 @@
+{
+  "fixture": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\orphan-scan-cause-20261102-01a19a0f\\filter-fixture",
+  "fixture_only": true,
+  "default_exclusions_pass": true,
+  "source_and_docs_retained": true,
+  "positive_glob_override_demonstrated": true,
+  "later_exclusion_glob_pass": true,
+  "z_drive_scan_started": false
+}

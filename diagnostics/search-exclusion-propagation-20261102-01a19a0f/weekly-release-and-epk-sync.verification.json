@@ -1,0 +1,13 @@
+{
+  "id": "weekly-release-and-epk-sync",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": "01a15162-3b18-7cb1-b72e-2a8d8d7f83aa",
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

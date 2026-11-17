@@ -1,0 +1,20 @@
+[
+  {
+    "At": "2026-11-02T02:18:11.3114848Z",
+    "QueueLength": 55,
+    "ReadBytesPerSecond": 1320274,
+    "WriteBytesPerSecond": 194098
+  },
+  {
+    "At": "2026-11-02T02:18:14.5866971Z",
+    "QueueLength": 56,
+    "ReadBytesPerSecond": 2438263,
+    "WriteBytesPerSecond": 46516
+  },
+  {
+    "At": "2026-11-02T02:18:17.8649482Z",
+    "QueueLength": 13,
+    "ReadBytesPerSecond": 2502125,
+    "WriteBytesPerSecond": 381882
+  }
+]

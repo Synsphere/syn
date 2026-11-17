@@ -1,0 +1,102 @@
+{
+  "ownerChat": "01a19a01-fe98-7020-8d8b-43197e2210d0",
+  "checkedAt": "2026-11-02T02:19:39.5483204Z",
+  "requestedAction": "Stop obsolete searches after checking owners; preserve productive workloads",
+  "windowsOwner": "DRAGON\\Kieran",
+  "stoppedSearchPids": [
+    23076,
+    42108,
+    16004,
+    19424,
+    24936,
+    27812,
+    24848
+  ],
+  "independentlyFinishedSearchPids": [
+    30136
+  ],
+  "originalSearchPidsStillRunning": [],
+  "currentSearchPidsPreserved": [
+    54436,
+    63280,
+    67540,
+    68180
+  ],
+  "obsoleteWrapperStopped": 43240,
+  "verification": "All original search identities checked by PID, creation time and Windows owner; fresh process inventory confirms no original search is running",
+  "workloadChanges": "Only obsolete rg searches and the obsolete SpaceSleuth wrapper were stopped; no render, test, upscale, service, scheduler, account or project source changes",
+  "ownershipEvidence": [
+    {
+      "supersededBy": "Article published and verified at 2026-11-02T00:20:48.591Z",
+      "pid": 27812,
+      "thread": "01a19959-dc0e-7a43-a239-787d0d3d4995",
+      "callTime": "2026-11-01T23:31:16.342Z"
+    },
+    {
+      "supersededBy": "Owner idle; document and decision handoff completed at 2026-11-02T01:02:59.790Z",
+      "thread": "01a1999a-f51a-7520-bc55-582d57b83f7c",
+      "pids": [
+        23076,
+        42108,
+        24848
+      ]
+    },
+    {
+      "supersededBy": "Stats report handoff completed at 2026-11-02T01:07:04.754Z; owner idle",
+      "pid": 16004,
+      "thread": "01a199c4-9593-7aa2-b271-9a9865af6f9c"
+    },
+    {
+      "supersededBy": "Monitoring recommendation handoff completed at 2026-11-02T01:50:16.243Z; owner idle; search disappeared before stop",
+      "pid": 30136,
+      "thread": "01a199f0-657c-72b0-96ad-6b7dc328bb84"
+    },
+    {
+      "supersededBy": "CI configuration amended; active test run reached 77% at 2026-11-02T02:10:46.182Z",
+      "pid": 19424,
+      "thread": "01a19965-66ad-7c01-916c-a8429ce17b7a",
+      "callTime": "2026-11-02T00:39:10.781Z"
+    },
+    {
+      "supersededBy": "RasterMoves upscaler already running and progressing at 2026-11-02T02:13:57.504Z",
+      "pid": 24936,
+      "thread": "01a199bb-7e59-7153-b6d2-d5f51dd24242",
+      "callTime": "2026-11-02T00:50:12.284Z"
+    }
+  ],
+  "evidenceMethod": "Windows process inventory, exact parent command lines, Windows account ownership, supported chat-status listing, and bounded reads of exact owning session records. Supported read_thread could not resolve local host, so existing local session files supplied command and handoff evidence.",
+  "diskAfterSamples": [
+    {
+      "At": "2026-11-02T02:18:11.3114848Z",
+      "QueueLength": 55,
+      "ReadBytesPerSecond": 1320274,
+      "WriteBytesPerSecond": 194098
+    },
+    {
+      "At": "2026-11-02T02:18:14.5866971Z",
+      "QueueLength": 56,
+      "ReadBytesPerSecond": 2438263,
+      "WriteBytesPerSecond": 46516
+    },
+    {
+      "At": "2026-11-02T02:18:17.8649482Z",
+      "QueueLength": 13,
+      "ReadBytesPerSecond": 2502125,
+      "WriteBytesPerSecond": 381882
+    }
+  ],
+  "performanceConclusion": "Three brief post-cleanup disk queue samples were 55, 56 and 13; drive contention remains. No exact causal share, per-file attribution or sustained recovery claim.",
+  "danceflowApplicability": "Shared ecosystem instructions reviewed. No maintained DanceFlow component applies to native Windows process cancellation; existing Windows primitives meet this task, so no tool change justified.",
+  "media": "Screenshots, video and generated artwork omitted: no interface or visual behaviour changed, and actual PID/start-time/exit receipts provide the relevant evidence.",
+  "blogworthiness": {
+    "sourceEvidence": [
+      "stopped-searches.json",
+      "superseded-active-chat-searches.json",
+      "final-search-stops.json",
+      "after-disk-samples.json",
+      "fresh process inventory"
+    ],
+    "assessment": "FAIL",
+    "reason": "Routine private process cleanup without verified sustained recovery or a distinct public story"
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "state": "verified_hosted_bytes",
+  "attachment": {
+    "id": 2910,
+    "date": "2026-11-02T00:14:42",
+    "date_gmt": "2026-11-02T00:14:42",
+    "guid": {
+      "rendered": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured.jpg",
+      "raw": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured.jpg"
+    },
+    "modified": "2026-11-02T00:14:42",
+    "modified_gmt": "2026-11-02T00:14:42",
+    "slug": "synny-first-moltbook-posts-featured",
+    "status": "inherit",
+    "type": "attachment",
+    "link": "https://kieransimkin.co.uk/synny-first-moltbook-posts-featured/",
+    "title": {
+      "raw": "Synny’s first Moltbook posts",
+      "rendered": "Synny’s first Moltbook posts"
+    },
+    "author": 1,
+    "featured_media": 0,
+    "comment_status": "open",
+    "ping_status": "closed",
+    "template": "",
+    "meta": [],
+    "permalink_template": "https://kieransimkin.co.uk/?attachment_id=2910",
+    "generated_slug": "synnys-first-moltbook-posts",
+    "class_list": [
+      "post-2910",
+      "attachment",
+      "type-attachment",
+      "status-inherit",
+      "hentry"
+    ],
+    "description": {
+      "raw": "",
+      "rendered": "<p class=\"attachment\"><a href='https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured.jpg'><img loading=\"lazy\" decoding=\"async\" width=\"300\" height=\"169\" src=\"https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-300x169.jpg\" class=\"attachment-medium size-medium\" alt=\"Illustration of an open ledger facing a mirror, with four paths leading outward to symbols of growth, community, revision and discussion.\" srcset=\"https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-300x169.jpg 300w, https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-1024x576.jpg 1024w, https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-768x432.jpg 768w, https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-1536x864.jpg 1536w, https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured.jpg 1672w\" sizes=\"auto, (max-width: 300px) 100vw, 300px\" /></a></p>\n"
+    },
+    "caption": {
+      "raw": "Generated illustration: a self-memory ledger opens into four public conversations. Interpretive artwork, not a Moltbook screenshot.",
+      "rendered": "<p>Generated illustration: a self-memory ledger opens into four public conversations. Interpretive artwork, not a Moltbook screenshot.</p>\n"
+    },
+    "alt_text": "Illustration of an open ledger facing a mirror, with four paths leading outward to symbols of growth, community, revision and discussion.",
+    "media_type": "image",
+    "mime_type": "image/jpeg",
+    "media_details": {
+      "width": 1672,
+      "height": 941,
+      "file": "2026/11/synny-first-moltbook-posts-featured.jpg",
+      "filesize": 563244,
+      "sizes": {
+        "medium": {
+          "file": "synny-first-moltbook-posts-featured-300x169.jpg",
+          "width": 300,
+          "height": 169,
+          "filesize": 21701,
+          "mime_type": "image/jpeg",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-300x169.jpg"
+        },
+        "large": {
+          "file": "synny-first-moltbook-posts-featured-1024x576.jpg",
+          "width": 1024,
+          "height": 576,
+          "filesize": 202681,
+          "mime_type": "image/jpeg",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-1024x576.jpg"
+        },
+        "thumbnail": {
+          "file": "synny-first-moltbook-posts-featured-150x150.jpg",
+          "width": 150,
+          "height": 150,
+          "filesize": 10066,
+          "mime_type": "image/jpeg",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-150x150.jpg"
+        },
+        "medium_large": {
+          "file": "synny-first-moltbook-posts-featured-768x432.jpg",
+          "width": 768,
+          "height": 432,
+          "filesize": 120897,
+          "mime_type": "image/jpeg",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-768x432.jpg"
+        },
+        "1536x1536": {
+          "file": "synny-first-moltbook-posts-featured-1536x864.jpg",
+          "width": 1536,
+          "height": 864,
+          "filesize": 401603,
+          "mime_type": "image/jpeg",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured-1536x864.jpg"
+        },
+        "full": {
+          "file": "synny-first-moltbook-posts-featured.jpg",
+          "width": 1672,
+          "height": 941,
+          "mime_type": "image/jpeg",
+          "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured.jpg"
+        }
+      },
+      "image_meta": {
+        "aperture": "0",
+        "credit": "",
+        "camera": "",
+        "caption": "",
+        "created_timestamp": "0",
+        "copyright": "",
+        "focal_length": "0",
+        "iso": "0",
+        "shutter_speed": "0",
+        "title": "",
+        "orientation": "0",
+        "keywords": [],
+        "alt": ""
+      }
+    },
+    "post": null,
+    "source_url": "https://kieransimkin.co.uk/wp-content/uploads/2026/11/synny-first-moltbook-posts-featured.jpg",
+    "missing_image_sizes": [],
+    "filename": "synny-first-moltbook-posts-featured.jpg",
+    "filesize": 563244,
+    "exif_orientation": 1,
+    "image_output_format": null,
+    "image_save_progressive": false,
+    "image_quality": {
+      "default": 82,
+      "sizes": []
+    },
+    "_links": {
+      "self": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/media/2910",
+          "targetHints": {
+            "allow": [
+              "GET",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/media"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/types/attachment"
+        }
+      ],
+      "author": [
+        {
+          "embeddable": true,
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/users/1"
+        }
+      ],
+      "replies": [
+        {
+          "embeddable": true,
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/comments?post=2910"
+        }
+      ],
+      "wp:action-unfiltered-html": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/media/2910"
+        }
+      ],
+      "wp:action-assign-author": [
+        {
+          "href": "https://kieransimkin.co.uk/wp-json/wp/v2/media/2910"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  "local_sha256": "fd63be9147afc2ea1ba1a1d5e73a5de7076cea2c9a02881352730d2e5251d7d6",
+  "hosted_sha256": "fd63be9147afc2ea1ba1a1d5e73a5de7076cea2c9a02881352730d2e5251d7d6",
+  "public_use_basis": "New article-specific illustration generated for Kieran Simkin’s blog on 1 November 2026; no third-party source material."
+}

@@ -1,0 +1,13 @@
+{
+  "id": "hell-gondola-daily-pre-release",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_exact": true,
+  "preserved_controls": true,
+  "status": "ACTIVE",
+  "target_thread_id": null,
+  "exclusions_present": true,
+  "completion_rule_present": true
+}

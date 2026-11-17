@@ -1,0 +1,732 @@
+{
+  "owner_chat": "01a19a0f-2359-7830-8a2f-263f78c8a55a",
+  "completed_at": "2026-11-02T02:52:57.082743+00:00",
+  "request": "Ensure currently running chats and automations pick up generated-storage exclusions without interrupting their work",
+  "outcome": "Five active chats received the refreshed shared rule at normal instruction boundaries; all twelve ACTIVE automation prompts were updated and read back; fifty-six PAUSED automations were unchanged. Parent rgignore inheritance and current temporary environment exclusions were verified with tiny local fixtures.",
+  "running_chats": [
+    {
+      "thread_id": "01a199cc-af97-7b63-94db-5ebaee6852f8",
+      "title": "run the marketing analysis jobs now, always fix browser use\u2026",
+      "instruction_received": true,
+      "receipt_times": [
+        "2026-11-02T02:29:22.548Z"
+      ],
+      "reported_use": false
+    },
+    {
+      "thread_id": "01a199ed-fc1a-7820-8682-467c723503d7",
+      "title": "Refine Walk With Me visualiser",
+      "instruction_received": true,
+      "receipt_times": [
+        "2026-11-02T02:29:57.146Z"
+      ],
+      "reported_use": false
+    },
+    {
+      "thread_id": "01a19a0b-17bb-7820-a2a0-b8d8f6b3b751",
+      "title": "Render Ganesh short test",
+      "instruction_received": true,
+      "receipt_times": [
+        "2026-11-02T02:29:58.220Z"
+      ],
+      "reported_use": false
+    },
+    {
+      "thread_id": "01a19965-66ad-7c01-916c-a8429ce17b7a",
+      "title": "Add Julia fractals to FrameRudiments",
+      "instruction_received": true,
+      "receipt_times": [
+        "2026-11-02T02:29:17.988Z"
+      ],
+      "reported_use": false
+    },
+    {
+      "thread_id": "01a167e4-a90e-7193-b5a3-e9736b2d6e38",
+      "title": "Write Syn architecture overview",
+      "instruction_received": true,
+      "receipt_times": [
+        "2026-11-02T02:29:16.441Z"
+      ],
+      "reported_use": true
+    }
+  ],
+  "receipt_limit": "Receipt proves the rule reached each chat's context. Only the Syn chat also retained an explicit applied record during this audit; individual later search behaviour is not universally certified.",
+  "automations": {
+    "active_prompt_updates": 12,
+    "immediate_exact_readbacks": [
+      {
+        "id": "christmas-tat-final-render-monitor",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a167ba-d13e-7d40-b1ba-4bce8fdad4c8",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "daily-outreach-response-monitor",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a1514c-680c-7282-ae59-928efe75aad8",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "daily-overdue-task-unblocker",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a1514c-78c7-7a32-955e-21b498e5f7d8",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "daily-spotify-for-artists-release-report",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a1514d-68bb-75d1-bb4e-d874bf916e1b",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "danceflow-and-potbot-plugin-discovery-research",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a16768-2536-7bc1-84f0-fd9420b85c39",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "dancemoves-wordpress-review",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a118ef-cdfd-7533-a007-e9359ef383ff",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "hell-gondola-daily-pre-release",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": null,
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "monthly-publicity-audit-and-blog",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a15161-f29d-7863-b68c-ee5d62a643ec",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "verify-arcadians-blog-publication",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a15b59-16be-7662-97fd-203c1512f815",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "verify-danceflow-article-after-publication",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a1677d-6c8c-78e1-be73-b692a45ae964",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "weekly-future-release-marketing-calendar",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": null,
+        "exclusions_present": true,
+        "completion_rule_present": true
+      },
+      {
+        "id": "weekly-release-and-epk-sync",
+        "changed_fields": [
+          "prompt",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "preserved_controls": true,
+        "status": "ACTIVE",
+        "target_thread_id": "01a15162-3b18-7cb1-b72e-2a8d8d7f83aa",
+        "exclusions_present": true,
+        "completion_rule_present": true
+      }
+    ],
+    "paused_unchanged": 56,
+    "final_verification": {
+      "active": [
+        {
+          "id": "christmas-tat-final-render-monitor",
+          "name": "Christmas Tat direct-platform publishing monitor",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "daily-outreach-response-monitor",
+          "name": "Daily outreach response monitor",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "daily-overdue-task-unblocker",
+          "name": "Daily overdue task unblocker",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "daily-spotify-for-artists-release-report",
+          "name": "Music platform monitoring",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "rrule",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": false
+        },
+        {
+          "id": "danceflow-and-potbot-plugin-discovery-research",
+          "name": "DanceFlow marketing and agent discovery",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "dancemoves-wordpress-review",
+          "name": "DanceMoves WordPress review",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "hell-gondola-daily-pre-release",
+          "name": "Song marketing operations",
+          "kind": "cron",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "monthly-publicity-audit-and-blog",
+          "name": "Monthly publicity audit and blog",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "verify-arcadians-blog-publication",
+          "name": "Verify Arcadians blog publication",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "verify-danceflow-article-after-publication",
+          "name": "Verify DanceFlow article after publication",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "weekly-future-release-marketing-calendar",
+          "name": "Weekly future-release marketing calendar",
+          "kind": "cron",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        },
+        {
+          "id": "weekly-release-and-epk-sync",
+          "name": "Weekly release, EPK and MP3 metadata sync",
+          "kind": "heartbeat",
+          "status": "ACTIVE",
+          "changed_fields": [
+            "prompt",
+            "updated_at"
+          ],
+          "prompt_exact": true,
+          "exclusion_rule_present": true,
+          "preserved_controls": true
+        }
+      ],
+      "paused": [
+        {
+          "id": "arcadians-launch-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "arcadians-year-one-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "blame-putin-release-and-follow-up-checks",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "bum-goblin-marketing-campaign",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "clay-4k60-reserved-space-restart",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-a-whole-new-christmas-campaign",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-amazon-music-for-artists-report",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-birth-stories-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-california-screamin-marketing-campaign",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-chips-and-ketchup-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-competency-and-work-venue-scan",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-contra-profile-monitoring",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-dying-for-a-diagnosis-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-excessive-stuffing-campaign",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-faded-dreams-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-free-danny-tommo-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-freelancer-profile-monitoring",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-fully-nocturnal-marketing-operator",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-light-will-win-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-made-from-the-clay-and-the-stars-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-meta-business-suite-report",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-moderate-or-good-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-november-christmas-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-out-of-tokens-marketing-campaign",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-paper-dreams-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-patriotic-revolution-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-presents-chocolate-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-santa-flies-tonight-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-signed-in-job-opportunity-search",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-silly-sausage-britain-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-singin-the-ai-blues-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-syn-research-and-moltbook-update",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-the-truth-is-a-virus-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-upwork-profile-and-contract-monitor",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-walk-with-me-marketing-operator",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-we-don-t-need-no-room-to-roll-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "daily-youtube-studio-performance-report",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "emerald-shooting-star-marketing-operator",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "etsy-competency-opportunity-monitor",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "fighting-entropy-marketing-drive",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "finish-clay-full-film-cross-platform-publication",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "gilt-trip-marketing-operator",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "headphones-on-daily-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "hell-gondola-year-one-marketing",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "hourly-dmitri-discussion-engagement",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "moltbook-daily-submolt-study",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "monitor-codex-stability-and-resources",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "monitor-google-search-console",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "monitor-light-will-win-4k-render",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "publish-approved-danceflow-ecosystem-page-batch",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "silly-sausage-hook-seven-day-review",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "verify-all-eighteen-danceflow-pages",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "weekly-cross-platform-release-presence-audit",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "weekly-synced-lyrics-timing-recovery",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "weekly-tiktok-traction-report",
+          "changed_fields": [],
+          "status": "PAUSED"
+        },
+        {
+          "id": "weekly-universal-credit-work-search-and-to-dos",
+          "changed_fields": [],
+          "status": "PAUSED"
+        }
+      ],
+      "counts": {
+        "active_verified": 11,
+        "paused_unchanged": 56,
+        "paused_total": 56
+      }
+    },
+    "concurrent_changes": [
+      {
+        "id": "daily-spotify-for-artists-release-report",
+        "name": "Music platform monitoring",
+        "kind": "heartbeat",
+        "status": "ACTIVE",
+        "changed_fields": [
+          "prompt",
+          "rrule",
+          "updated_at"
+        ],
+        "prompt_exact": true,
+        "exclusion_rule_present": true,
+        "preserved_controls": false
+      }
+    ],
+    "concurrent_change_note": "Music platform monitoring's cadence changed after this task's immediate readback, while its exclusion prompt remained exact. That independent later cadence is preserved; no rollback or schedule correction was attempted. Every update performed by this task independently passed the prompt/updated_at-only comparison."
+  },
+  "default_filters": [
+    {
+      "path": "Z:\\My Songs\\.rgignore",
+      "sha256": "814e7e179ecf13e6fead77d8934136649344db5a601dc4f03dda4ee6eb315237",
+      "readback_verified": true
+    },
+    {
+      "path": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\.rgignore",
+      "sha256": "814e7e179ecf13e6fead77d8934136649344db5a601dc4f03dda4ee6eb315237",
+      "readback_verified": true
+    }
+  ],
+  "filter_test": {
+    "fixture_only": true,
+    "parent_rgignore_inherited_inside_nested_git_boundary": true,
+    "sources_docs_tests_retained": true,
+    "temporary_venv_builds_excluded": true,
+    "positive_file_glob_did_not_reopen_excluded_directories": true,
+    "no_z_drive_scan": true
+  },
+  "interruption_controls": {
+    "chat_messages_sent": 0,
+    "threads_created_or_woken": 0,
+    "threads_interrupted": 0,
+    "processes_stopped": 0,
+    "restarts": 0,
+    "render_or_upload_state_mutations": 0,
+    "automation_run_requested": false
+  },
+  "private_coordination": "An owner-specific private record carries the result and limits; its existence is not counted as a chat receipt.",
+  "limits": [
+    "Already-running native scans do not retroactively reload ignore rules; this task did not stop or restart productive processes.",
+    "The filters apply to new ordinary ripgrep discovery, including nested repositories. Explicit paths, ignore overrides and other tools remain governed by the shared scope/lifecycle rule.",
+    "Updated automation prompts govern future scheduler inputs. No new automation run was forced to demonstrate the change."
+  ],
+  "documentation_media": {
+    "included": "Fresh generated coverage diagram from verified receipt counts",
+    "omitted": "Screenshots and video add no proof to API/configuration readbacks and would expose unrelated active work. No interface behaviour was changed or recorded."
+  },
+  "blogworthiness": {
+    "task": "Propagate intelligent search exclusions to running chats and active automations without interruptions",
+    "decision": "FAIL",
+    "reason": "Administrative propagation of the already-recorded orphan-search diagnosis; no distinct reader-interest development beyond that passing technical story.",
+    "evidence": [
+      "running-chat-instruction-receipts.json",
+      "automation-final-verification.json",
+      "filter-inheritance-verification.json",
+      "../orphan-scan-cause-20261102-01a19a0f/cause-report.html"
+    ],
+    "related_story": "The earlier technical diagnosis remains PASS with its existing named article continuation and media blocker; this configuration follow-through is not a new article."
+  }
+}

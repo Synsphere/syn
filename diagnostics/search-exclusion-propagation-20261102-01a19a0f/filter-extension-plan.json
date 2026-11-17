@@ -1,0 +1,18 @@
+{
+  "changes": [
+    {
+      "path": "Z:\\My Songs\\.rgignore",
+      "before_sha256": "04d079f2f2e72b0b9bfc63f2f95996e8f5c505569cee3c6bee92ae537bb41e33",
+      "after_sha256": "814e7e179ecf13e6fead77d8934136649344db5a601dc4f03dda4ee6eb315237",
+      "backup": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\search-exclusion-propagation-20261102-01a19a0f\\rgignore-before-0.bin",
+      "candidate": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\search-exclusion-propagation-20261102-01a19a0f\\rgignore-candidate-0.bin"
+    },
+    {
+      "path": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\.rgignore",
+      "before_sha256": "04d079f2f2e72b0b9bfc63f2f95996e8f5c505569cee3c6bee92ae537bb41e33",
+      "after_sha256": "814e7e179ecf13e6fead77d8934136649344db5a601dc4f03dda4ee6eb315237",
+      "backup": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\search-exclusion-propagation-20261102-01a19a0f\\rgignore-before-1.bin",
+      "candidate": "C:\\Users\\Kieran\\OneDrive\\Documents\\Syn\\diagnostics\\search-exclusion-propagation-20261102-01a19a0f\\rgignore-candidate-1.bin"
+    }
+  ]
+}

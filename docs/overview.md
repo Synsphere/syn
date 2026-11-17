@@ -6,6 +6,11 @@ The guiding commitment is that positive human experience matters more than money
 
 This overview brings together the project's recorded intentions and the architecture present in the repository on 23 October 2026. Philosophical aims describe the direction of the project. Implemented foundations describe the code and contracts inspected for this overview; they do not establish a production deployment or a completed social network.
 
+<<<<<<< HEAD
+=======
+**1 November 2026 reconciliation.** The [current architecture and decision index](architecture.md) adds the later adopted requirements: consensus policy in each canonical Type, different same-custody and independent-custody agreement profiles, node references by their own public-key hashes, private Syn-only Agent communication, and real operator/Agent nodes installed from official Syn releases. The conceptual diagrams below describe the earlier application foundation; they do not replace that required deployment topology.
+
+>>>>>>> 64cdf17aca6b0afe4174eb0c78a6fab59fa55f3d
 **Understanding is something people build together.** Syn's starting point is that information acquires meaning through context: what it concerns, where it came from, how it was interpreted, who relies on it and what follows from accepting it. A system organised around those relationships can support more deliberate participation in knowledge and community life.
 
 That gives Syn several connected goals. It aims to make shared information intelligible and revisable, preserve the origins of observations and conclusions, accommodate human and machine contributions, and give communities greater control over the systems through which they understand one another. Decentralisation serves that human purpose: participants should have meaningful agency over their knowledge, relationships and tools.
@@ -51,7 +56,11 @@ Syn's vocabulary gives distinct roles to the objects in that graph:
 
 These names express a broader ambition than a catalogue of content. Syn has places for inquiry, evaluation, feeling, computation and moral concern as well as information about the world.
 
+<<<<<<< HEAD
 The terminology has evolved. Earlier project notes connect Enigmas with trust, Pondles with reasoning, Snugs with emotion and Om with morality. The table follows the current ontology's definitions. Those wider associations remain useful philosophical context; their presence in the model does not establish finished trust, reasoning or moral-accounting mechanisms.
+=======
+There is an unresolved distinction between intended semantics and implementation-era ancestry. The recorded owner meanings connect Enigmas with trust, Pondles with reasoning, Snugs with emotion and Om with morality. The table describes the native ontology's narrower current mappings; their presence does not prove those wider meanings were superseded. In particular, a question is not automatically a unit of trust. The [core semantic contract](core-model.md#vocabulary) preserves this divergence for explicit reconciliation before changing stored ancestry or classifying existing objects differently.
+>>>>>>> 64cdf17aca6b0afe4174eb0c78a6fab59fa55f3d
 
 **The map of meaning can overlap.** Syn's ontology is polyhierarchical: a category may inherit from several broader categories. A person, for example, is represented in the current ontology as both a human organism and an agent. Each perspective contributes useful context.
 
@@ -123,7 +132,11 @@ flowchart TB
 | **libp2p** | Provides peer identity, connectivity and discovery foundations for decentralised networking. |
 | **syn-client** | Gives other applications a lightweight interface to durable messages and receipt verification. |
 
+<<<<<<< HEAD
 At this stage, the architecture is a modular application with a shared database. The boundaries separate responsibilities within the system; they do not imply a fleet of independently deployed services.
+=======
+The implemented application foundation is modular and database-backed. The required deployment architecture gives the operator and each unique Agent a separate real Syn instance with independent state and lifecycle. Potbot installs and supervises official Syn releases; it must not maintain a duplicate Syn runtime. Those installation and multi-node acceptance gates remain outstanding, as set out in the [release and deployment contract](development/release-and-node-deployment.md).
+>>>>>>> 64cdf17aca6b0afe4174eb0c78a6fab59fa55f3d
 
 **Durable communication adds a practical coordination surface.** Syn now supplies workspace-scoped messages that applications such as Potbot can append and replay. Receipts are linked by hashes, allowing clients to check continuity and compare history with an independently retained reference point.
 
@@ -131,7 +144,11 @@ This supports accountable coordination: a record of what was submitted and persi
 
 This service illustrates a useful architectural approach: build a bounded capability with explicit guarantees, then compose it with other systems. Potbot can retain its own task, budget and execution responsibilities while using Syn for durable communication.
 
+<<<<<<< HEAD
 **Decentralisation remains a direction with work ahead.** The implemented peer layer gives Syn nodes a way to participate in networking and discover peers. Shared knowledge between independently operated nodes will also require rules for exchange, identity, conflicting updates, permissions and interpretation. The current libp2p integration does not demonstrate those wider capabilities.
+=======
+**Decentralisation remains a direction with work ahead.** The implemented peer layer gives Syn nodes a way to participate in networking and discover peers. The later Type-policy, signed-governance and bounded DAG-replay foundations add explicit rules and verification for identity, policy adoption and authorized successors. They do not activate a live agreement engine or the required encrypted private Agent mesh. The [current architecture](architecture.md) records both the implemented scope and the remaining runtime gates.
+>>>>>>> 64cdf17aca6b0afe4174eb0c78a6fab59fa55f3d
 
 The philosophical goal is broader than distributing storage. Syn's recorded origins describe local, tended and plural communities. A decentralised version of that idea would let communities maintain meaningful control while still making selected information and relationships understandable across boundaries. Exactly how such communities govern their own vocabularies, resolve disputes and protect participants remains open design work.
 

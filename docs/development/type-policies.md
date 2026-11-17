@@ -7,6 +7,11 @@ policy resolution. Durable explicit local genesis is described in
 adds locally authorized successors and [bounded federated governance replay](dag-finality.md).
 Operational consensus engines and mesh admission remain pending.
 
+The [current architecture](../architecture.md) is the owner-directed design
+authority; the older CometBFT-first research preference is superseded. The
+[release/deployment contract](release-and-node-deployment.md) requires upstream
+Syn packages and separate real operator/Agent instances.
+
 ![Draft Type export is pinned as a release before policy resolution returns a context](../media/syn-policy-resolution.svg)
 
 *Generated contract illustration of this foundation. Returning a PolicyContext
@@ -73,10 +78,15 @@ subject. Resolved contexts are indexed once; resolution does not rehash the
 entire release for every operation.
 
 Both operator-log and federated DAG/Hashgraph schemas are recognised. No Raft
-or Hashgraph adapter is activated by this foundation. Full roster credential/
-weight/independence checks, live challenges, governed policy transitions,
-Syn runtime startup binding and private peer transport remain separate
-gates. Caller-supplied pins are trust configuration, not governance proof.
+or Hashgraph adapter is activated by this foundation. The later
+[signed-governance layer](signed-governance.md) verifies credential assignments,
+roster constraints, old-policy consent and old Type-governor approval; bounded
+federated replacement replay is described in [DAG finality](dag-finality.md).
+The resolver itself does not establish that evidence. Live challenges,
+real-world operator independence, runtime startup binding and private peer
+transport remain separate gates. Caller-supplied pins are trust configuration,
+not governance proof. Missing policies hold shared admission, and ancestry does
+not silently select or weaken a child's consensus policy.
 
 The durable genesis store adds cross-catalog namespace ownership, immutable
 domain anchors and authenticated exact reads. It accepts only initial local
