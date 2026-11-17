@@ -99,6 +99,28 @@ def ensure_database_config(path):
     print(f"Created private database configuration: {path}", flush=True)
 
 
+# Use ONLY native Linux locations: WSL may import the Windows PATH, where a
+# Windows uv.exe or script named `uv` can be found but cannot run under sh.
+# Never install binaries automatically or fall back to Windows custody.
+_WSL_UV_COMMAND = (
+    'set -eu\n'
+    'cd -- "$1"\n'
+    'shift\n'
+    'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/snap/bin"\n'
+    'export UV_PROJECT_ENVIRONMENT=.venv-wsl\n'
+    'uv_path="$(command -v uv || true)"\n'
+    'if [ -z "$uv_path" ] || [ ! -x "$uv_path" ]; then\n'
+    '  printf "%s\\n" "No executable Linux uv found in WSL. Install uv inside WSL " "(not Windows), then retry syn-server." >&2\n'
+    '  exit 127\n'
+    'fi\n'
+    'if ! "$uv_path" --version >/dev/null 2>&1; then\n'
+    '  printf "%s\\n" "WSL uv failed its executable check at: $uv_path" "Install or repair the Linux uv binary inside WSL." >&2\n'
+    '  exit 126\n'
+    'fi\n'
+    'exec "$uv_path" run "$@"\n'
+)
+
+
 def handoff_windows(options):
     """Run native operator custody inside installed WSL; never install software."""
     if platform.system() != "Windows" or options.api_only:
@@ -121,7 +143,7 @@ def handoff_windows(options):
     print("Starting native Syn operator setup inside WSL. WSL must have uv, PostgreSQL access and an unlocked Secret Service.", flush=True)
     # Positional shell arguments are quoted, never interpolated. A separate venv
     # prevents Linux uv from replacing the Windows worktree's .venv.
-    command = 'cd -- "$1" && shift && export PATH="$HOME/.local/bin:$PATH" && export UV_PROJECT_ENVIRONMENT=.venv-wsl && exec uv run "$@"'
+    command = _WSL_UV_COMMAND
     result = subprocess.run([executable, "--exec", "sh", "-c", command, "syn-wsl", cwd, *args], check=False)
     if result.returncode:
         raise RuntimeError(f"Native WSL syn-server exited with status {result.returncode}; no fallback identity was created")
