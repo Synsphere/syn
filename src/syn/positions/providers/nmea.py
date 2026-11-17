@@ -72,7 +72,8 @@ class NmeaParser:
             if not re.fullmatch(r"\d{6}", datecode):
                 raise ValueError("Invalid RMC date")
             # Resolve century nearest receiver date, including recordings after 2079.
-            yy = int(datecode[4:]); century = received.year // 100 * 100
+            yy = int(datecode[4:])
+            century = received.year // 100 * 100
             years = (century+yy-100, century+yy, century+yy+100)
             year = min(years, key=lambda y: abs(y-received.year))
             day = datetime(year, int(datecode[2:4]), int(datecode[:2]), tzinfo=UTC)
@@ -133,7 +134,8 @@ class NmeaParser:
             if valid:
                 latitude, longitude = coordinate(p[2], p[3], True), coordinate(p[4], p[5], False)
                 if p[9] and p[10] == "M":
-                    altitude = optional_number(p[9]); datum = "mean-sea-level"
+                    altitude = optional_number(p[9])
+                    datum = "mean-sea-level"
                 if dop is not None and dop > 0:
                     error, method = dop*self.uereMeters, "hdop-times-configured-uere"
                 if p[11] and p[12] == "M":

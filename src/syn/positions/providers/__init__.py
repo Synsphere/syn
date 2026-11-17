@@ -1,5 +1,5 @@
 """Independent probes with explicit coverage/permission diagnostics."""
-from .base import Device, Probe
+from .base import Device as Device, Probe
 
 
 def discover(config):

@@ -361,3 +361,12 @@ that every host/device combination has been tested.
 - Windows Geolocator: https://learn.microsoft.com/en-us/uwp/api/windows.devices.geolocation.geolocator
 - Apple Core Location: https://developer.apple.com/documentation/corelocation
 - Bluetooth SIG Location and Navigation / GATT specifications: https://www.bluetooth.com/specifications/specs/
+
+
+### Legacy native socket compatibility
+
+Native Agent/operator socket services retain their original availability when
+no position database has been configured. Position Embers, GPS events and scheduled
+polling require `SYN_POSITION_CONFIG`, `SYN_DATABASE_URL` or an adjacent
+`position.toml`. Unconfigured legacy native nodes are not fully position-aware.
+An invalid explicit positioning database continues to fail readiness.

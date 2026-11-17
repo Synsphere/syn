@@ -1,6 +1,5 @@
 from dataclasses import replace
 from datetime import timedelta
-import json
 import pytest
 from sqlalchemy import select, func
 from syn.positions.types import geographic, Reading, Space, Estimate
@@ -10,7 +9,8 @@ from syn.positions.store import workspace_for
 NODE="syn://thing/test-node"
 
 
-def prior(now):return geographic(51,-.1,None,100000,now,"timezone")
+def prior(now):
+    return geographic(51,-.1,None,100000,now,"timezone")
 def reading(now,lat=51.5,error=3):
     return Reading("gps",now,now,geographic(lat,-.1,20,error,now,"gps",altitudeDatum="ellipsoid"),"3d", "Test receiver", "123",8)
 
@@ -70,7 +70,8 @@ def test_arbitrary_space_independent(state,now):
     store.put(NODE,e,now=now)
     assert len(store.current(NODE)) == 2
     assert store.verify(NODE)["spaces"] == 2
-    with pytest.raises(ValueError):store.register_space(replace(frame,units=("foot",)*3))
+    with pytest.raises(ValueError):
+        store.register_space(replace(frame,units=("foot",)*3))
 
 
 def test_ledger_failure_rolls_back_everything(state,now,monkeypatch):
@@ -83,10 +84,12 @@ def test_ledger_failure_rolls_back_everything(state,now,monkeypatch):
     def fail(session,workspace,body):
         nonlocal calls
         calls += 1
-        if calls == 3:raise RuntimeError("injected canonical-ledger failure")
+        if calls == 3:
+            raise RuntimeError("injected canonical-ledger failure")
         return real(session,workspace,body)
     monkeypatch.setattr(store.ledger,"appendInTransaction",fail)
-    with pytest.raises(RuntimeError):store.observe(NODE,reading(now))
+    with pytest.raises(RuntimeError):
+        store.observe(NODE,reading(now))
     assert store.current(NODE) == before
     assert store.ledger.head(workspace_for(NODE)) == head
     with sessions() as session:
@@ -100,7 +103,8 @@ def test_tampering_detected_by_verifier(state,now):
     row=store.current(NODE)[0]
     with sessions.begin() as session:
         session.execute(db.primitive["embers"].update().where(db.primitive["embers"].c.id == row["emberRef"]).values(name="tampered"))
-    with pytest.raises(ValueError,match="altered"):store.verify(NODE)
+    with pytest.raises(ValueError,match="altered"):
+        store.verify(NODE)
 
 
 def test_canonical_pointer_and_head_tampering_detected(state,now):
@@ -108,13 +112,15 @@ def test_canonical_pointer_and_head_tampering_detected(state,now):
     store.bootstrap(NODE,prior(now))
     with sessions.begin() as session:
         session.execute(db.positions.update().where(db.positions.c.nodeRef == NODE).values(revision=44))
-    with pytest.raises(ValueError,match="pointer"):store.verify(NODE)
+    with pytest.raises(ValueError,match="pointer"):
+        store.verify(NODE)
 
 
 def test_no_cross_node_or_space_collisions(state,now):
     store,sessions,_=state
     other="syn://thing/other-node"
-    for node in (NODE,other):store.bootstrap(node,prior(now))
+    for node in (NODE,other):
+        store.bootstrap(node,prior(now))
     store.observe(NODE,reading(now))
     assert store.current(other)[0]["revision"] == 1
     assert store.verify(other)["sequence"] == 2
@@ -125,7 +131,8 @@ def test_space_cannot_take_over_existing_thing(state,now):
     with sessions.begin() as session:
         session.execute(db.primitive["things"].insert().values(id="syn://thing/existing-object",typeRef="syn://type/device",name="Unrelated",knowledge={}))
     frame=Space("syn://thing/existing-object","syn://type/new-space-position",("x",),("metre",),"metre")
-    with pytest.raises(ValueError,match="unused Thing"):store.register_space(frame)
+    with pytest.raises(ValueError,match="unused Thing"):
+        store.register_space(frame)
 
 
 def test_event_timestamp_tampering_detected(state,now):
@@ -134,4 +141,5 @@ def test_event_timestamp_tampering_detected(state,now):
     event=store.observe(NODE,reading(now))["eventRef"]
     with sessions.begin() as session:
         session.execute(db.primitive["events"].update().where(db.primitive["events"].c.id==event).values(occurredAt=now+timedelta(seconds=1)))
-    with pytest.raises(ValueError,match="timestamp"):store.verify(NODE)
+    with pytest.raises(ValueError,match="timestamp"):
+        store.verify(NODE)

@@ -1,4 +1,3 @@
-import math
 import pytest
 from syn.positions.bootstrap import longitude_span, half_width_meters, bootstrap, catalogue_entry
 from syn.positions.config import PositionConfig
@@ -27,7 +26,8 @@ def test_offline_capital_and_real_geometry(monkeypatch,now):
                        "latitude":48.86,"longitude":2.35},
                     2:{"name":"Lyon","countrycode":"FR","timezone":"Europe/Paris","population":500_000,
                        "latitude":45.76,"longitude":4.83}}
-        def get_countries(self):return {"FR":{"capital":"Paris"}}
+        def get_countries(self):
+            return {"FR":{"capital":"Paris"}}
     entry = catalogue_entry("Europe/Paris", TF(), GC())
     assert entry["city"] == "Paris"
     assert entry["selection"] == "national-capital"

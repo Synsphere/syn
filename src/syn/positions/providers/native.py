@@ -165,10 +165,10 @@ def probe(config):
     if sys.platform.startswith("linux"):
         return run(modem_probe(config), config.probeSeconds+1)
     if sys.platform == "win32":
-        from winrt.windows.devices.geolocation import Geolocator
+        __import__("winrt.windows.devices.geolocation", fromlist=["Geolocator"])
         return Probe("windows", "available", [Device("windows", "local-geolocator")]), ()
     if sys.platform == "darwin":
-        import CoreLocation
+        __import__("CoreLocation")
         return Probe("core-location", "available", [Device("core-location", "local-core-location")]), ()
     return Probe("native", "unsupported-platform"), ()
 

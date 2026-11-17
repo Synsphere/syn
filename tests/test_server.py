@@ -68,9 +68,11 @@ def test_server_builds_application_and_disposes_engine() -> None:
         patch("syn.server.createEngine", return_value=engine) as createEngine,
         patch("syn.server.createSessionFactory", return_value=sessions) as createSessions,
         patch("syn.server.defaultJobHandlers", return_value=handlers) as buildHandlers,
+        patch("syn.positions.runtime.PositionRuntime") as positionRuntimeCls,
         patch("syn.server.createApp", return_value=app) as createApp,
         patch("syn.server.uvicorn.run") as runServer,
     ):
+        positionRuntimeCls.return_value.handlers.return_value = {"position-discover": Mock()}
         main(
             [
                 "--config",
@@ -92,7 +94,13 @@ def test_server_builds_application_and_disposes_engine() -> None:
     )
     createSessions.assert_called_once_with(engine)
     buildHandlers.assert_called_once_with(config.database.url)
-    createApp.assert_called_once_with(sessions, handlers, config.p2p)
+    positionRuntimeCls.assert_called_once_with(sessions, config.database.url, config.position)
+    createApp.assert_called_once_with(
+        sessions,
+        {**handlers, **positionRuntimeCls.return_value.handlers.return_value},
+        config.p2p,
+        positionRuntime=positionRuntimeCls.return_value,
+    )
     runServer.assert_called_once_with(
         app,
         host="0.0.0.0",
@@ -111,10 +119,12 @@ def test_server_disposes_engine_when_uvicorn_fails() -> None:
         patch("syn.server.createEngine", return_value=engine),
         patch("syn.server.createSessionFactory"),
         patch("syn.server.defaultJobHandlers", return_value={}),
+        patch("syn.positions.runtime.PositionRuntime") as positionRuntimeCls,
         patch("syn.server.createApp", return_value=Mock()),
         patch("syn.server.uvicorn.run", side_effect=RuntimeError("server failed")),
         pytest.raises(RuntimeError, match="server failed"),
     ):
+        positionRuntimeCls.return_value.handlers.return_value = {}
         main([])
 
     engine.dispose.assert_called_once_with()

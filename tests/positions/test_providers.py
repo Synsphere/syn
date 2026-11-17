@@ -30,12 +30,17 @@ def test_nmea_nofix_and_simulation_rejected(now,quality):
 
 
 def test_nmea_corruption_and_boundaries(now):
-    with pytest.raises(ValueError): sentence("$GPRMC,garbage*00")
-    with pytest.raises(ValueError): coordinate("5160.000","N",True)
-    with pytest.raises(ValueError): coordinate("18100.00","E",False)
+    with pytest.raises(ValueError):
+        sentence("$GPRMC,garbage*00")
+    with pytest.raises(ValueError):
+        coordinate("5160.000","N",True)
+    with pytest.raises(ValueError):
+        coordinate("18100.00","E",False)
     p=NmeaParser("test")
-    with pytest.raises(ValueError):p.feed(nmea("GPGGA,1"),receivedAt=now)
-    with pytest.raises(ValueError):p.epoch("250000",now)
+    with pytest.raises(ValueError):
+        p.feed(nmea("GPGGA,1"),receivedAt=now)
+    with pytest.raises(ValueError):
+        p.epoch("250000",now)
 
 
 def test_nmea_midnight(now):
@@ -65,7 +70,8 @@ def test_gpsd_full_and_invalid(now):
     assert parse_tpv({"mode":1},device,receivedAt=now).estimate is None
     assert parse_tpv({"mode":3,"lat":51,"lon":0},device,receivedAt=now).estimate is None
     value["lat"]=float("nan")
-    with pytest.raises(ValueError):parse_tpv(value,device,receivedAt=now)
+    with pytest.raises(ValueError):
+        parse_tpv(value,device,receivedAt=now)
 
 
 def test_ble_length_status_and_scaling(now):
@@ -76,13 +82,16 @@ def test_ble_length_status_and_scaling(now):
     assert r.estimate.coordinates["latitude"] == 51.5
     assert r.estimate.coordinates["longitude"] == -.1
     assert decode(struct.pack("<Hii",4 | (3<<7),515000000,-1000000),d,receivedAt=now).estimate is None
-    with pytest.raises(ValueError):decode(raw[:-1],d,receivedAt=now)
-    with pytest.raises(ValueError):decode(raw+b"x",d,receivedAt=now)
+    with pytest.raises(ValueError):
+        decode(raw[:-1],d,receivedAt=now)
+    with pytest.raises(ValueError):
+        decode(raw+b"x",d,receivedAt=now)
 
 
 @pytest.mark.parametrize("address",["example.com:2947","user:password@127.0.0.1:2947","127.0.0.1:2947/path","127.0.0.1"])
 def test_endpoint_validation(address):
-    with pytest.raises(ValueError):endpoint(address)
+    with pytest.raises(ValueError):
+        endpoint(address)
 
 
 def test_numeric_ipv6():

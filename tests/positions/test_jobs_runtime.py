@@ -11,7 +11,7 @@ from syn.positions import jobs, schema
 from syn.positions.config import PositionConfig
 from syn.positions.providers.base import Device
 from syn.positions.types import geographic, Reading
-from syn.recurrence import metadata, RECURRENCE_TABLES, schedules
+from syn.recurrence import metadata, schedules
 
 NODE = "syn://thing/runtime-test"
 
@@ -72,10 +72,12 @@ def test_inventory_error_keeps_retry_and_successful_unplug_disables(handlers,mon
     jobs.run_discovery("test-database-not-a-credential",config.to_dict(),NODE,schedulerKey="a")
     monkeypatch.setattr(jobs,"discover",lambda config:([],[{"provider":"serial","status":"unavailable"}]))
     jobs.run_discovery("test-database-not-a-credential",config.to_dict(),NODE,schedulerKey="a")
-    with sessions() as s:assert s.execute(select(schedules.c.enabled)).scalar_one() is True
+    with sessions() as s:
+        assert s.execute(select(schedules.c.enabled)).scalar_one() is True
     monkeypatch.setattr(jobs,"discover",lambda config:([],[{"provider":"serial","status":"no-devices"}]))
     jobs.run_discovery("test-database-not-a-credential",config.to_dict(),NODE,schedulerKey="a")
-    with sessions() as s:assert s.execute(select(schedules.c.enabled)).scalar_one() is False
+    with sessions() as s:
+        assert s.execute(select(schedules.c.enabled)).scalar_one() is False
 
 
 def test_runtime_bootstraps_before_scheduling_and_restart_preserves_position(state,now,monkeypatch,tmp_path):
@@ -100,4 +102,18 @@ def test_installation_id_is_stable_and_refuses_corruption(tmp_path):
     first=installation_id(tmp_path)
     assert installation_id(tmp_path)==first
     (tmp_path/"position-node-id").write_text("corrupt")
-    with pytest.raises(ValueError):installation_id(tmp_path)
+    with pytest.raises(ValueError):
+        installation_id(tmp_path)
+
+
+def test_native_position_activation_is_explicit(tmp_path, monkeypatch):
+    from syn.positions.runtime import native_position_configured
+
+    monkeypatch.delenv("SYN_POSITION_CONFIG", raising=False)
+    monkeypatch.delenv("SYN_DATABASE_URL", raising=False)
+    assert not native_position_configured(tmp_path)
+    (tmp_path / "position.toml").write_text("# explicit configuration\n")
+    assert native_position_configured(tmp_path)
+    (tmp_path / "position.toml").unlink()
+    monkeypatch.setenv("SYN_DATABASE_URL", "postgresql+psycopg://localhost/syn")
+    assert native_position_configured(tmp_path)

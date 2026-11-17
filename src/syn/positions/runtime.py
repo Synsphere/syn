@@ -98,6 +98,19 @@ class PositionRuntime:
                         {"schedulerKey": scheduler.schedulerKey}, self.config.rescanSeconds)
 
 
+def native_position_configured(directory):
+    """Only enable PostgreSQL-backed positioning for explicitly configured nodes.
+
+    Legacy native socket profiles must retain independent startup and socket
+    semantics. Invalid explicit positioning configuration still fails readiness.
+    """
+    return bool(
+        os.environ.get("SYN_POSITION_CONFIG")
+        or os.environ.get("SYN_DATABASE_URL")
+        or (Path(directory) / "position.toml").is_file()
+    )
+
+
 class NativePositionRuntime:
     def __init__(self, server):
         from syn.config import DatabaseConfig, SynConfig, loadConfig

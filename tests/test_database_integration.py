@@ -932,7 +932,11 @@ def test_direct_registry_delete_is_rejected(db: Connection) -> None:
 def test_truncate_is_rejected(db: Connection, table: str) -> None:
     quoted = f'"{table}"' if any(character.isupper() for character in table) else table
     error = expectDatabaseError(db, lambda: db.execute(text(f"TRUNCATE TABLE {quoted}")))
-    assert "TRUNCATE is disabled" in str(error)
+    # New position foreign keys may reject TRUNCATE before the Syn trigger.
+    assert (
+        "TRUNCATE is disabled" in str(error)
+        or "cannot truncate a table referenced in a foreign key constraint" in str(error)
+    )
 
 
 def test_deleting_referenced_local_object_is_rejected(db: Connection) -> None:

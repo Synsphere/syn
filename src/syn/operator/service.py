@@ -166,9 +166,10 @@ class OperatorServer:
             previous = os.umask(0o077)
             position_runtime = None
             try:
-                from syn.positions.runtime import NativePositionRuntime
-                position_runtime = NativePositionRuntime(self)
-                position_runtime.start()
+                from syn.positions.runtime import NativePositionRuntime, native_position_configured
+                if native_position_configured(self.directory):
+                    position_runtime = NativePositionRuntime(self)
+                    position_runtime.start()
                 listener.bind(str(self.path))
                 os.chmod(self.path, 0o600)
                 entry = self.path.lstat()
@@ -181,7 +182,8 @@ class OperatorServer:
                     if time.monotonic() - last_health > 2:
                         # A missing/locked key, altered config or state fences readiness
                         # and terminates this process; supervisors never regenerate it.
-                        position_runtime.check()
+                        if position_runtime is not None:
+                            position_runtime.check()
                         self.status(self.health_request())
                         last_health = time.monotonic()
                     try:
