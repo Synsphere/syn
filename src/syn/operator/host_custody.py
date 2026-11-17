@@ -35,7 +35,7 @@ def request(body):
         result = subprocess.run(
             [powershell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
              "-File", script, "-Pipe", pipe],
-            input=raw+"\n", capture_output=True, text=True, timeout=300 if body.get("op") in ("create", "group_key") else 30,
+            input=raw+"\n", capture_output=True, text=True, timeout=300 if body.get("op") in ("create", "group_key", "dag_anchor") else 30,
             check=False)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise SynProtocolError("Windows host custody broker is unavailable") from error

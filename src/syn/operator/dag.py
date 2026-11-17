@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from sqlalchemy import BigInteger, Column, MetaData, String, Table, Text, UniqueConstraint, select, text
+from sqlalchemy import BigInteger, Column, MetaData, String, Table, Text, UniqueConstraint, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -132,7 +132,7 @@ def _anchor_adapter():
     return dag_anchor
 
 
-def sync(sessions, server, *, schedulerKey=None):
+def _sync_owned(sessions, server, *, schedulerKey=None):
     """Idempotently reconcile and attest one Operator DAG from private journals.
 
     The DB transaction either commits every added leaf and its new signed
@@ -153,9 +153,6 @@ def sync(sessions, server, *, schedulerKey=None):
     with sessions.begin() as session:
         dialect = session.get_bind().dialect.name
         insert = pg_insert if dialect == "postgresql" else sqlite_insert
-        if dialect == "postgresql":
-            session.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key,0))"),
-                            {"key": "syn.operator.dag:" + identity})
         session.execute(insert(checkpoints).values(
             operatorHash=identity, sequence=0, root=merkle_root([]), signature="0" * 128,
             publicKey=public.hex(), networkId=network,
@@ -243,9 +240,24 @@ def sync(sessions, server, *, schedulerKey=None):
     # PostgreSQL has committed before the host anchor is advanced. A crash in
     # this window is safely recoverable by replaying existing signed checkpoints.
     # A host failure is surfaced to the existing startup readiness fence.
+    if to_anchor:
+        from .dag_proofs import consistency
+    previous_anchor = pinned
     for checkpoint in to_anchor:
-        adapter.advance(server, checkpoint)
+        proof = [] if previous_anchor is None else consistency(
+            graph[:checkpoint["body"]["sequence"]], previous_anchor["body"]["sequence"])
+        adapter.advance(server, checkpoint, proof=proof)
+        previous_anchor = checkpoint
     return result
+
+
+
+def sync(sessions, server, *, schedulerKey=None):
+    # Session-scoped lock spans DB commit and the separate host-vault write.
+    # Every entry point uses this same key, including startup and scheduler jobs.
+    from syn.witnessing.locking import ownership
+    with ownership(sessions, "syn.operator.dag:" + server.expected_hash):
+        return _sync_owned(sessions, server, schedulerKey=schedulerKey)
 
 
 def run_sync(databaseUrl, configPath, *, schedulerKey=None):

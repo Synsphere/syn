@@ -71,6 +71,7 @@ class WindowsVault:
         self._persist()
 
     def identity(self, ref):
+        self._require_healthy()
         value = self.data["identities"].get(ref)
         if value is None:
             raise ValueError("Host Operator identity does not exist; explicit recovery is required")
@@ -80,12 +81,25 @@ class WindowsVault:
             raise ValueError("Host identity does not match sealed manifest")
         return entropy, current
 
+    def _require_healthy(self):
+        if getattr(self, "_write_failed", False):
+            raise OSError("Host vault write failed; restart the broker before further use")
+
     def get_slot(self, service, slot):
+        self._require_healthy()
         return self.data["slots"].get(service + "/" + slot)
 
     def set_slot(self, service, slot, value):
-        self.data["slots"][service + "/" + slot] = value
-        self._persist()
+        self._require_healthy()
+        previous = self.data
+        self.data = {**previous, "slots": {**previous["slots"], service + "/" + slot: value}}
+        try:
+            self._persist()
+        except BaseException:
+            # Never let a failed DPAPI/disk write appear acknowledged on retry.
+            self.data = previous
+            self._write_failed = True
+            raise
 
     def _group_label(self, ref, network, group, epoch):
         return canonical([ref, network, group, epoch]).decode("ascii")

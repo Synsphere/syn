@@ -55,6 +55,7 @@ def createApp(
     *, communicationTokens: Mapping[str, str] | None = None,
     positionRuntime=None,
     operatorRuntime=None,
+    witnessConfig=None,
 ) -> FastAPI:
     from .positions.types import digest
     scheduler = ProcessScheduler(sessions, handlers,
@@ -75,6 +76,9 @@ def createApp(
                         raise RuntimeError("Node scheduler lost readiness") from scheduler.fault
                     if operatorRuntime is not None:
                         operatorRuntime.check()
+                        if "operator-dag-sync" in handlers:
+                            from .witnessing.runtime import check_local_jobs
+                            await run_in_threadpool(check_local_jobs, sessions, scheduler.schedulerKey)
                 except Exception as error:
                     app.state.awarenessFault = error
                     logging.getLogger("uvicorn.error").error("Syn node lost readiness; API is fenced")
@@ -87,17 +91,20 @@ def createApp(
                 if positionRuntime is not None:
                     positionRuntime.prepare(manager)
                 if operatorRuntime is not None and "operator-dag-sync" in handlers:
+                    handlers["operator-dag-sync"](schedulerKey=manager.schedulerKey)
                     manager.every("operator-dag-" + operatorRuntime.server.expected_hash,
                                   "operator-dag-sync", {"schedulerKey": manager.schedulerKey}, 120)
+                if operatorRuntime is not None and positionRuntime is not None and witnessConfig is not None:
+                    from .witnessing.runtime import prepare as prepare_witnessing
+                    prepare_witnessing(sessions, operatorRuntime.server, positionRuntime.nodeRef,
+                                      witnessConfig, manager)
 
-            # Acquire scheduler ownership before resetting clock session or records.
-            if positionRuntime is not None:
-                await scheduler.start(prepare=prepare)
+            # Acquire native authority first; reconcile DAG once inside scheduler
+            # preparation, before its pump can materialize a duplicate sync job.
             if operatorRuntime is not None:
                 await run_in_threadpool(operatorRuntime.start)
-                if "operator-dag-sync" in handlers:
-                    # Attest existing history before advertising API/P2P readiness.
-                    await run_in_threadpool(handlers["operator-dag-sync"], schedulerKey=scheduler.schedulerKey)
+            if positionRuntime is not None:
+                await scheduler.start(prepare=prepare)
             await p2pNode.start()
             watchdog = asyncio.create_task(supervise())
             yield
@@ -133,6 +140,10 @@ def createApp(
     if operatorRuntime is not None:
         from .operator.dag_http import build_router
         app.include_router(build_router(sessions, operatorRuntime.server.expected_hash))
+        if witnessConfig is not None and positionRuntime is not None:
+            from .witnessing.http import build_router as build_witness_router
+            app.include_router(build_witness_router(sessions, operatorRuntime.server.expected_hash,
+                               positionRuntime.nodeRef, witnessConfig))
 
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:

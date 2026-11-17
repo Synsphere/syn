@@ -8,12 +8,13 @@ from .dag_evidence import verify_checkpoint, checkpoint_digest
 from .host_custody import enabled, request
 
 
-def _call(server, action, checkpoint=None):
+def _call(server, action, checkpoint=None, proof=None):
     payload = {"op": "dag_anchor", "service": server.config["keyring_service"],
                "account": server.config["keyring_account"], "pin": server.expected_hash,
                "action": action}
     if checkpoint is not None:
         payload["checkpoint"] = checkpoint
+        payload["proof"] = proof or []
     return request(payload)
 
 
@@ -28,13 +29,13 @@ def read(server):
     return checkpoint
 
 
-def advance(server, checkpoint):
+def advance(server, checkpoint, proof=None):
     if not enabled():
         return None
     body = verify_checkpoint(checkpoint)
     if body["operator"] != server.expected_hash or body["network_id"] != server.config["network_id"]:
         raise ValueError("Cannot anchor foreign Operator DAG history")
-    result = _call(server, "advance", checkpoint)
+    result = _call(server, "advance", checkpoint, proof)
     if (not isinstance(result, dict) or result.get("sequence") != body["sequence"]
             or result.get("digest") != checkpoint_digest(checkpoint)):
         raise ValueError("Windows DAG anchor acknowledgement is invalid")

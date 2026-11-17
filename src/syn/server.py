@@ -91,7 +91,11 @@ def main(arguments: Sequence[str] | None = None) -> None:
         if operator is not None:
             from .operator.dag import run_sync as sync_operator_dag
             handlers["operator-dag-sync"] = partial(sync_operator_dag, config.database.url, operator_path)
+            from .witnessing.runtime import HANDLER, handler as witness_handler
+            handlers[HANDLER] = witness_handler(config.database.url, operator_path,
+                                               runtime.nodeRef, config.witnessing)
             app_args["operatorRuntime"] = operator
+            app_args["witnessConfig"] = config.witnessing
         app = createApp(sessions, handlers, config.p2p, **app_args)
         uvicorn.run(
             app,

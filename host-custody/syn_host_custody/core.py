@@ -63,7 +63,8 @@ def root_slot(slot):
     """Never expose any historical HD slots via a generic keystore RPC."""
     return (isinstance(slot, str) and
             (re.search(r"\.operator\.(?:" + "|".join(ROOT_SUFFIXES) + r")\.v1$", slot) is not None
-             or slot.endswith(DAG_ANCHOR_SUFFIX)))
+             or slot.endswith(DAG_ANCHOR_SUFFIX)
+             or re.search(r"\.operator\.witness-[0-9a-f]{64}\.v1$", slot) is not None))
 
 
 def check_account(service, account):
@@ -158,7 +159,8 @@ def verified_dag_checkpoint(packet, expected_pin):
     if not isinstance(body, dict) or set(body) != {
             "profile", "operator", "network_id", "sequence", "root", "previous_checkpoint"}:
         raise ValueError("Invalid host anchor checkpoint body")
-    hex64 = lambda v: isinstance(v, str) and re.fullmatch(r"[0-9a-f]{64}", v) is not None
+    def hex64(v):
+        return isinstance(v, str) and re.fullmatch(r"[0-9a-f]{64}", v) is not None
     if (body["profile"] != "syn.operator-dag-checkpoint/1"
             or body["operator"] != expected_pin or not hex64(body["root"])
             or (body["previous_checkpoint"] is not None and not hex64(body["previous_checkpoint"]))
@@ -251,6 +253,52 @@ class Authority:
                         or body["sequence"] <= old_body["sequence"]
                         or body["previous_checkpoint"] != old_commitment):
                     raise ValueError("DAG anchor cannot rewind, fork or skip a checkpoint")
+                from .merkle import verify_prefix
+                if not verify_prefix(old_body["sequence"], body["sequence"], old_body["root"],
+                                     body["root"], req.get("proof")):
+                    raise ValueError("DAG anchor Merkle prefix proof failed")
+            if previous is None and req.get("proof", []) != []:
+                raise ValueError("First DAG anchor cannot supply an unrelated proof")
+            self.store.set_slot(service, slot, canonical(packet).decode("ascii"))
+            return {"sequence": body["sequence"], "digest": commitment}
+        if op == "dag_witness_anchor":
+            # Archiving public peer evidence does not grant signing authority or
+            # disclose secrets. Peer trust is explicitly pinned in local config.
+            # Each remote identity has its own protected monotonic slot.
+            peer, network = req.get("peer"), req.get("network_id")
+            if (not isinstance(peer, str) or re.fullmatch(r"[0-9a-f]{64}", peer) is None
+                    or peer == pin or not isinstance(network, str)
+                    or re.fullmatch(r"[a-z][a-z0-9-]{0,63}", network) is None):
+                raise ValueError("Invalid independently pinned witness peer")
+            slot = account + ".operator.witness-" + peer + ".v1"
+            saved = self.store.get_slot(service, slot)
+            previous = json.loads(saved) if saved is not None else None
+            if previous is not None:
+                old_body, _ = verified_dag_checkpoint(previous, peer)
+                if old_body["network_id"] != network:
+                    raise ValueError("Retained witness network cannot change")
+            if req.get("action") == "read":
+                return previous
+            if req.get("action") != "advance":
+                raise ValueError("Unknown witness anchor action")
+            packet = req.get("checkpoint")
+            body, commitment = verified_dag_checkpoint(packet, peer)
+            if body["network_id"] != network:
+                raise ValueError("Witness checkpoint differs from its pinned network")
+            proof = req.get("proof")
+            if previous is None:
+                if proof != []:
+                    raise ValueError("Initial witness checkpoint has no prior proof")
+            elif packet == previous:
+                if proof != []:
+                    raise ValueError("Same witness checkpoint requires an empty proof")
+                return {"sequence": body["sequence"], "digest": commitment}
+            else:
+                from .merkle import verify_prefix
+                if (body["sequence"] <= old_body["sequence"]
+                        or not verify_prefix(old_body["sequence"], body["sequence"],
+                                             old_body["root"], body["root"], proof)):
+                    raise ValueError("Witness anchor cannot rewind or accept inconsistent history")
             self.store.set_slot(service, slot, canonical(packet).decode("ascii"))
             return {"sequence": body["sequence"], "digest": commitment}
         if op == "identity":

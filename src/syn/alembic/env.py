@@ -8,10 +8,12 @@ from syn.models import Base
 from syn.communication import metadata as communicationMetadata
 from syn.policy_adoption import metadata as policyMetadata
 from syn.sqltypes import ObjectRefType, SlugType
+from syn.operator.dag import metadata as dagMetadata
+from syn.witnessing.store import metadata as witnessMetadata
 
 
 config = context.config
-target_metadata = [Base.metadata, communicationMetadata, policyMetadata]
+target_metadata = [Base.metadata, communicationMetadata, policyMetadata, dagMetadata, witnessMetadata]
 
 
 def compareType(context_, inspectedColumn, metadataColumn, inspectedType, metadataType):

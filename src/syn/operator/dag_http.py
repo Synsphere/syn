@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Query
 from cryptography.exceptions import InvalidSignature
 
 from . import dag_proofs
@@ -35,7 +35,8 @@ def build_router(sessions, operator):
         return public_result(inclusion_bundle, index)
 
     @router.get("/consistency/{old_size}")
-    def consistency(old_size: int = Path(ge=1, le=dag_proofs.MAX_LEAVES)):
-        return public_result(consistency_bundle, old_size)
+    def consistency(old_size: int = Path(ge=1, le=dag_proofs.MAX_LEAVES),
+                    new_size: int | None = Query(default=None, ge=1, le=dag_proofs.MAX_LEAVES)):
+        return public_result(consistency_bundle, old_size, new_size)
 
     return router

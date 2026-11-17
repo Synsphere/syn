@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from sqlalchemy import select
@@ -27,7 +28,7 @@ def _checkpoint(row):
             or body["network_id"] != row["networkId"]
             or body["sequence"] != row["sequence"]
             or body["root"] != row["root"]
-            or type(body["sequence"]) is not int or body["sequence"] <= 0):
+            or type(body["sequence"]) is not int or not 1 <= body["sequence"] <= dag_proofs.MAX_LEAVES):
         raise ValueError("Operator DAG checkpoint contents differ from columns")
     public = bytes.fromhex(row["publicKey"])
     if not hmac.compare_digest(hashlib.sha256(public).hexdigest(), body["operator"]):
@@ -45,7 +46,7 @@ def verify_checkpoint(packet):
     if (not isinstance(body, dict) or
             set(body) != {"profile", "operator", "network_id", "sequence", "root", "previous_checkpoint"} or
             body.get("profile") != "syn.operator-dag-checkpoint/1" or
-            type(body.get("sequence")) is not int or body["sequence"] <= 0):
+            type(body.get("sequence")) is not int or not 1 <= body["sequence"] <= dag_proofs.MAX_LEAVES):
         raise ValueError("Invalid signed checkpoint format")
     # Reuse strict digest decoder (prevents accidental normalization).
     dag_proofs._raw(body["root"])
@@ -53,9 +54,12 @@ def verify_checkpoint(packet):
     if body["previous_checkpoint"] is not None:
         dag_proofs._raw(body["previous_checkpoint"])
     if (type(body["network_id"]) is not str or
-            len(body["network_id"]) > 64 or
-            not body["network_id"] or not body["network_id"].isascii()):
+            re.fullmatch(r"[a-z][a-z0-9-]{0,63}", body["network_id"]) is None):
         raise ValueError("Invalid checkpoint network identifier")
+    dag_proofs._raw(packet["public_key"])
+    if (not isinstance(packet["signature"], str)
+            or re.fullmatch(r"[0-9a-f]{128}", packet["signature"]) is None):
+        raise ValueError("Invalid canonical checkpoint signature")
     public = bytes.fromhex(packet["public_key"])
     if len(public) != 32 or hashlib.sha256(public).hexdigest() != body["operator"]:
         raise ValueError("Operator public key hash mismatch")
@@ -113,9 +117,9 @@ def inclusion_bundle(sessions, operator, index):
             "audit_path": dag_proofs.inclusion(leaves, index)}
 
 
-def consistency_bundle(sessions, operator, old_size):
+def consistency_bundle(sessions, operator, old_size, new_size=None):
     with sessions() as session:
-        current = _signed_checkpoint(session, operator)
+        current = _signed_checkpoint(session, operator, new_size)
         prior = _signed_checkpoint(session, operator, old_size)
         leaves = _digests(session, operator, current["body"]["sequence"])
     if (dag_proofs.root(leaves) != current["body"]["root"] or

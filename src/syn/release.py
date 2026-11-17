@@ -28,5 +28,5 @@ def runtimeContract() -> RuntimeContract:
             "offline-protected-dag-verification", "offline-type-policy-resolution",
             "read-only-legacy-state-archive", "read-only-operator-transition-preflight", "retained-agent-identity", "retained-operator-identity",
         ),
-        database_revision="20261117_0017",
+        database_revision="20261117_0020",
     )

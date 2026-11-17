@@ -7,6 +7,7 @@ from pathlib import Path
 from .positions.config import PositionConfig
 from .clocks.config import ClockConfig
 from .radios.config import RadioConfig
+from .witnessing.config import WitnessConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +37,7 @@ class SynConfig:
     position: PositionConfig = PositionConfig()
     clock: ClockConfig = ClockConfig()
     radio: RadioConfig = RadioConfig()
+    witnessing: WitnessConfig = WitnessConfig()
 
 
 def loadConfig(path: str | Path = "config.toml") -> SynConfig:
@@ -93,6 +95,7 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
         position=position,
         clock=ClockConfig.from_dict(raw.get("clock", {})),
         radio=RadioConfig.from_dict(raw.get("radio", {})),
+        witnessing=WitnessConfig.from_dict(raw.get("witnessing", {})),
         database=DatabaseConfig(url=url, echo=echo, autoMigrate=autoMigrate),
         p2p=P2PConfig(
             enabled=enabled,

@@ -83,10 +83,10 @@ def scenario(tmp_path, monkeypatch):
         def read(self, _server):
             return broker.request({"op": "dag_anchor", "service": "syn.operator",
                                    "account": "primary", "pin": pin, "action": "read"})
-        def advance(self, _server, packet):
+        def advance(self, _server, packet, *, proof=None):
             return broker.request({"op": "dag_anchor", "service": "syn.operator",
                                    "account": "primary", "pin": pin, "action": "advance",
-                                   "checkpoint": packet})
+                                   "checkpoint": packet, "proof": proof or []})
     monkeypatch.setattr(dag, "_anchor_adapter", lambda: Adapter())
     yield sessions, server, src, broker, vault, approvals
     engine.dispose()
@@ -157,7 +157,7 @@ def test_host_failure_after_sql_commit_can_resume_without_resigning(scenario, mo
     source["authority"].append({"pledge_offer_sha256": "11" * 32})
     adapter = dag._anchor_adapter()
     original = adapter.advance
-    def fail_once(*args):
+    def fail_once(*args, **kwargs):
         raise RuntimeError("host unreachable")
     adapter.advance = fail_once
     monkeypatch.setattr(dag, "_anchor_adapter", lambda: adapter)
