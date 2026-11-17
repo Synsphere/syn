@@ -1,0 +1,14 @@
+[project]
+name = "syn-host-custody"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "pycardano==0.19.2",
+    "cbor2==5.8.0",
+    "cbor2pure==5.8.0",
+    "cryptography>=44,<47",
+    "pywin32>=306,<400; sys_platform == 'win32'",
+    "mnemonic==0.21",
+]
+[tool.uv]
+package = false

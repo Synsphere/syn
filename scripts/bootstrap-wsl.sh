@@ -70,7 +70,10 @@ install_system_packages() {
     command -v apt-get >/dev/null 2>&1 ||
         fail 'Automatic OS dependency installation currently supports Debian/Ubuntu WSL (apt). Other distributions need an explicit provider.'
     command -v dpkg-query >/dev/null 2>&1 || fail 'Cannot check installed Debian packages.'
-    packages='ca-certificates curl python3 dbus dbus-user-session gnome-keyring libsecret-tools sudo passwd util-linux iw bluez libusb-1.0-0 usbutils'
+    packages='ca-certificates curl python3 sudo passwd util-linux iw bluez libusb-1.0-0 usbutils'
+    if [ -z "${SYN_HOST_CUSTODY_PIPE:-}" ]; then
+        packages="$packages dbus dbus-user-session gnome-keyring libsecret-tools"
+    fi
     if [ "$need_local_db" = 1 ]; then
         packages="$packages postgresql postgresql-client"
     fi
@@ -226,6 +229,20 @@ if [ -z "$uv_bin" ]; then
     [ -n "$uv_bin" ] || fail 'Linux uv installation did not provide a runnable executable.'
 fi
 
+# When launched from Windows, use the Windows DPAPI authority. The broker is
+# authenticated by Windows pipe ACLs and verifies the operator's pinned key.
+# No Secret Service or WSL root vault is initialized in this mode.
+if [ "$api_only" = 0 ] && [ -n "${SYN_HOST_CUSTODY_PIPE:-}" ]; then
+    [ -x "${SYN_HOST_CUSTODY_POWERSHELL:-/nonexistent}" ] ||
+        fail 'Host custody PowerShell bridge cannot execute under WSL.'
+    [ -n "${SYN_HOST_CUSTODY_CLIENT_WIN:-}" ] || fail 'Host custody pipe client is missing.'
+    printf '%s\n' '{"op":"health"}' | \
+        "$SYN_HOST_CUSTODY_POWERSHELL" -NoLogo -NoProfile -NonInteractive \
+        -ExecutionPolicy Bypass -File "$SYN_HOST_CUSTODY_CLIENT_WIN" \
+        -Pipe "$SYN_HOST_CUSTODY_PIPE" | grep -q '"ready":true' ||
+        fail 'Windows host custody broker is not responding; refusing Linux keyring fallback.'
+    notice 'Using Windows host DPAPI custody; WSL root Secret Service is not required.'
+elif [ "$api_only" = 0 ]; then
 # A headless WSL shell has no session bus until one is created. Keep the bus and
 # Secret Service alive for the complete syn-server process, including its jobs.
 if [ "$api_only" = 0 ] && [ -z "${XDG_RUNTIME_DIR:-}" ]; then
@@ -249,6 +266,8 @@ if [ "$api_only" = 0 ] && [ "${SYN_BOOTSTRAP_SECRETS_READY:-0}" != 1 ]; then
     python3 "$syn_root/scripts/bootstrap-keyring.py" || fail 'Native Secret Service was not unlocked.'
     export SYN_BOOTSTRAP_SECRETS_READY=1
 fi
+
+fi  # End Linux-native Secret Service fallback.
 
 if command -v sha256sum >/dev/null 2>&1; then
     project_id=$(printf '%s' "$syn_root" | sha256sum | cut -c1-20)

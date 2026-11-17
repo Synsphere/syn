@@ -29,6 +29,9 @@ SEAL_DOMAIN = b"syn.agent.group-seal.v1\0"
 def _derive_group_key(signer, network_id, identifier, epoch):
     group_id(identifier)
     group_epoch(epoch)
+    # WSL host custody derives from the Windows-sealed root; never read it here.
+    if hasattr(signer, "derive_group_key"):
+        return signer.derive_group_key(network_id, identifier, epoch)
     values, identity = _load_operator(signer.service, signer.account)
     if identity["base_public_key_hash"] != signer.expected_public_hash.hex():
         raise SynProtocolError("Operator identity changed before group derivation")

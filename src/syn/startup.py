@@ -113,46 +113,31 @@ _WSL_UV_COMMAND = (
 
 
 def handoff_windows(options):
-    """Run native operator custody inside installed WSL; never install software."""
+    """Delegate Windows+WSL to its Windows-owned root custody launcher.
+
+    Never silently start a Linux-root identity if the Windows host broker or
+    checked-out PowerShell launcher is absent. --api-only is deliberately kept
+    as a separate native application mode.
+    """
     if platform.system() != "Windows" or options.api_only:
         return False
-    executable = shutil.which("wsl.exe")
-    if executable is None:
-        raise RuntimeError("Operator mode requires an installed WSL distribution (or native Linux/macOS). WSL was not found.")
-    def translate(path):
-        result = subprocess.run([executable, "--exec", "wslpath", "-a", str(Path(path).absolute())],
-            check=True, capture_output=True, text=True, timeout=15)
-        translated = result.stdout.strip()
-        if not translated.startswith("/") or "\n" in translated:
-            raise RuntimeError("Could not translate the worktree path for WSL")
-        return translated
-    # Support a source checkout launched from another working directory. A
-    # globally installed wheel without a checked-out bootstrap script cannot
-    # silently launch an unverified substitute.
-    candidates = (
-        Path.cwd() / "scripts" / "bootstrap-wsl.sh",
-        Path(__file__).resolve().parents[2] / "scripts" / "bootstrap-wsl.sh",
-    )
-    bootstrap = next((p for p in candidates if p.is_file()), None)
-    if bootstrap is None:
-        raise RuntimeError("Syn's WSL bootstrap script is missing. Run from a full Syn source checkout.")
-    cwd = translate(bootstrap.parent.parent)
-    bootstrapPath = translate(bootstrap)
-    args = ["syn-server", "--host", options.host, "--port", str(options.port),
-            "--log-level", options.logLevel]
-    # A fresh installation stores its credentials/config in the native Linux
-    # home, not on the Windows mounted checkout. Preserve existing project
-    # configs and explicitly supplied --config paths without alteration.
-    if options.config != Path("config.toml") or options.config.exists():
-        args += ["--config", translate(options.config)]
+    powershell = shutil.which("powershell.exe")
+    launcher = Path(__file__).resolve().parents[2] / "Start-Syn.ps1"
+    if powershell is None or not launcher.is_file():
+        raise RuntimeError("Windows Syn Operator requires Start-Syn.ps1 from a complete checkout")
+    arguments = [powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                 str(launcher), "-BindHost", options.host, "-BindPort", str(options.port),
+                 "-LogLevel", options.logLevel]
+    if options.config != Path("config.toml"):
+        arguments.extend(("-Config", str(Path(options.config).absolute())))
     if options.operator_config is not None:
-        args += ["--operator-config", translate(options.operator_config)]
-    print("Starting Syn in WSL; missing OS packages, Linux uv, PostgreSQL and Secret Service will be provisioned as needed.", flush=True)
-    command = _WSL_UV_COMMAND
-    result = subprocess.run([executable, "--exec", "sh", "-c", command,
-                             "syn-wsl", cwd, bootstrapPath, *args], check=False)
+        arguments.extend(("-OperatorConfig", str(Path(options.operator_config).absolute())))
+    result = subprocess.run(arguments, check=False)
     if result.returncode:
-        raise RuntimeError(f"Native WSL syn-server exited with status {result.returncode}; no fallback identity was created")
+        raise RuntimeError(
+            f"Windows host custody startup exited with status {result.returncode}; "
+            "no fallback Linux Operator identity was generated"
+        )
     return True
 
 

@@ -55,6 +55,8 @@ def private_read(path: Path, maximum: int = 65536) -> bytes:
 
 
 def backend_profile() -> str:
+    if sys.platform == "linux" and os.environ.get("SYN_HOST_CUSTODY_PIPE"):
+        return "windows-dpapi-host"
     if sys.platform == "linux":
         return "linux-secret-service"
     if sys.platform == "darwin":
@@ -63,6 +65,9 @@ def backend_profile() -> str:
 
 
 def _native_backend() -> object:
+    if backend_profile() == "windows-dpapi-host":
+        from .host_custody import HostKeyringProxy
+        return HostKeyringProxy()
     module, name = {
         "linux-secret-service": ("keyring.backends.SecretService", "Keyring"),
         "macos-keychain": ("keyring.backends.macOS", "Keyring"),

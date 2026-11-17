@@ -18,7 +18,8 @@ from syn_client.operator import CHALLENGE_PROFILE, STATUS_DOMAIN, STATUS_PROFILE
 from syn_client.operator_protocol import SynProtocolError, canonical, exact, hex_bytes, parse, peer_uid, receive, send
 
 from .custody import _agent_key_lock, _entry, _native_backend, backend_profile, private_directory, private_read
-from .hd_keys import PythonHdOperatorSigner, create_operator_identity
+from .hd_keys import create_operator_identity
+from .host_custody import enabled as host_custody_enabled, operator_signer, create_operator_identity as create_host_identity
 from .state import OperatorState, sync_directory, write_new
 
 CONFIG_PROFILE = "syn.operator-config/1"
@@ -54,7 +55,8 @@ def initialize(directory: Path, *, service: str, account: str, network_id: str):
             raise SynProtocolError("Operator allocation anchor already exists")
         # The retained marker fences an interrupted first installation.
         write_new(directory / "initializing.json", canonical({"profile": "syn.operator-initializing/1"}))
-        public = create_operator_identity(service=service, account=account, lock_dir=directory)
+        identity_creator = create_host_identity if host_custody_enabled() else create_operator_identity
+        public = identity_creator(service=service, account=account, lock_dir=directory)
         base_hash = str(public["base_public_key_hash"])
         state = OperatorState(directory, service, account, base_hash)
         state.create()
@@ -84,7 +86,7 @@ class OperatorServer:
         ):
             raise SynProtocolError("Syn RPC cannot route to the operator socket")
         self.expected_hash = self.config["expected_base_public_key_hash"]
-        self.signer = PythonHdOperatorSigner(self.config["keyring_service"], self.config["keyring_account"], bytes.fromhex(self.expected_hash))
+        self.signer = operator_signer(self.config["keyring_service"], self.config["keyring_account"], bytes.fromhex(self.expected_hash))
         self.state = OperatorState(self.directory, self.config["keyring_service"], self.config["keyring_account"], self.expected_hash)
         self.boot_id = secrets.token_hex(16)
         self.stopped = threading.Event()
