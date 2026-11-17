@@ -47,7 +47,7 @@ def verify_status(value, *, challenge: str, expected_hash: str, expected_version
     hex_bytes(challenge, 32, "fresh challenge")
     hex_bytes(body["state_sha256"], 32, "state digest")
     hex_bytes(body["boot_id"], 16, "boot identity")
-    if (body["custody"] not in {"linux-secret-service", "macos-keychain"}
+    if (body["custody"] not in {"linux-secret-service", "macos-keychain", "windows-dpapi-host"}
             or not isinstance(body["network_id"], str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", body["network_id"])):
         raise SynProtocolError("Invalid operator custody/network profile")
     for name in ("issued_at", "pid", "boot", "allocation_count"):
