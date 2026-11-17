@@ -8,7 +8,7 @@ umask 077
 syn_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 script="$syn_root/scripts/bootstrap-wsl.sh"
 cd -- "$syn_root"
-PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/snap/bin"
+PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
 export PATH
 
 fail() { printf 'Syn bootstrap: %s\n' "$*" >&2; exit 1; }
@@ -70,7 +70,7 @@ install_system_packages() {
     command -v apt-get >/dev/null 2>&1 ||
         fail 'Automatic OS dependency installation currently supports Debian/Ubuntu WSL (apt). Other distributions need an explicit provider.'
     command -v dpkg-query >/dev/null 2>&1 || fail 'Cannot check installed Debian packages.'
-    packages='ca-certificates curl python3 dbus dbus-user-session gnome-keyring libsecret-tools sudo iw bluez libusb-1.0-0 usbutils'
+    packages='ca-certificates curl python3 dbus dbus-user-session gnome-keyring libsecret-tools sudo passwd util-linux iw bluez libusb-1.0-0 usbutils'
     if [ "$need_local_db" = 1 ]; then
         packages="$packages postgresql postgresql-client"
     fi
