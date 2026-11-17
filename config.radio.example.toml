@@ -1,0 +1,16 @@
+# Merge [radio] into config.toml. Requires the existing Syn node and database.
+# A startup inventory is recorded before node readiness; periodic scans use
+# the existing ProcessScheduler and the node's hash-chained transaction ledger.
+[radio]
+enabled = true
+rescanSeconds = 300.0
+probeTimeoutSeconds = 2.5
+maxDevices = 128
+useCommands = true
+useSysfs = true
+# Optional; some SoapySDR drivers perform network device discovery.
+useSoapySDR = false
+# Explicit cooperative firmware bridges only. Never probe unknown serial ports.
+radioLibPorts = []
+excludedProviders = []
+# radioLibPorts = ["/dev/serial/by-id/usb-my-radiolib-gateway"]

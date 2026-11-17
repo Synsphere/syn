@@ -75,20 +75,28 @@ def installation_id(directory):
 
 
 class PositionRuntime:
-    def __init__(self, sessions, databaseUrl, config: PositionConfig, *, identity=None, clockConfig=None):
+    def __init__(self, sessions, databaseUrl, config: PositionConfig, *, identity=None,
+                 clockConfig=None, radioConfig=None):
         self.sessions, self.databaseUrl, self.config = sessions, databaseUrl, config
         identity = identity or installation_id(config.stateDirectory)
         self.nodeRef = config.nodeRef or "syn://thing/node-"+digest([identity, host_fingerprint()])
         self.store = PositionStore(sessions)
         from syn.clocks.runtime import ClockRuntime
         self.clocks = ClockRuntime(sessions, databaseUrl, self.nodeRef, clockConfig)
+        from syn.radios.config import RadioConfig
+        self.radioConfig = radioConfig if radioConfig is not None else RadioConfig()
 
     def handlers(self):
         # Credentials stay in process-local closures, never in persisted Job arguments.
         common = (self.databaseUrl, self.config.to_dict(), self.nodeRef)
-        return {DISCOVER: partial(run_discovery, *common),
-                POLL: partial(run_poll, *common, clockSettings=self.clocks.config.to_dict(),
-                              clockSessionId=self.clocks.sessionId), **self.clocks.handlers()}
+        handlers = {DISCOVER: partial(run_discovery, *common),
+                    POLL: partial(run_poll, *common, clockSettings=self.clocks.config.to_dict(),
+                                  clockSessionId=self.clocks.sessionId), **self.clocks.handlers()}
+        if self.radioConfig.enabled:
+            from syn.radios.jobs import RADIO_DISCOVER, run_discovery as radio_scan
+            handlers[RADIO_DISCOVER] = partial(
+                radio_scan, self.databaseUrl, self.radioConfig.to_dict(), self.nodeRef)
+        return handlers
 
     def prepare(self, scheduler):
         # Do not compute an expensive timezone catalogue or reset existing beliefs on restart.
@@ -101,6 +109,16 @@ class PositionRuntime:
         self.clocks.prepare(scheduler)
         scheduler.every(schedule_key(self.nodeRef, "discovery"), DISCOVER,
                         {"schedulerKey": scheduler.schedulerKey}, self.config.rescanSeconds)
+        if self.radioConfig.enabled:
+            from syn.radios.jobs import RADIO_DISCOVER, schedule_key as radio_schedule_key
+            from syn.radios.discovery import RadioDiscovery
+            from syn.radios.store import RadioStore
+            # Clock preparation above remains unconditional. All awareness
+            # jobs use the same node lease, scheduler and transaction ledger.
+            RadioStore(self.sessions).record(self.nodeRef, RadioDiscovery(self.radioConfig).scan())
+            scheduler.every(radio_schedule_key(self.nodeRef), RADIO_DISCOVER,
+                            {"schedulerKey": scheduler.schedulerKey},
+                            self.radioConfig.rescanSeconds)
 
 
 def native_position_configured(directory):
@@ -136,7 +154,8 @@ class NativePositionRuntime:
         try:
             settings = replace(config.position, stateDirectory=str(server.directory))
             self.runtime = PositionRuntime(createSessionFactory(self.engine), config.database.url, settings,
-                                           identity=server.expected_hash, clockConfig=config.clock)
+                                           identity=server.expected_hash, clockConfig=config.clock,
+                                           radioConfig=config.radio)
             self.scheduler = ProcessScheduler(self.runtime.sessions, self.runtime.handlers(),
                 schedulerKey="node-"+digest(self.runtime.nodeRef), maxConcurrentJobs=settings.maxConcurrentJobs)
         except BaseException:

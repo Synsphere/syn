@@ -42,6 +42,7 @@ position-native = [
 
 [project.scripts]
 syn-position = "syn.positions.__main__:main"
+syn-radio = "syn.radios.__main__:main"
 syn-server = "syn.server:main"
 syn-operator = "syn.operator.__main__:main"
 syn-agent = "syn.agent.__main__:main"

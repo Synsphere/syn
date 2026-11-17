@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from syn.positions import schema as db
 from syn.positions.config import PositionConfig
+from syn.radios.config import RadioConfig
 from syn.positions.store import workspace_for
 from syn.positions.types import (Estimate, GEOGRAPHIC, GEOGRAPHIC_SPACE,
                                  GPS_READING, LEGACY_GEOGRAPHIC, Reading,
@@ -162,7 +163,8 @@ def test_runtime_upgrades_before_polling_without_timezone_reset(state, now, monk
     store, sessions, _ = state
     seed_legacy_history(state, now)
     monkeypatch.setattr(runtime, "bootstrap", Mock(side_effect=AssertionError("Reset timezone prior")))
-    node = runtime.PositionRuntime(sessions, "unused", PositionConfig(nodeRef=NODE, stateDirectory=str(tmp_path)), identity="test")
+    node = runtime.PositionRuntime(sessions, "unused", PositionConfig(nodeRef=NODE, stateDirectory=str(tmp_path)),
+                                   identity="test", radioConfig=RadioConfig(enabled=False))
     scheduler = Mock(schedulerKey="rename-node")
     node.prepare(scheduler)
     assert store.current(NODE)[0]["estimate"]["typeRef"] == GEOGRAPHIC

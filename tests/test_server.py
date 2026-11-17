@@ -98,8 +98,9 @@ def test_server_builds_application_and_disposes_engine() -> None:
     )
     createSessions.assert_called_once_with(engine)
     buildHandlers.assert_called_once_with(config.database.url)
-    positionRuntimeCls.assert_called_once_with(sessions, config.database.url, config.position,
-                                               clockConfig=config.clock)
+    positionRuntimeCls.assert_called_once_with(
+        sessions, config.database.url, config.position, clockConfig=config.clock,
+        radioConfig=config.radio)
     createApp.assert_called_once_with(
         sessions,
         {**handlers, **positionRuntimeCls.return_value.handlers.return_value},

@@ -81,7 +81,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
     try:
         sessions = createSessionFactory(engine)
         from .positions.runtime import PositionRuntime
-        runtime_args = {"clockConfig": config.clock}
+        runtime_args = {"clockConfig": config.clock, "radioConfig": config.radio}
         if operator is not None:
             runtime_args["identity"] = operator.server.expected_hash
         runtime = PositionRuntime(sessions, config.database.url, config.position, **runtime_args)

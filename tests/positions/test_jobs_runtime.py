@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from syn.positions import jobs, schema
 from syn.positions.config import PositionConfig
+from syn.radios.config import RadioConfig
 from syn.positions.providers.base import Device
 from syn.positions.types import geographic, Reading
 from syn.recurrence import metadata, schedules
@@ -87,7 +88,8 @@ def test_runtime_bootstraps_before_scheduling_and_restart_preserves_position(sta
     config=PositionConfig(nodeRef=NODE,stateDirectory=str(tmp_path))
     prior=geographic(51,0,None,100000,now,"timezone")
     monkeypatch.setattr(runtime,"bootstrap",lambda config:prior)
-    node=runtime.PositionRuntime(sessions,"unused",config,identity="test-id")
+    node=runtime.PositionRuntime(sessions,"unused",config,identity="test-id",
+                                 radioConfig=RadioConfig(enabled=False))
     node.prepare(scheduler)
     saved=node.store.current(NODE)
     assert sum(call.args[1] == "position-discover" for call in scheduler.every.call_args_list) == 1
