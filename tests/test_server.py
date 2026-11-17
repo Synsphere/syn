@@ -17,6 +17,8 @@ def test_server_arguments_have_safe_local_defaults() -> None:
     assert options.host == "127.0.0.1"
     assert options.port == 8000
     assert options.logLevel == "info"
+    assert options.api_only is False
+    assert options.operator_config is None
 
 
 def test_server_arguments_accept_explicit_values() -> None:
@@ -64,6 +66,7 @@ def test_server_builds_application_and_disposes_engine() -> None:
     handlers = {"example": Mock()}
 
     with (
+        patch("syn.startup.ensure_database_config"),
         patch("syn.server.loadConfig", return_value=config) as loadConfig,
         patch("syn.server.createEngine", return_value=engine) as createEngine,
         patch("syn.server.createSessionFactory", return_value=sessions) as createSessions,
@@ -77,6 +80,7 @@ def test_server_builds_application_and_disposes_engine() -> None:
             [
                 "--config",
                 "server.toml",
+                "--api-only",
                 "--host",
                 "0.0.0.0",
                 "--port",
@@ -94,7 +98,8 @@ def test_server_builds_application_and_disposes_engine() -> None:
     )
     createSessions.assert_called_once_with(engine)
     buildHandlers.assert_called_once_with(config.database.url)
-    positionRuntimeCls.assert_called_once_with(sessions, config.database.url, config.position)
+    positionRuntimeCls.assert_called_once_with(sessions, config.database.url, config.position,
+                                               clockConfig=config.clock)
     createApp.assert_called_once_with(
         sessions,
         {**handlers, **positionRuntimeCls.return_value.handlers.return_value},
@@ -115,6 +120,7 @@ def test_server_disposes_engine_when_uvicorn_fails() -> None:
     engine = Mock()
 
     with (
+        patch("syn.startup.ensure_database_config"),
         patch("syn.server.loadConfig", return_value=config),
         patch("syn.server.createEngine", return_value=engine),
         patch("syn.server.createSessionFactory"),
@@ -125,6 +131,6 @@ def test_server_disposes_engine_when_uvicorn_fails() -> None:
         pytest.raises(RuntimeError, match="server failed"),
     ):
         positionRuntimeCls.return_value.handlers.return_value = {}
-        main([])
+        main(["--api-only"])
 
     engine.dispose.assert_called_once_with()

@@ -40,13 +40,17 @@ def ledger_module(monkeypatch):
 @pytest.fixture
 def state(tmp_path, ledger_module):
     from syn.positions import schema
+    from syn.clocks import schema as clock_schema
+    from syn import recurrence
     from syn.positions.store import PositionStore
     engine = create_engine("sqlite:///"+str(tmp_path/"positions.db"))
     schema.metadata.create_all(engine)
     ledger_module.metadata.create_all(engine)
+    recurrence.metadata.create_all(engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     with sessions.begin() as session:
         schema.seed_types(session)
+        clock_schema.seed_types(session)
     yield PositionStore(sessions, ledger=ledger_module.MessageStore(sessions)), sessions, ledger_module
     engine.dispose()
 

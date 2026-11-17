@@ -21,7 +21,7 @@ def serverPort(value: str) -> int:
 
 
 def parseArguments(arguments: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the Syn API server.")
+    parser = argparse.ArgumentParser(description="Run a Syn operator node and API; first run starts operator setup.")
     parser.add_argument(
         "--describe-json", action="store_true",
         help="Print the installed runtime contract without reading config or starting services",
@@ -50,6 +50,10 @@ def parseArguments(arguments: Sequence[str] | None = None) -> argparse.Namespace
         dest="logLevel",
         help="Uvicorn log level (default: info)",
     )
+    parser.add_argument("--operator-config", type=Path, default=None,
+                        help="Existing operator.json, or path for a new operator installation")
+    parser.add_argument("--api-only", action="store_true",
+                        help="Explicitly run only the API/awareness, without operator setup or service")
     return parser.parse_args(arguments)
 
 
@@ -59,7 +63,16 @@ def main(arguments: Sequence[str] | None = None) -> None:
         from .release import runtimeContract
         print(json.dumps(runtimeContract().to_dict(), sort_keys=True, separators=(",", ":")))
         return
+    from .startup import ManagedOperator, ensure_database_config, ensure_operator, handoff_windows
+    if handoff_windows(options):
+        return
+    operator = None
+    if not options.api_only:
+        operator_path = ensure_operator(options.operator_config)
+        operator = ManagedOperator(operator_path)
+    ensure_database_config(options.config)
     config = loadConfig(options.config)
+    print("Opening Syn database and preparing node records...", flush=True)
     engine = createEngine(
         config.database.url,
         echo=config.database.echo,
@@ -68,9 +81,15 @@ def main(arguments: Sequence[str] | None = None) -> None:
     try:
         sessions = createSessionFactory(engine)
         from .positions.runtime import PositionRuntime
-        runtime = PositionRuntime(sessions, config.database.url, config.position)
+        runtime_args = {"clockConfig": config.clock}
+        if operator is not None:
+            runtime_args["identity"] = operator.server.expected_hash
+        runtime = PositionRuntime(sessions, config.database.url, config.position, **runtime_args)
         handlers = {**defaultJobHandlers(config.database.url), **runtime.handlers()}
-        app = createApp(sessions, handlers, config.p2p, positionRuntime=runtime)
+        app_args = {"positionRuntime": runtime}
+        if operator is not None:
+            app_args["operatorRuntime"] = operator
+        app = createApp(sessions, handlers, config.p2p, **app_args)
         uvicorn.run(
             app,
             host=options.host,

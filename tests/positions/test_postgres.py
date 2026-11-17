@@ -58,7 +58,7 @@ def test_full_migration_and_required_inheritance(postgres):
     with sessions() as session:
         parents = session.execute(text('SELECT "parentRef"::text FROM "typeParents" WHERE "childRef"=\'syn://type/gps-reading\'')).scalars().all()
         assert set(parents) == {"syn://type/geographic-geodetic", "syn://type/event"}
-        assert session.execute(text('SELECT version_num FROM "alembicVersion"')).scalar_one() == "20261117_0017"
+        assert session.execute(text('SELECT version_num FROM "alembicVersion"')).scalar_one() == "20261117_0018"
 
 
 def test_database_blocks_history_rewrite_and_unledgered_pointer(postgres):

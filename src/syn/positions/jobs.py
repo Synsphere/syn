@@ -84,7 +84,7 @@ def run_discovery(databaseUrl, settings, nodeRef, *, schedulerKey):
     return {"candidates": len(found), "providers": report}
 
 
-def run_poll(databaseUrl, settings, nodeRef, *, deviceId, schedulerKey):
+def run_poll(databaseUrl, settings, nodeRef, *, deviceId, schedulerKey, clockSettings=None, clockSessionId=None):
     config = PositionConfig.from_dict(settings)
     with sessions_for(databaseUrl) as sessions:
         with sessions() as session:
@@ -112,7 +112,16 @@ def run_poll(databaseUrl, settings, nodeRef, *, deviceId, schedulerKey):
                 raise RuntimeError(f"Position provider {device.provider} failed ({type(error).__name__})") from None
             store = PositionStore(sessions)
             counts = {}
+            clock_store = clock_config = None
+            if clockSettings is not None and clockSessionId is not None:
+                from syn.clocks.config import ClockConfig
+                from syn.clocks.store import ClockStore
+                from syn.clocks.providers import from_position
+                clock_store, clock_config = ClockStore(sessions), ClockConfig.from_dict(clockSettings)
             for reading in readings:
+                if clock_store is not None and device.provider in {"serial", "gpsd", "network-nmea", "modemmanager", "ble-ln"}:
+                    # Only receiver timecodes, never OS location timestamps, are UTC references.
+                    clock_store.observe(nodeRef, clockSessionId, from_position(reading, clock_config), clock_config)
                 result = store.observe(nodeRef, reading, now=datetime.now(UTC), maxAgeSeconds=config.maxAgeSeconds,
                     futureToleranceSeconds=config.futureToleranceSeconds, driftPerSecond=config.driftMetersPerSecond)
                 counts[result["decision"]] = counts.get(result["decision"], 0)+1

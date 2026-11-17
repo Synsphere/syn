@@ -1,0 +1,32 @@
+# Merge [clock] into your existing config.toml. Do not replace your database section.
+[clock]
+ntpServers = ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"]
+ntpSeconds = 64.0
+pollSeconds = 10.0
+timeoutSeconds = 3.0
+maxAgeSeconds = 300.0
+holdoverPpm = 50.0
+stepThresholdMs = 100.0
+windowSize = 32
+maxSources = 128
+chrony = true
+hardware = true
+gpsdHosts = ["127.0.0.1:2947"]
+# A transport/receiver-error budget, NOT a measured hardware accuracy guarantee.
+gpsTransportErrorMs = 1000.0
+
+# Discovered PHCs/RTCs are observed with unknown absolute accuracy by default.
+# Only assert bounds measured for YOUR hardware and installation.
+# [[clock.ptpDevices]]
+# path = "/dev/ptp0"
+# timescale = "TAI"
+# taiUtcOffsetSeconds = <current, externally verified TAI-minus-UTC offset>
+# maxErrorMs = <measured absolute error bound in milliseconds>
+# pmcSocket = "/var/run/ptp4l"  # Must belong to this PHC; GET operations only.
+
+# [[clock.rtcDevices]]
+# path = "/dev/rtc0"
+# timescale = "UTC"
+# maxErrorMs = <measured error at calibration>
+# calibratedAt = <calibration epoch in Unix seconds>
+# driftPpm = <measured or conservative oscillator drift allowance>

@@ -155,7 +155,7 @@ class OperatorServer:
     def close_resources(self):
         pass
 
-    def serve(self):
+    def serve(self, *, awareness_managed=False):
         with _agent_key_lock(self.directory, self.config["keyring_service"], self.config["keyring_account"] + ".operator"):
             current = self.state.read(recover=True)
             self._clear_stale_socket(current)
@@ -167,7 +167,7 @@ class OperatorServer:
             position_runtime = None
             try:
                 from syn.positions.runtime import NativePositionRuntime, native_position_configured
-                if native_position_configured(self.directory):
+                if not awareness_managed and native_position_configured(self.directory):
                     position_runtime = NativePositionRuntime(self)
                     position_runtime.start()
                 listener.bind(str(self.path))

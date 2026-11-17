@@ -75,16 +75,20 @@ def installation_id(directory):
 
 
 class PositionRuntime:
-    def __init__(self, sessions, databaseUrl, config: PositionConfig, *, identity=None):
+    def __init__(self, sessions, databaseUrl, config: PositionConfig, *, identity=None, clockConfig=None):
         self.sessions, self.databaseUrl, self.config = sessions, databaseUrl, config
         identity = identity or installation_id(config.stateDirectory)
         self.nodeRef = config.nodeRef or "syn://thing/node-"+digest([identity, host_fingerprint()])
         self.store = PositionStore(sessions)
+        from syn.clocks.runtime import ClockRuntime
+        self.clocks = ClockRuntime(sessions, databaseUrl, self.nodeRef, clockConfig)
 
     def handlers(self):
         # Credentials stay in process-local closures, never in persisted Job arguments.
         common = (self.databaseUrl, self.config.to_dict(), self.nodeRef)
-        return {DISCOVER: partial(run_discovery, *common), POLL: partial(run_poll, *common)}
+        return {DISCOVER: partial(run_discovery, *common),
+                POLL: partial(run_poll, *common, clockSettings=self.clocks.config.to_dict(),
+                              clockSessionId=self.clocks.sessionId), **self.clocks.handlers()}
 
     def prepare(self, scheduler):
         # Do not compute an expensive timezone catalogue or reset existing beliefs on restart.
@@ -94,6 +98,7 @@ class PositionRuntime:
         else:
             self.store.verify(self.nodeRef)
             self.store.upgrade_geographic_type(self.nodeRef)
+        self.clocks.prepare(scheduler)
         scheduler.every(schedule_key(self.nodeRef, "discovery"), DISCOVER,
                         {"schedulerKey": scheduler.schedulerKey}, self.config.rescanSeconds)
 
@@ -131,7 +136,7 @@ class NativePositionRuntime:
         try:
             settings = replace(config.position, stateDirectory=str(server.directory))
             self.runtime = PositionRuntime(createSessionFactory(self.engine), config.database.url, settings,
-                                           identity=server.expected_hash)
+                                           identity=server.expected_hash, clockConfig=config.clock)
             self.scheduler = ProcessScheduler(self.runtime.sessions, self.runtime.handlers(),
                 schedulerKey="node-"+digest(self.runtime.nodeRef), maxConcurrentJobs=settings.maxConcurrentJobs)
         except BaseException:
@@ -143,7 +148,7 @@ class NativePositionRuntime:
 
     async def _serve(self):
         try:
-            await self.scheduler.start()
+            await self.scheduler.start(prepare=self.runtime.prepare)
             self.ready.set()
             while not self.stopped.is_set() and self.scheduler.running:
                 await asyncio.sleep(.1)
@@ -161,7 +166,6 @@ class NativePositionRuntime:
 
     def start(self):
         try:
-            self.runtime.prepare(self.scheduler)
             self.thread = threading.Thread(target=lambda: asyncio.run(self._serve()), name="syn-position-scheduler", daemon=True)
             self.thread.start()
             if not self.ready.wait(30):

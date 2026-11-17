@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import asyncio
+import logging
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
@@ -8,7 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session, sessionmaker
@@ -52,31 +54,66 @@ def createApp(
     p2pConfig: P2PConfig | None = None,
     *, communicationTokens: Mapping[str, str] | None = None,
     positionRuntime=None,
+    operatorRuntime=None,
 ) -> FastAPI:
+    from .positions.types import digest
     scheduler = ProcessScheduler(sessions, handlers,
+        schedulerKey="node-"+digest(positionRuntime.nodeRef) if positionRuntime else "default",
         maxConcurrentJobs=positionRuntime.config.maxConcurrentJobs if positionRuntime else 4)
     p2pNode = Libp2pNode(p2pConfig or P2PConfig())
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        # A prior is committed before advertising this node or serving requests.
-        if positionRuntime is not None:
-            from starlette.concurrency import run_in_threadpool
-            await run_in_threadpool(positionRuntime.prepare, scheduler)
-            await scheduler.start()
+        from starlette.concurrency import run_in_threadpool
+        watchdog = None
+        app.state.awarenessFault = None
+        async def supervise():
+            while True:
+                await asyncio.sleep(1)
+                try:
+                    if scheduler.fault is not None:
+                        raise RuntimeError("Node scheduler lost readiness") from scheduler.fault
+                    if operatorRuntime is not None:
+                        operatorRuntime.check()
+                except Exception as error:
+                    app.state.awarenessFault = error
+                    logging.getLogger("uvicorn.error").error("Syn node lost readiness; API is fenced")
+                    await p2pNode.stop()
+                    await scheduler.stop()
+                    return
         try:
+            # Acquire scheduler ownership before resetting clock session or records.
+            if positionRuntime is not None:
+                await scheduler.start(prepare=positionRuntime.prepare)
+            if operatorRuntime is not None:
+                await run_in_threadpool(operatorRuntime.start)
             await p2pNode.start()
-            try:
-                yield
-            finally:
-                await p2pNode.stop()
+            watchdog = asyncio.create_task(supervise())
+            yield
         finally:
-            await scheduler.stop()
+            if watchdog is not None:
+                watchdog.cancel()
+                await asyncio.gather(watchdog, return_exceptions=True)
+            try:
+                await p2pNode.stop()
+            finally:
+                try:
+                    if operatorRuntime is not None:
+                        await run_in_threadpool(operatorRuntime.close)
+                finally:
+                    await scheduler.stop()
 
     app = FastAPI(title="Syn API", lifespan=lifespan)
     app.state.processScheduler = scheduler
     app.state.sessions = sessions
     app.state.p2pNode = p2pNode
+    app.state.awarenessFault = None
+
+    @app.middleware("http")
+    async def readiness_fence(request, call_next):
+        if app.state.awarenessFault is not None:
+            return JSONResponse({"detail": "Node operator/scheduler is not ready"}, status_code=503)
+        return await call_next(request)
 
     from .communication import communicationRouter, communicationTokens as loadCommunicationTokens
     tokens = loadCommunicationTokens() if communicationTokens is None else communicationTokens

@@ -91,12 +91,14 @@ class ProcessScheduler:
                 job.finishedAt = None
                 job.error = None
 
-    async def start(self) -> None:
+    async def start(self, *, prepare=None) -> None:
         async with self._lock:
             if self.running:
                 return
             self._acquire()
             try:
+                if prepare is not None:
+                    await asyncio.to_thread(prepare, self)
                 await asyncio.to_thread(self._recover)
             except BaseException:
                 self._release()

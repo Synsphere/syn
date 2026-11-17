@@ -166,7 +166,8 @@ def test_runtime_upgrades_before_polling_without_timezone_reset(state, now, monk
     scheduler = Mock(schedulerKey="rename-node")
     node.prepare(scheduler)
     assert store.current(NODE)[0]["estimate"]["typeRef"] == GEOGRAPHIC
-    scheduler.every.assert_called_once()
+    assert sum(call.args[1] == "position-discover" for call in scheduler.every.call_args_list) == 1
+    assert any(call.args[1] == "clock-ntp" for call in scheduler.every.call_args_list)
     before = store.verify(NODE)
     node.prepare(scheduler)
     assert store.verify(NODE) == before

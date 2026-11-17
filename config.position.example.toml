@@ -1,7 +1,7 @@
 # Merge [position] into config.toml, or use this as a native node's position.toml.
 # Keep this file private when it contains a database password.
 [database]
-url = "postgresql+psycopg://syn:CHANGE_ME@127.0.0.1/syn"
+url = "postgresql+psycopg://syn:syn@192.168.1.126:5432/syn"
 echo = false
 autoMigrate = true
 

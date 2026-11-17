@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .positions.config import PositionConfig
+from .clocks.config import ClockConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +33,7 @@ class SynConfig:
     database: DatabaseConfig
     p2p: P2PConfig = P2PConfig()
     position: PositionConfig = PositionConfig()
+    clock: ClockConfig = ClockConfig()
 
 
 def loadConfig(path: str | Path = "config.toml") -> SynConfig:
@@ -87,6 +89,7 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
 
     return SynConfig(
         position=position,
+        clock=ClockConfig.from_dict(raw.get("clock", {})),
         database=DatabaseConfig(url=url, echo=echo, autoMigrate=autoMigrate),
         p2p=P2PConfig(
             enabled=enabled,

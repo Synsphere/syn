@@ -90,7 +90,8 @@ def test_runtime_bootstraps_before_scheduling_and_restart_preserves_position(sta
     node=runtime.PositionRuntime(sessions,"unused",config,identity="test-id")
     node.prepare(scheduler)
     saved=node.store.current(NODE)
-    scheduler.every.assert_called_once()
+    assert sum(call.args[1] == "position-discover" for call in scheduler.every.call_args_list) == 1
+    assert any(call.args[1] == "clock-ntp" for call in scheduler.every.call_args_list)
     assert saved[0]["revision"]==1
     monkeypatch.setattr(runtime,"bootstrap",Mock(side_effect=AssertionError("Prior was reset")))
     node.prepare(scheduler)
