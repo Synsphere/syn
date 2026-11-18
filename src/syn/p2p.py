@@ -39,6 +39,7 @@ from .network_diagnostics import diagnostics_snapshot
 from .upnp import SynUpnpManager
 from . import peer_record
 from .peer_record_transport import PeerRecordService, fetch_peer_record
+from .p2p_transport_probe import TransportProbeResponder
 from .public_pubsub import PublicPubsubService, PublicPubsubBusy, PublicPubsubUnavailable
 from syn_client.public_pubsub import group_descriptor
 
@@ -416,6 +417,9 @@ class Libp2pNode:
                 self._registeredTransports = tuple(registered_transports(host))
                 self._transportCapabilities = caps
             self._host = host
+            # Read-only transport liveness, distinct from Operator custody and
+            # the authority-bearing signed peer-record service.
+            TransportProbeResponder(host).register()
             if self.config.dns4Enabled:
                 install_dns4_dialer(host, timeout=min(5.0, self.config.requestTimeoutSeconds),
                                     allow_private=self.config.allowPrivateAddresses)
