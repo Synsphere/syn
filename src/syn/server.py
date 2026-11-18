@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from functools import partial
 from collections.abc import Sequence
 from pathlib import Path
@@ -55,6 +56,10 @@ def parseArguments(arguments: Sequence[str] | None = None) -> argparse.Namespace
                         help="Existing operator.json, or path for a new operator installation")
     parser.add_argument("--api-only", action="store_true",
                         help="Explicitly run only the API/awareness, without operator setup or service")
+    parser.add_argument("--check-config", action="store_true",
+                        help="Validate effective configuration without starting services or reading credentials aloud")
+    parser.add_argument("--restore-config", action="store_true",
+                        help="Explicitly restore the last validated config, preserving the invalid copy")
     return parser.parse_args(arguments)
 
 
@@ -64,15 +69,33 @@ def main(arguments: Sequence[str] | None = None) -> None:
         from .release import runtimeContract
         print(json.dumps(runtimeContract().to_dict(), sort_keys=True, separators=(",", ":")))
         return
+    from .config_lifecycle import (ConfigRecoveryError, configuration_report,
+                                   remember_good_config, restore_good_config)
+    if options.check_config and options.restore_config:
+        raise ValueError("--check-config and --restore-config cannot be combined")
+    if options.check_config or options.restore_config:
+        if options.restore_config:
+            quarantined = restore_good_config(options.config)
+            print(f"Restored last-known-good Syn config; damaged copy saved at {quarantined}",
+                  file=sys.stderr, flush=True)
+        print(json.dumps(configuration_report(options.config), sort_keys=True))
+        return
     from .startup import ManagedOperator, ensure_database_config, ensure_operator, handoff_windows
     if handoff_windows(options):
         return
+    # Validate before unlocking/creating the Operator; never provision an identity
+    # when an invalid TOML file means startup cannot proceed.
+    ensure_database_config(options.config)
+    config = loadConfig(options.config)
+    try:
+        remember_good_config(options.config)
+    except (OSError, ConfigRecoveryError) as error:
+        print(f"Syn config: private recovery snapshot unavailable ({type(error).__name__}); "
+              "continuing with validated configuration", file=sys.stderr, flush=True)
     operator = None
     if not options.api_only:
         operator_path = ensure_operator(options.operator_config)
         operator = ManagedOperator(operator_path)
-    ensure_database_config(options.config)
-    config = loadConfig(options.config)
     print("Opening Syn database and preparing node records...", flush=True)
     engine = createEngine(
         config.database.url,
