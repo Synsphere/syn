@@ -109,6 +109,13 @@ function Install-WindowsUv {
 }
 
 $hostBroker = $null
+$hostBrokerStarted = $false
+$brokerError = $null
+$brokerOutput = $null
+$custodyEnvironment = @{}
+foreach ($name in @('SYN_HOST_CUSTODY_PIPE', 'SYN_HOST_CUSTODY_CLIENT_WIN', 'SYN_HOST_CUSTODY_POWERSHELL', 'WSLENV')) {
+    $custodyEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+}
 $status = 1
 try {
     if (-not $ApiOnly) {
@@ -119,11 +126,26 @@ try {
             throw 'Host custody implementation is missing from this Syn checkout.'
         }
         $uv = Install-WindowsUv
+        # uv provisions/selects the environment, but is not the lock-owning
+        # process. Launch Python directly so cleanup owns the actual broker PID.
+        $pythonOutput = & $uv 'run' '--project' $hostProject '--' 'python' '-c' 'import sys; print(sys.executable)'
+        if ($LASTEXITCODE -ne 0) { throw 'Could not prepare the Windows host custody Python environment.' }
+        $pythonLines = @($pythonOutput | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($pythonLines.Count -ne 1 -or -not [IO.Path]::IsPathRooted($pythonLines[0]) -or
+            -not (Test-Path -LiteralPath $pythonLines[0] -PathType Leaf)) {
+            throw 'Windows uv did not return one existing absolute Python interpreter path.'
+        }
+        $brokerPython = $pythonLines[0].Trim()
+        $launcherProcess = [System.Diagnostics.Process]::GetCurrentProcess()
+        try {
+            $launcherCreated = $launcherProcess.StartTime.ToUniversalTime().ToFileTimeUtc().ToString([Globalization.CultureInfo]::InvariantCulture)
+        } finally { $launcherProcess.Dispose() }
         $pipeName = 'SynHostCustody-' + [guid]::NewGuid().ToString('N')
         $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = $uv
+        $psi.FileName = $brokerPython
         $psi.WorkingDirectory = $hostProject
-        $psi.Arguments = 'run --project "' + $hostProject + '" -- python -m syn_host_custody.broker --pipe ' + $pipeName
+        $psi.Arguments = '-m syn_host_custody.broker --pipe ' + $pipeName +
+            ' --owner-pid ' + $PID + ' --owner-created ' + $launcherCreated
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
         $psi.RedirectStandardError = $true
@@ -131,6 +153,11 @@ try {
         $hostBroker = New-Object System.Diagnostics.Process
         $hostBroker.StartInfo = $psi
         if (-not $hostBroker.Start()) { throw 'Could not start Syn Windows host custody broker.' }
+        $hostBrokerStarted = $true
+        # Drain redirected streams immediately; a diagnostic must not block the
+        # broker on a full pipe, or wait on an unrelated uv child at shutdown.
+        $brokerError = $hostBroker.StandardError.ReadToEndAsync()
+        $brokerOutput = $hostBroker.StandardOutput.ReadToEndAsync()
 
         # Never pass the root secret or a generic signing key into WSL. Only
         # the pipe handle and fixed command bridge are forwarded using WSLENV.
@@ -143,7 +170,9 @@ try {
         $healthy = $false
         for ($attempt = 0; $attempt -lt 90; $attempt++) {
             if ($hostBroker.HasExited) {
-                throw "Host custody broker exited: $($hostBroker.StandardError.ReadToEnd())"
+                $diagnostic = $brokerError.GetAwaiter().GetResult()
+                if ($diagnostic.Length -gt 4000) { $diagnostic = $diagnostic.Substring(0, 4000) }
+                throw "Host custody broker exited: $diagnostic"
             }
             try {
                 $reply = '{"op":"health"}' | & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $client -Pipe $pipeName 2>$null
@@ -161,13 +190,29 @@ try {
     & $wsl.Source @wslArgs '--exec' 'sh' $linuxBootstrap @serverArgs
     $status = $LASTEXITCODE
 } finally {
-    if ($null -ne $hostBroker) {
-        if (-not $hostBroker.HasExited) {
-            # uv may have spawned a Python child. Stop the complete owned tree
-            # so the Windows vault lock and named pipe are not left orphaned.
-            & taskkill.exe /PID $hostBroker.Id /T /F 2>$null | Out-Null
+    try {
+        if ($null -ne $hostBroker) {
+            try {
+                if ($hostBrokerStarted) {
+                    if (-not $hostBroker.HasExited) {
+                        # This is the exact Python process created above, not a uv
+                        # wrapper or a newly looked-up PID. The watcher also covers
+                        # abrupt loss of this launcher/console.
+                        try { $hostBroker.Kill() }
+                        catch { if (-not $hostBroker.HasExited) { throw } }
+                    }
+                    if (-not $hostBroker.WaitForExit(5000)) {
+                        Write-Warning 'Windows host custody did not confirm shutdown; inspect scripts\Stop-SynHostCustody.ps1.'
+                    }
+                }
+            } finally { $hostBroker.Dispose() }
         }
-        $hostBroker.Dispose()
+    } finally {
+        # Direct .ps1 runs can return to an interactive shell: don't leave that
+        # shell pointing at this invocation's now-closed custody pipe.
+        foreach ($name in $custodyEnvironment.Keys) {
+            [Environment]::SetEnvironmentVariable($name, $custodyEnvironment[$name], 'Process')
+        }
     }
 }
 exit $status

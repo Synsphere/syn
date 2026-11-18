@@ -7,6 +7,7 @@ its process lifetime and does not expose a TCP listener.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import getpass
 import json
 import os
@@ -15,6 +16,19 @@ import sys
 import tempfile
 
 from .core import Authority, canonical, MAX_REQUEST, public_identity
+
+
+class VaultInUseError(RuntimeError):
+    """A live Windows handle already owns the host authority's exclusive lock."""
+
+    def __init__(self, lock_path):
+        self.lock_path = Path(lock_path)
+        super().__init__(
+            "Another Syn host-custody process is already using this Windows vault. "
+            "Close its Syn launcher before starting another instance. If that launcher "
+            "has already closed, stop its remaining syn_host_custody.broker process "
+            "and retry. Do not delete authority.lock or vault-v1.dpapi."
+        )
 
 
 class WindowsVault:
@@ -26,14 +40,45 @@ class WindowsVault:
         base = Path(os.environ["LOCALAPPDATA"]) / "Syn" / "HostCustody" if directory is None else Path(directory)
         base.mkdir(parents=True, exist_ok=True)
         self.path = base / "vault-v1.dpapi"
+        self.lock_path = base / "authority.lock"
+        self._lock = None
+        self._closed = False
         # One Windows host process exclusively owns the vault. Never allow two
         # brokers to race when a second Syn launcher is started.
+        import pywintypes
         import win32con
         import win32file
-        self._lock = win32file.CreateFile(str(base / "authority.lock"),
-            win32con.GENERIC_READ | win32con.GENERIC_WRITE, 0, None,
-            win32con.OPEN_ALWAYS, win32con.FILE_ATTRIBUTE_NORMAL, None)
-        self.data = self._load()
+        self._close_handle = win32file.CloseHandle
+        try:
+            self._lock = win32file.CreateFile(str(self.lock_path),
+                win32con.GENERIC_READ | win32con.GENERIC_WRITE, 0, None,
+                win32con.OPEN_ALWAYS, win32con.FILE_ATTRIBUTE_NORMAL, None)
+        except pywintypes.error as error:
+            if error.winerror in (32, 33):  # Sharing violation / lock violation.
+                raise VaultInUseError(self.lock_path) from error
+            raise
+        try:
+            self.data = self._load()
+        except BaseException:
+            # Corrupt/incompatible vault data must not leave this process owning
+            # the lock after construction failed.
+            self.close()
+            raise
+
+    def close(self):
+        self._closed = True
+        if self._lock is not None:
+            # Retain ownership if CloseHandle fails so an explicit retry can
+            # release it. Never continue using the vault after a close attempt.
+            self._close_handle(self._lock)
+            self._lock = None
+
+    def __enter__(self):
+        self._require_healthy()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def _load(self):
         if not self.path.exists():
@@ -46,6 +91,7 @@ class WindowsVault:
         return body
 
     def _persist(self):
+        self._require_healthy()
         sealed = self.crypto.CryptProtectData(canonical(self.data),
             "Syn host root custody", None, None, None, 1)
         # Never truncate an existing vault in place. DPAPI protects data and
@@ -62,9 +108,11 @@ class WindowsVault:
                 os.unlink(name)
 
     def has_identity(self, ref):
+        self._require_healthy()
         return ref in self.data["identities"]
 
     def create_identity(self, ref, entropy, identity):
+        self._require_healthy()
         if ref in self.data["identities"] or len(entropy) != 32:
             raise ValueError("Host root identity already exists or is invalid")
         self.data["identities"][ref] = {"entropy": entropy.hex(), "public": identity}
@@ -82,6 +130,8 @@ class WindowsVault:
         return entropy, current
 
     def _require_healthy(self):
+        if getattr(self, "_closed", False):
+            raise OSError("Host vault is closed")
         if getattr(self, "_write_failed", False):
             raise OSError("Host vault write failed; restart the broker before further use")
 
@@ -105,9 +155,11 @@ class WindowsVault:
         return canonical([ref, network, group, epoch]).decode("ascii")
 
     def is_approved(self, ref, network, group, epoch):
+        self._require_healthy()
         return self._group_label(ref, network, group, epoch) in self.data["approvals"]
 
     def approve_group(self, ref, network, group, epoch):
+        self._require_healthy()
         label = self._group_label(ref, network, group, epoch)
         if label not in self.data["approvals"]:
             self.data["approvals"].append(label)
@@ -162,11 +214,15 @@ def handle_stream(handle, authority):
 def serve(pipe, directory=None):
     if os.name != "nt" or not pipe.startswith("SynHostCustody-") or len(pipe) > 90:
         raise ValueError("Host broker requires a bounded Windows-local pipe name")
+    with WindowsVault(directory) as vault:
+        _serve_pipe(pipe, Authority(vault, approve=host_approve))
+
+
+def _serve_pipe(pipe, authority):
     import pywintypes
     import win32pipe
     import win32file
     import winerror
-    authority = Authority(WindowsVault(directory), approve=host_approve)
     address = "\\\\.\\pipe\\" + pipe
     attrs = pipe_security()
     while True:
@@ -196,12 +252,16 @@ def serve(pipe, directory=None):
 def recovery_cli(action, service, account, pin):
     """Explicit Windows-console-only backup/import; no recovery phrase over IPC."""
     import re
-    from mnemonic import Mnemonic
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         raise ValueError("Root recovery requires a private interactive Windows terminal")
     if not re.fullmatch(r"[0-9a-f]{64}", pin):
         raise ValueError("Recovery requires an independent pinned Operator public-key hash")
-    authority = Authority(WindowsVault(), approve=host_approve)
+    with WindowsVault() as vault:
+        _recover(action, service, account, pin, Authority(vault, approve=host_approve))
+
+
+def _recover(action, service, account, pin, authority):
+    from mnemonic import Mnemonic
     ref = service + "/" + account
     if action == "export":
         seed, identity = authority.store.identity(ref)
@@ -238,15 +298,39 @@ def main(argv=None):
     parser.add_argument("--service", default="syn.operator")
     parser.add_argument("--account")
     parser.add_argument("--expected-base-hash")
+    parser.add_argument("--owner-pid", type=int)
+    parser.add_argument("--owner-created", type=int, help="Launcher's exact Windows creation FILETIME")
     args = parser.parse_args(argv)
-    if args.pipe:
-        serve(args.pipe)
-    else:
-        if not args.account or not args.expected_base_hash:
-            parser.error("recovery requires --account and --expected-base-hash")
-        recovery_cli("export" if args.export_recovery else "import", args.service,
-                     args.account, args.expected_base_hash)
+    if (args.owner_pid is None) != (args.owner_created is None):
+        parser.error("--owner-pid and --owner-created must be provided together")
+    if args.owner_pid is not None and not args.pipe:
+        parser.error("launcher ownership applies only to --pipe")
+    if args.owner_pid is not None and (not 1 <= args.owner_pid <= 0xFFFFFFFF
+                                      or not 1 <= args.owner_created < 2**64):
+        parser.error("launcher PID and creation FILETIME must be positive and bounded")
+    from .owner import OwnerProcess, OwnerProcessError
+    try:
+        if args.pipe:
+            owner = OwnerProcess(args.owner_pid, args.owner_created) if args.owner_pid is not None else nullcontext()
+            # Verify/watch the launcher before opening the authority's vault.
+            with owner:
+                serve(args.pipe)
+        else:
+            if not args.account or not args.expected_base_hash:
+                parser.error("recovery requires --account and --expected-base-hash")
+            recovery_cli("export" if args.export_recovery else "import", args.service,
+                         args.account, args.expected_base_hash)
+    except VaultInUseError as error:
+        print(f"Syn host custody: {error}\n"
+              "Inspect: .\\scripts\\Stop-SynHostCustody.ps1\n"
+              "Stop only a broker whose Syn launcher is no longer needed, using -ProcessId.",
+              file=sys.stderr)
+        return 3
+    except OwnerProcessError as error:
+        print(f"Syn host custody: {error}", file=sys.stderr)
+        return 4
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

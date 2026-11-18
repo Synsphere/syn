@@ -29,6 +29,61 @@ has an explicit Windows-user DACL and rejects remote clients.
 `uv run syn-server` from Windows is routed through `Start-Syn.ps1` as well.
 `--api-only` deliberately runs without an Operator or host broker.
 
+## Restarting after a vault sharing violation
+
+Win32 error 32 at `CreateFile(... authority.lock ...)` means another process
+still holds a conflicting open handle. The mere existence of the lock file is
+normal; deleting it does not resolve ownership. Keep `authority.lock` and
+`vault-v1.dpapi` intact. This is a broker startup failure before the WSL node
+and its Bluetooth/Cardano services start.
+
+The launcher now uses `uv` to prepare and locate its Windows Python interpreter,
+then starts the broker through that interpreter directly. It tracks the actual
+lock-owning Python process, drains its output asynchronously, and stops/waits for
+that process during cleanup. A broker started by the launcher also watches a
+retained handle to its exact PowerShell owner, pinned by PID plus creation
+FILETIME. If the launcher/console disappears, the broker exits and Windows
+releases the vault and pipe handles. A reused PID is not accepted as a new owner.
+
+An older broker already left running does not acquire the new watcher just
+because files were updated. If another Syn launcher is running, close that
+instance normally when you intend to stop it. Then inspect remaining brokers
+from the checkout root:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Stop-SynHostCustody.ps1
+```
+
+The helper only lists matching Python broker processes owned by the current
+Windows user. Once the displayed PID is identified as the unwanted remaining
+broker, stop that specific process, replacing `12345` with its actual PID:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Stop-SynHostCustody.ps1 -ProcessId 12345
+.\Start-Syn.cmd
+```
+
+Add `-WhatIf` to preview the selected stop. The helper parses Windows command-line
+arguments, verifies the exact module and bounded pipe name, checks the current
+user SID and process creation time, and retains the process handle across its
+checks and stop. It neither kills unrelated Python processes nor changes any
+vault files. No process is stopped by the default listing command. If no matching
+broker is shown, do not guess a PID; an explicitly launched recovery process or
+another application may be holding the file instead.
+
+Concurrent launchers still cannot independently own the same Windows authority.
+An occupied vault now produces a concise diagnostic and exit status 3 instead
+of an unhandled sharing-violation traceback. Unavailable owner monitoring fails
+closed. Normal shutdown, failed initialization and explicit recovery operations
+release their vault handles; startup never regenerates or replaces an existing
+root identity as a repair action.
+
+Direct interactive `.ps1` runs restore the previous custody bridge environment
+variables when they finish, so the shell is not left pointing at that run's
+closed pipe. The Windows-specific subprocess/CIM acceptance tests in
+`tests/test_host_custody_recovery.py` use disposable sleeping fixture processes
+and never access a real DPAPI vault. They require a Windows runner.
+
 ## Trust and hardware limitations
 
 - DPAPI **does not imply a non-exportable hardware key**. The Windows Python
