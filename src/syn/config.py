@@ -40,10 +40,15 @@ class P2PConfig:
     lookupTimeoutSeconds: float = 45.0
     bootstrapRefreshSeconds: float = 600.0
     providerRepublishSeconds: float = 22 * 60 * 60
+    publicPubsubEnabled: bool = True
+    publicPubsubMaxGroups: int = 32
+    publicPubsubQueueSize: int = 256
+    publicPubsubDiscoveryIntervalSeconds: float = 15.0
+    publicPubsubProviderRepublishSeconds: float = 3 * 60 * 60
 
     def __post_init__(self):
         for name in ("enabled", "mdnsEnabled", "upnpEnabled", "aminoEnabled",
-                     "publishOperatorRecord", "allowPrivateAddresses"):
+                     "publishOperatorRecord", "allowPrivateAddresses", "publicPubsubEnabled"):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"p2p.{name} must be true or false")
         for name, limit, empty in (("listenAddresses", 16, False),
@@ -63,6 +68,16 @@ class P2PConfig:
             value = getattr(self, name)
             if (type(value) not in (int, float) or not math.isfinite(value)
                     or not lower < value <= upper):
+                raise ValueError(f"p2p.{name} must be finite and between {lower} and {upper}")
+        for name, upper in (("publicPubsubMaxGroups", 128), ("publicPubsubQueueSize", 4096)):
+            value = getattr(self, name)
+            if type(value) is not int or not 1 <= value <= upper:
+                raise ValueError(f"p2p.{name} must be an integer between 1 and {upper}")
+        for name, lower, upper in (("publicPubsubDiscoveryIntervalSeconds", 1, 300),
+                                   ("publicPubsubProviderRepublishSeconds", 60, 22 * 60 * 60)):
+            value = getattr(self, name)
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or not lower <= value <= upper):
                 raise ValueError(f"p2p.{name} must be finite and between {lower} and {upper}")
         if self.allowPrivateAddresses and any(
                 ".bootstrap.libp2p.io/" in address or "/bootstrap.libp2p.io/" in address
@@ -168,6 +183,11 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
             lookupTimeoutSeconds=p2p.get("lookupTimeoutSeconds", 45.0),
             bootstrapRefreshSeconds=p2p.get("bootstrapRefreshSeconds", 600.0),
             providerRepublishSeconds=p2p.get("providerRepublishSeconds", 22 * 60 * 60),
+            publicPubsubEnabled=p2p.get("publicPubsubEnabled", True),
+            publicPubsubMaxGroups=p2p.get("publicPubsubMaxGroups", 32),
+            publicPubsubQueueSize=p2p.get("publicPubsubQueueSize", 256),
+            publicPubsubDiscoveryIntervalSeconds=p2p.get("publicPubsubDiscoveryIntervalSeconds", 15.0),
+            publicPubsubProviderRepublishSeconds=p2p.get("publicPubsubProviderRepublishSeconds", 3 * 60 * 60),
         ),
     )
 

@@ -1,4 +1,4 @@
-"""Syn's managed libp2p host and public Amino discovery client.
+"""Syn's managed libp2p host, Amino discovery, and public URL groups.
 
 The stable lookup name is the installed Operator's base-key hash. Transport
 keys are ephemeral and never receive the Operator's private key or mesh rights.
@@ -31,6 +31,8 @@ from .config import P2PConfig
 from .p2p_defaults import AMINO_PROTOCOL
 from . import peer_record
 from .peer_record_transport import PeerRecordService, fetch_peer_record
+from .public_pubsub import PublicPubsubService, PublicPubsubBusy, PublicPubsubUnavailable
+from syn_client.public_pubsub import group_descriptor
 
 
 logger = logging.getLogger(__name__)
@@ -61,6 +63,13 @@ class Libp2pNode:
         self._token = self._startup_scope = None
         self._host = self._dht = None
         self._lookup_slots = None
+        self._public = self._public_slots = None
+        self._default_network = operator.config.get("network_id", "syn") if operator is not None else "syn"
+        if (type(self._default_network) is not str
+                or re.fullmatch(r"[a-z][a-z0-9-]{0,63}", self._default_network) is None):
+            raise ValueError("Invalid public pubsub default network")
+        self._public_status = {"enabled": config.enabled and config.publicPubsubEnabled,
+            "running": False, "default_network_id": self._default_network, "groups": []}
         self._mapped_ports: set[int] = set()
         self._amino = {"enabled": config.aminoEnabled, "protocol": AMINO_PROTOCOL,
                        "mode": "client", "state": "stopped", "routingPeers": 0,
@@ -125,7 +134,91 @@ class Libp2pNode:
                 "mdnsEnabled": self.config.mdnsEnabled,
                 "discoveredPeers": list(self._discoveredPeers),
                 "upnpEnabled": self.config.upnpEnabled, "upnpExternalIp": self._upnpExternalIp,
-                "amino": deepcopy(self._amino), "publication": deepcopy(self._publication)}
+                "amino": deepcopy(self._amino), "publication": deepcopy(self._publication),
+                "publicPubsub": deepcopy(self._public_status)}
+
+    async def public_groups(self) -> dict:
+        """Read the local control-plane snapshot even while transport is stopped."""
+        with self._lock:
+            return deepcopy(self._public_status)
+
+    def _update_public_status(self):
+        if self._public is not None:
+            snapshot = self._public.status()
+            with self._lock:
+                self._public_status = deepcopy(snapshot)
+
+    @staticmethod
+    def _public_group_id(value):
+        if type(value) is not str or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+            raise ValueError("Expected a lowercase public group hash")
+        return value
+
+    async def join_public_group(self, url: str, network_id: str | None = None) -> dict:
+        descriptor = group_descriptor(self._default_network if network_id is None else network_id, url)
+        return await self._call_public("join", descriptor["url"], descriptor["network_id"])
+
+    async def leave_public_group(self, group_hash: str) -> dict:
+        return await self._call_public("leave", self._public_group_id(group_hash))
+
+    async def publish_public(self, group_hash: str, data) -> dict:
+        return await self._call_public("publish", self._public_group_id(group_hash), data)
+
+    async def read_public(self, group_hash: str, after: str | None = None, limit: int = 100) -> dict:
+        group_hash = self._public_group_id(group_hash)
+        if type(limit) is not int or not 1 <= limit <= 256:
+            raise ValueError("Public message limit must be between 1 and 256")
+        if after is not None and (type(after) is not str
+                or re.fullmatch(r"[0-9a-f]{32}:(?:0|[1-9][0-9]{0,19})", after) is None):
+            raise ValueError("Invalid public message cursor")
+        return await self._call_public("read", group_hash, after, limit)
+
+    async def _call_public(self, operation: str, *arguments):
+        """Cancel the live Trio operation when its asyncio caller is cancelled."""
+        service, token = self._public, self._token
+        if (not self.config.enabled or not self.config.publicPubsubEnabled or service is None
+                or token is None or not self._ready.is_set() or self._stop.is_set()
+                or self._error is not None or self._thread is None or not self._thread.is_alive()):
+            raise PublicPubsubUnavailable("Public pubsub is not running")
+        state = {"scope": None, "cancelled": False}
+
+        async def invoke():
+            with trio.CancelScope() as scope:
+                state["scope"] = scope
+                if state["cancelled"]:
+                    scope.cancel()
+                await trio.lowlevel.checkpoint_if_cancelled()
+                if service is not self._public or self._stop.is_set():
+                    raise PublicPubsubUnavailable("Public pubsub runtime changed")
+                try:
+                    self._public_slots.acquire_nowait()
+                except trio.WouldBlock:
+                    raise PublicPubsubBusy("Public pubsub control is at capacity") from None
+                try:
+                    with trio.fail_after(self.config.requestTimeoutSeconds):
+                        result = await getattr(service, operation)(*arguments)
+                finally:
+                    self._public_slots.release()
+                    self._update_public_status()
+            if scope.cancelled_caught:
+                raise PublicPubsubUnavailable("Public pubsub request cancelled")
+            return result
+
+        def cancel():
+            state["cancelled"] = True
+            if state["scope"] is not None:
+                state["scope"].cancel()
+
+        try:
+            return await asyncio.to_thread(partial(trio.from_thread.run, invoke, trio_token=token))
+        except asyncio.CancelledError:
+            try:
+                token.run_sync_soon(cancel)
+            except trio.RunFinishedError:
+                pass
+            raise
+        except (trio.RunFinishedError, trio.Cancelled, trio.TooSlowError) as error:
+            raise PublicPubsubUnavailable("Public pubsub request stopped or timed out") from error
 
     def public_record(self):
         with self._lock:
@@ -232,6 +325,8 @@ class Libp2pNode:
         finally:
             with self._lock:
                 self._record = None
+                self._public_status.update(running=False, groups=[])
+            self._public = self._public_slots = None
             self._host = self._dht = self._token = self._startup_scope = None
             self._ready.set()
 
@@ -259,6 +354,7 @@ class Libp2pNode:
     async def _serve(self) -> None:
         self._token = trio.lowlevel.current_trio_token()
         self._lookup_slots = trio.Semaphore(4)
+        self._public_slots = trio.Semaphore(16)
         self._mapped_ports.clear()
         with trio.CancelScope() as scope:
             self._startup_scope = scope
@@ -303,8 +399,13 @@ class Libp2pNode:
                     self._peerId = str(host.get_id())
                     self._addresses = tuple(str(value) for value in host.get_transport_addrs())
                     self._upnpExternalIp = host.upnp.get_external_ip() if host.upnp is not None else None
-                self._ready.set()
                 async with trio.open_nursery() as nursery:
+                    if self.config.publicPubsubEnabled and not self._stop.is_set():
+                        self._public = PublicPubsubService(host, self._dht, self.config,
+                            lambda: self._public_addresses(host), default_network=self._default_network)
+                        await nursery.start(self._public.run)
+                        self._update_public_status()
+                    self._ready.set()
                     if self._dht is not None:
                         nursery.start_soon(self._bootstrap_loop)
                     else:
@@ -312,6 +413,7 @@ class Libp2pNode:
                     if publish:
                         nursery.start_soon(self._publication_loop, host, key_pair.public_key.to_bytes())
                     while not self._stop.is_set():
+                        self._update_public_status()
                         discovered = tuple(sorted(str(value) for value in host.get_peerstore().valid_peer_ids()
                                                   if value != host.get_id()))
                         with self._lock:

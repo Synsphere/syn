@@ -139,6 +139,8 @@ def createApp(
     tokens = loadCommunicationTokens() if communicationTokens is None else communicationTokens
     if tokens:
         app.include_router(communicationRouter(sessions, tokens))
+    from .public_pubsub_http import build_router as build_public_pubsub_router
+    app.include_router(build_public_pubsub_router())
     if operatorRuntime is not None:
         from .operator.dag_http import build_router
         app.include_router(build_router(sessions, operatorRuntime.server.expected_hash))

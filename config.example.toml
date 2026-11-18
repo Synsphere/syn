@@ -26,5 +26,14 @@ lookupTimeoutSeconds = 45
 bootstrapRefreshSeconds = 600
 providerRepublishSeconds = 79200  # 22 hours; signed peer bindings refresh separately.
 
+# Public groups are joined explicitly through /p2p/pubsub/groups or the client.
+# Every canonical Syn URL can identify a group; no object needs to exist locally.
+publicPubsubEnabled = true
+publicPubsubMaxGroups = 32
+publicPubsubQueueSize = 256  # Retained messages per group; readers use independent cursors.
+publicPubsubDiscoveryIntervalSeconds = 15
+publicPubsubProviderRepublishSeconds = 10800
+
 # Protocol, host approval, publication states and diagnostics:
 # docs/development/p2p-amino.md
+# docs/development/public-gossipsub.md

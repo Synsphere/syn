@@ -70,6 +70,8 @@ def test_disabled_libp2p_node_does_not_start() -> None:
             "discoveredPeers": [],
             "upnpEnabled": True,
             "upnpExternalIp": None,
+            "publicPubsub": {"enabled": False, "running": False,
+                             "default_network_id": "syn", "groups": []},
         }
         assert status["publication"]["state"] == "no-operator"
 

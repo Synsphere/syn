@@ -312,6 +312,16 @@ their authenticated transport identities before private GossipSub admission.
 The runtime, native Agents, and client package must be updated together; existing
 v1 manual relay configurations remain supported.
 
+The API node also supports [public GossipSub groups](docs/development/public-gossipsub.md)
+for canonical Syn URLs such as `syn://type/weather-observation`,
+`syn://cog/weather-summary`, `syn://ember/shared-curiosity` and
+`syn://event/community-meeting`. Any participant can join or publish within the
+selected network namespace, with no fixed roster or local object requirement.
+The node discovers providers of each URL group's hash through Amino. Local HTTP
+controls and `syn_client.public_pubsub.PublicPubsubClient` provide join, leave,
+publish and bounded cursor-based receive operations. Messages are signed public
+JSON; receiving one grants no object, execution or consensus authority.
+
 The optional `[p2p]` table supports fixed listening ports and explicit public
 addresses. Defaults listen on ephemeral TCP ports on IPv4 and IPv6 interfaces:
 
