@@ -81,18 +81,23 @@ class P2PConfig:
             raise ValueError("p2p.upnpDiscoveryDelayMilliseconds must be an integer from 100 to 10000")
         if self.publicGossipsubVersion not in ("1.1", "1.2") or type(self.publicGossipsubVersion) is not str:
             raise ValueError("p2p.publicGossipsubVersion must be '1.1' or '1.2'")
-        for name, signature in (("webRtcListenAddresses", ("udp", "webrtc-direct")),
-                                ("webTransportListenAddresses", ("udp", "quic-v1", "webtransport"))):
+        for name, protocol_tail, enabled in (
+                ("webRtcListenAddresses", ("webrtc-direct",), self.webRtcEnabled),
+                ("webTransportListenAddresses", ("quic-v1", "webtransport"), self.webTransportEnabled)):
             values = getattr(self, name)
-            if (type(values) is not tuple or len(values) > 8
+            if (type(values) is not tuple or len(values) > 8 or (enabled and not values)
                     or any(type(value) is not str or len(value) > 128 for value in values)
                     or len(set(values)) != len(values)):
                 raise ValueError(f"p2p.{name} must be a bounded unique tuple")
             for value in values:
                 parts = value.split("/")
                 try:
+                    # Multiaddr protocols are not uniformly protocol/value pairs:
+                    # quic-v1, webtransport and webrtc-direct are valueless.
                     if (parts[:2] not in (["", "ip4"], ["", "ip6"])
-                            or tuple(parts[3::2]) != signature or len(parts) != 2 * len(signature) + 2):
+                            or len(parts) < 6 or parts[3] != "udp"
+                            or tuple(parts[5:]) != protocol_tail
+                            or len(parts) != 5 + len(protocol_tail)):
                         raise ValueError
                     ip = ipaddress.ip_address(parts[2])
                     port = int(parts[4])

@@ -11,6 +11,18 @@ def test_default_capabilities_are_enabled():
     assert config.publicGossipsubVersion == "1.2"
 
 
+def test_default_udp_transport_addresses_are_canonical():
+    config = P2PConfig()
+    assert config.webRtcListenAddresses == ("/ip4/0.0.0.0/udp/0/webrtc-direct",)
+    assert config.webTransportListenAddresses == (
+        "/ip4/0.0.0.0/udp/0/quic-v1/webtransport",
+    )
+    assert P2PConfig(
+        webRtcListenAddresses=("/ip6/::/udp/0/webrtc-direct",),
+        webTransportListenAddresses=("/ip6/::/udp/0/quic-v1/webtransport",),
+    ).webTransportEnabled
+
+
 def test_config_without_p2p_settings_inherits_defaults(tmp_path):
     config = tmp_path / "config.toml"
     config.write_text('[database]\nurl = "sqlite:///test"\n')
