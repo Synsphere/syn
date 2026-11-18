@@ -42,7 +42,9 @@ def postgres():
     try:
         with admin.begin() as connection:
             connection.execute(text(f'CREATE SCHEMA "{name}"'))
-        scoped = make_url(URL).update_query_dict({"options": f"-csearch_path={name}"})
+            connection.execute(text(f'CREATE TABLE "{name}"."alembicVersion" '
+                '(version_num varchar(32) NOT NULL PRIMARY KEY)'))
+        scoped = make_url(URL).update_query_dict({"options": f"-csearch_path={name},public"})
         engine = createEngine(scoped.render_as_string(hide_password=False), migrate=True)
         sessions = sessionmaker(bind=engine, expire_on_commit=False)
         yield sessions
