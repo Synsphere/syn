@@ -60,6 +60,12 @@ def parseArguments(arguments: Sequence[str] | None = None) -> argparse.Namespace
                         help="Validate effective configuration without starting services or reading credentials aloud")
     parser.add_argument("--restore-config", action="store_true",
                         help="Explicitly restore the last validated config, preserving the invalid copy")
+    parser.add_argument("--check-runtime", action="store_true",
+                        help="Inspect the already-running local API and transports without changing anything")
+    parser.add_argument("--runtime-timeout", type=float, default=2.0,
+                        help="Per-request local runtime health timeout in seconds (0.1 to 10)")
+    parser.add_argument("--strict-runtime", action="store_true",
+                        help="Also return nonzero when optional subsystems are degraded")
     return parser.parse_args(arguments)
 
 
@@ -69,6 +75,12 @@ def main(arguments: Sequence[str] | None = None) -> None:
         from .release import runtimeContract
         print(json.dumps(runtimeContract().to_dict(), sort_keys=True, separators=(",", ":")))
         return
+    if options.check_runtime:
+        if options.check_config or options.restore_config:
+            raise ValueError("--check-runtime cannot be combined with configuration maintenance")
+        from .runtime_health import run as run_runtime_health
+        raise SystemExit(run_runtime_health(options.host, options.port, options.runtime_timeout,
+                                            options.strict_runtime))
     from .config_lifecycle import (ConfigRecoveryError, configuration_report,
                                    remember_good_config, restore_good_config)
     if options.check_config and options.restore_config:
