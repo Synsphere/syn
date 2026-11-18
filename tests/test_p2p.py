@@ -19,6 +19,9 @@ def test_libp2p_node_starts_listens_and_stops() -> None:
                 listenAddresses=("/ip4/127.0.0.1/tcp/0",),
                 startupTimeoutSeconds=10,
                 upnpEnabled=False,
+                mdnsEnabled=False,
+                aminoEnabled=False,
+                bootstrapPeers=(),
             )
         )
         await node.start()
@@ -26,7 +29,9 @@ def test_libp2p_node_starts_listens_and_stops() -> None:
         assert running["running"] is True
         assert running["peerId"]
         assert running["listenAddresses"]
-        assert running["mdnsEnabled"] is True
+        assert running["mdnsEnabled"] is False
+        assert running["amino"]["mode"] == "client"
+        assert running["publication"]["state"] == "no-operator"
         assert all("/tcp/" in address for address in running["listenAddresses"])
 
         await node.stop()
@@ -37,7 +42,8 @@ def test_libp2p_node_starts_listens_and_stops() -> None:
 
 def test_default_node_listens_on_all_ipv4_and_ipv6_interfaces() -> None:
     async def exercise() -> None:
-        node = Libp2pNode(P2PConfig(startupTimeoutSeconds=10, upnpEnabled=False))
+        node = Libp2pNode(P2PConfig(startupTimeoutSeconds=10, upnpEnabled=False,
+                                  mdnsEnabled=False, aminoEnabled=False, bootstrapPeers=()))
         await node.start()
         try:
             addresses = node.status()["listenAddresses"]
@@ -51,9 +57,10 @@ def test_default_node_listens_on_all_ipv4_and_ipv6_interfaces() -> None:
 
 def test_disabled_libp2p_node_does_not_start() -> None:
     async def exercise() -> None:
-        node = Libp2pNode(P2PConfig(enabled=False))
+        node = Libp2pNode(P2PConfig(enabled=False, bootstrapPeers=()))
         await node.start()
-        assert node.status() == {
+        status = node.status()
+        assert {key: value for key, value in status.items() if key not in {"amino", "publication"}} == {
             "enabled": False,
             "running": False,
             "peerId": None,
@@ -64,6 +71,7 @@ def test_disabled_libp2p_node_does_not_start() -> None:
             "upnpEnabled": True,
             "upnpExternalIp": None,
         }
+        assert status["publication"]["state"] == "no-operator"
 
     asyncio.run(exercise())
 
@@ -75,11 +83,15 @@ def test_two_nodes_discover_each_other_over_mdns() -> None:
             listenAddresses=(f"/ip4/0.0.0.0/tcp/{firstPort}",),
             startupTimeoutSeconds=10,
             upnpEnabled=False,
+            aminoEnabled=False,
+            bootstrapPeers=(),
         ))
         second = Libp2pNode(P2PConfig(
             listenAddresses=(f"/ip4/0.0.0.0/tcp/{secondPort}",),
             startupTimeoutSeconds=10,
             upnpEnabled=False,
+            aminoEnabled=False,
+            bootstrapPeers=(),
         ))
         await first.start()
         await second.start()
@@ -113,11 +125,14 @@ def test_upnp_is_enabled_on_the_libp2p_host() -> None:
         mdnsEnabled=False,
         listenAddresses=("/ip4/0.0.0.0/tcp/4001",),
         upnpEnabled=True,
+        aminoEnabled=False,
+        bootstrapPeers=(),
     ))
     node._stop.set()
     host = MagicMock()
     host.get_id.return_value = "local-peer"
     host.get_addrs.return_value = [multiaddr.Multiaddr("/ip4/0.0.0.0/tcp/4001")]
+    host.get_transport_addrs.return_value = host.get_addrs.return_value
     host.get_peerstore.return_value.valid_peer_ids.return_value = []
     host.upnp.get_external_ip.return_value = "203.0.113.20"
 
@@ -129,5 +144,9 @@ def test_upnp_is_enabled_on_the_libp2p_host() -> None:
     with patch("syn.p2p.new_host", return_value=host) as createHost:
         trio.run(node._serve)
 
-    createHost.assert_called_once_with(bootstrap=[], enable_upnp=True)
+    options = createHost.call_args.kwargs
+    assert options["bootstrap"] == []
+    assert options["enable_upnp"] is True
+    assert set(options["sec_opt"]) == {"/noise"}
+    assert set(options["muxer_opt"]) == {"/yamux/1.0.0"}
     assert node.status()["upnpExternalIp"] == "203.0.113.20"

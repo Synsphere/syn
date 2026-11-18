@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12, <3.14"
 
 [[package]]
@@ -2179,7 +2179,7 @@ requires-dist = [
     { name = "geonamescache", specifier = ">=2,<4" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "keyring", specifier = "==25.7.0" },
-    { name = "libp2p", specifier = ">=0.7.0" },
+    { name = "libp2p", specifier = "==0.7.0" },
     { name = "miniupnpc", specifier = ">=2.3.3" },
     { name = "mnemonic", specifier = "==0.21" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },

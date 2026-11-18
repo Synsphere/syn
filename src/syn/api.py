@@ -61,7 +61,8 @@ def createApp(
     scheduler = ProcessScheduler(sessions, handlers,
         schedulerKey="node-"+digest(positionRuntime.nodeRef) if positionRuntime else "default",
         maxConcurrentJobs=positionRuntime.config.maxConcurrentJobs if positionRuntime else 4)
-    p2pNode = Libp2pNode(p2pConfig or P2PConfig())
+    p2pNode = Libp2pNode(p2pConfig or P2PConfig(),
+                        operatorRuntime.server if operatorRuntime is not None else None)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -74,6 +75,7 @@ def createApp(
                 try:
                     if scheduler.fault is not None:
                         raise RuntimeError("Node scheduler lost readiness") from scheduler.fault
+                    p2pNode.check()
                     if operatorRuntime is not None:
                         operatorRuntime.check()
                         if "operator-dag-sync" in handlers:
@@ -86,7 +88,7 @@ def createApp(
                     await scheduler.stop()
                     return
         try:
-            # All recurring work uses the existing node scheduler and lease.
+            # Durable recurring database work uses the node scheduler and lease.
             def prepare(manager):
                 if positionRuntime is not None:
                     positionRuntime.prepare(manager)
@@ -130,7 +132,7 @@ def createApp(
     @app.middleware("http")
     async def readiness_fence(request, call_next):
         if app.state.awarenessFault is not None:
-            return JSONResponse({"detail": "Node operator/scheduler is not ready"}, status_code=503)
+            return JSONResponse({"detail": "Node Operator, scheduler or peer transport is not ready"}, status_code=503)
         return await call_next(request)
 
     from .communication import communicationRouter, communicationTokens as loadCommunicationTokens
@@ -153,6 +155,26 @@ def createApp(
     @app.get("/p2p/status")
     async def p2pStatus(request: Request) -> dict[str, Any]:
         return request.app.state.p2pNode.status()
+
+    @app.get("/p2p/peer-record")
+    async def p2pPeerRecord(request: Request) -> dict[str, Any]:
+        packet = request.app.state.p2pNode.public_record()
+        if packet is None:
+            raise HTTPException(409, "A current signed Operator peer record is not available")
+        return packet
+
+    @app.get("/p2p/operators/{operator_hash}")
+    async def p2pOperator(operator_hash: str, request: Request, network: str = "syn") -> dict[str, Any]:
+        from .p2p import DiscoveryBusy, DiscoveryUnavailable
+        try:
+            peers = await request.app.state.p2pNode.find_operator(operator_hash, network)
+        except ValueError:
+            raise HTTPException(422, "Expected a lowercase Operator base hash and valid network") from None
+        except DiscoveryBusy:
+            raise HTTPException(429, "Operator discovery is at capacity") from None
+        except DiscoveryUnavailable:
+            raise HTTPException(503, "Operator discovery is temporarily unavailable") from None
+        return {"operator": operator_hash, "network": network, "peers": peers}
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def index(request: Request) -> HTMLResponse:

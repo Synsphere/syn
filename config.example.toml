@@ -8,5 +8,23 @@ enabled = true
 mdnsEnabled = true
 upnpEnabled = true
 listenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
-bootstrapPeers = []
 startupTimeoutSeconds = 15
+
+# Omit bootstrapPeers to use the five official IPFS/Amino DNSaddr bootstrappers.
+# An explicit empty list keeps the seed list empty; it is not replaced by defaults.
+# bootstrapPeers = []
+aminoEnabled = true
+publishOperatorRecord = true
+
+# Optional public IP/TCP endpoints, without /p2p/<peer-id>; use actual reachable IPs.
+# Empty uses public listener addresses and successful public UPnP mappings.
+# For manual forwarding, use a fixed listen port and its matching public endpoint.
+announceAddresses = []
+allowPrivateAddresses = false  # Isolated test swarms only; replace public bootstrap peers.
+requestTimeoutSeconds = 10
+lookupTimeoutSeconds = 45
+bootstrapRefreshSeconds = 600
+providerRepublishSeconds = 79200  # 22 hours; signed peer bindings refresh separately.
+
+# Protocol, host approval, publication states and diagnostics:
+# docs/development/p2p-amino.md

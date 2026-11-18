@@ -14,6 +14,8 @@ import re
 from uuid import UUID
 from typing import Callable
 
+from .peer_record import DOMAIN as PEER_RECORD_DOMAIN, APPROVAL_SUFFIX as PEER_APPROVAL_SUFFIX
+
 ROOT_PATH = "m/6969'/420'"
 BASE_PATH = "m/6969'/420'/0'/0/0"
 PROFILE = "syn-icarus-ed25519-bip32-v2"
@@ -25,6 +27,7 @@ MAX_REQUEST = 140_000
 # transcripts have a domain prefix from the installed version of Syn.
 SIGN_DOMAINS = (
     b"syn.operator-status/1\0",
+    PEER_RECORD_DOMAIN,
     b"syn.operator.dag.checkpoint/1\0",
     b"syn.operator.pulse.v1\0",
     b"syn.operator.confidential-enrollment.v1\0",
@@ -64,6 +67,7 @@ def root_slot(slot):
     return (isinstance(slot, str) and
             (re.search(r"\.operator\.(?:" + "|".join(ROOT_SUFFIXES) + r")\.v1$", slot) is not None
              or slot.endswith(DAG_ANCHOR_SUFFIX)
+             or slot.endswith(PEER_APPROVAL_SUFFIX)
              or re.search(r"\.operator\.witness-[0-9a-f]{64}\.v1$", slot) is not None))
 
 
@@ -303,6 +307,12 @@ class Authority:
             return {"sequence": body["sequence"], "digest": commitment}
         if op == "identity":
             return identity
+        if op == "peer_record":
+            if set(req) != {"op", "service", "account", "pin", "body"}:
+                raise ValueError("Unknown host peer record request fields")
+            from .peer_record import sign_with_approval
+            return sign_with_approval(self, service, account, pin, req["body"],
+                                      lambda payload: sign_operator(seed, payload)).hex()
         if op == "sign":
             payload = bytes.fromhex(req["payload"])
             if not any(payload.startswith(domain) for domain in SIGN_DOMAINS):

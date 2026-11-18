@@ -142,3 +142,52 @@ def test_non_boolean_auto_migrate_is_rejected(tmp_path: Path, value: str) -> Non
 def test_malformed_toml_is_reported(tmp_path: Path) -> None:
     with pytest.raises(tomllib.TOMLDecodeError):
         loadConfig(writeConfig(tmp_path, "[database\nurl = 'broken'\n"))
+
+
+def test_amino_defaults_and_explicit_empty_bootstrap(tmp_path):
+    from syn.p2p_defaults import IPFS_BOOTSTRAP_PEERS
+    assert P2PConfig().bootstrapPeers == IPFS_BOOTSTRAP_PEERS
+    assert P2PConfig().aminoEnabled is True
+    assert P2PConfig().publishOperatorRecord is True
+    config = loadConfig(writeConfig(tmp_path, '[database]\nurl="sqlite://"\n[p2p]\nbootstrapPeers=[]\n'))
+    assert config.p2p.bootstrapPeers == ()
+
+
+@pytest.mark.parametrize("setting,value", [
+    ("aminoEnabled", 1), ("publishOperatorRecord", "yes"),
+    ("allowPrivateAddresses", 1), ("requestTimeoutSeconds", True),
+    ("requestTimeoutSeconds", float("nan")), ("lookupTimeoutSeconds", float("inf")),
+    ("bootstrapRefreshSeconds", 0), ("providerRepublishSeconds", 86400),
+    ("announceAddresses", ("/ip4/0.0.0.0/tcp/4001",)),
+    ("announceAddresses", ("/ip4/127.0.0.1/tcp/4001",)),
+    ("announceAddresses", ("/ip4/8.8.8.8/tcp/0",)),
+    ("announceAddresses", ("/ip4/8.8.8.8/tcp/04001",)),
+    ("announceAddresses", ("/dns4/example.com/tcp/4001",)),
+    ("bootstrapPeers", ("same", "same")),
+])
+def test_amino_config_rejects_invalid_bounds_and_addresses(setting, value):
+    with pytest.raises(ValueError, match="p2p\\."):
+        P2PConfig(**{setting: value})
+
+
+def test_private_dht_configuration_requires_isolated_bootstraps(tmp_path):
+    with pytest.raises(ValueError, match="isolated"):
+        P2PConfig(allowPrivateAddresses=True)
+    config = loadConfig(writeConfig(tmp_path, '''[database]
+url="sqlite://"
+[p2p]
+bootstrapPeers=[]
+allowPrivateAddresses=true
+announceAddresses=["/ip4/127.0.0.1/tcp/4001"]
+aminoEnabled=false
+publishOperatorRecord=false
+requestTimeoutSeconds=2
+lookupTimeoutSeconds=5
+bootstrapRefreshSeconds=30
+providerRepublishSeconds=3600
+'''))
+    assert config.p2p.allowPrivateAddresses
+    assert not config.p2p.publishOperatorRecord
+    assert not config.p2p.aminoEnabled
+    assert config.p2p.announceAddresses == ("/ip4/127.0.0.1/tcp/4001",)
+    assert config.p2p.providerRepublishSeconds == 3600

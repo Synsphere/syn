@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import tomllib
+import ipaddress
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,6 +10,7 @@ from .positions.config import PositionConfig
 from .clocks.config import ClockConfig
 from .radios.config import RadioConfig
 from .witnessing.config import WitnessConfig
+from .p2p_defaults import IPFS_BOOTSTRAP_PEERS
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,8 +29,58 @@ class P2PConfig:
         "/ip4/0.0.0.0/tcp/0",
         "/ip6/::/tcp/0",
     )
-    bootstrapPeers: tuple[str, ...] = ()
+    bootstrapPeers: tuple[str, ...] = IPFS_BOOTSTRAP_PEERS
     startupTimeoutSeconds: float = 15.0
+    aminoEnabled: bool = True
+    publishOperatorRecord: bool = True
+    announceAddresses: tuple[str, ...] = ()
+    # Only for isolated test swarms. Public Amino must use public addresses.
+    allowPrivateAddresses: bool = False
+    requestTimeoutSeconds: float = 10.0
+    lookupTimeoutSeconds: float = 45.0
+    bootstrapRefreshSeconds: float = 600.0
+    providerRepublishSeconds: float = 22 * 60 * 60
+
+    def __post_init__(self):
+        for name in ("enabled", "mdnsEnabled", "upnpEnabled", "aminoEnabled",
+                     "publishOperatorRecord", "allowPrivateAddresses"):
+            if type(getattr(self, name)) is not bool:
+                raise ValueError(f"p2p.{name} must be true or false")
+        for name, limit, empty in (("listenAddresses", 16, False),
+                                   ("bootstrapPeers", 32, True),
+                                   ("announceAddresses", 16, True)):
+            values = getattr(self, name)
+            if (not isinstance(values, tuple) or len(values) > limit
+                    or (not values and not empty)
+                    or any(not isinstance(v, str) or not 0 < len(v) <= 512 for v in values)
+                    or len(set(values)) != len(values)):
+                raise ValueError(f"p2p.{name} must be a bounded, unique string array")
+        for name, lower, upper in (("startupTimeoutSeconds", 0, 300),
+                                   ("requestTimeoutSeconds", 0, 60),
+                                   ("lookupTimeoutSeconds", 0, 120),
+                                   ("bootstrapRefreshSeconds", 9, 86400),
+                                   ("providerRepublishSeconds", 59, 22 * 60 * 60)):
+            value = getattr(self, name)
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or not lower < value <= upper):
+                raise ValueError(f"p2p.{name} must be finite and between {lower} and {upper}")
+        if self.allowPrivateAddresses and any(
+                ".bootstrap.libp2p.io/" in address or "/bootstrap.libp2p.io/" in address
+                for address in self.bootstrapPeers):
+            raise ValueError("p2p.allowPrivateAddresses requires isolated, explicitly selected bootstrapPeers")
+        for address in self.announceAddresses:
+            parts = address.split("/")
+            try:
+                if len(parts) != 5 or parts[0] or parts[1] not in {"ip4", "ip6"} or parts[3] != "tcp":
+                    raise ValueError
+                ip = ipaddress.ip_address(parts[2])
+                if (str(ip) != parts[2] or f"ip{ip.version}" != parts[1]
+                        or str(int(parts[4])) != parts[4] or not 1 <= int(parts[4]) <= 65535
+                        or ip.is_unspecified or ip.is_multicast or ip.is_link_local
+                        or (not self.allowPrivateAddresses and not ip.is_global)):
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise ValueError("p2p.announceAddresses requires canonical, dialable IP/TCP addresses") from None
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +125,7 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
         "listenAddresses",
         ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"],
     )
-    bootstrapPeers = p2p.get("bootstrapPeers", [])
+    bootstrapPeers = p2p.get("bootstrapPeers", list(IPFS_BOOTSTRAP_PEERS))
     startupTimeoutSeconds = p2p.get("startupTimeoutSeconds", 15.0)
     if not isinstance(enabled, bool):
         raise ValueError(f"{configPath} p2p.enabled must be true or false")
@@ -86,8 +139,11 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
         isinstance(value, str) and value for value in bootstrapPeers
     ):
         raise ValueError(f"{configPath} p2p.bootstrapPeers must be a string array")
-    if not isinstance(startupTimeoutSeconds, (int, float)) or startupTimeoutSeconds <= 0:
+    if type(startupTimeoutSeconds) not in (int, float) or startupTimeoutSeconds <= 0:
         raise ValueError(f"{configPath} p2p.startupTimeoutSeconds must be positive")
+    announceAddresses = p2p.get("announceAddresses", [])
+    if not isinstance(announceAddresses, list) or not all(isinstance(v, str) for v in announceAddresses):
+        raise ValueError(f"{configPath} p2p.announceAddresses must be a string array")
 
     position = PositionConfig.from_dict(raw.get("position", {}))
 
@@ -104,6 +160,14 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
             listenAddresses=tuple(listenAddresses),
             bootstrapPeers=tuple(bootstrapPeers),
             startupTimeoutSeconds=float(startupTimeoutSeconds),
+            aminoEnabled=p2p.get("aminoEnabled", True),
+            publishOperatorRecord=p2p.get("publishOperatorRecord", True),
+            announceAddresses=tuple(announceAddresses),
+            allowPrivateAddresses=p2p.get("allowPrivateAddresses", False),
+            requestTimeoutSeconds=p2p.get("requestTimeoutSeconds", 10.0),
+            lookupTimeoutSeconds=p2p.get("lookupTimeoutSeconds", 45.0),
+            bootstrapRefreshSeconds=p2p.get("bootstrapRefreshSeconds", 600.0),
+            providerRepublishSeconds=p2p.get("providerRepublishSeconds", 22 * 60 * 60),
         ),
     )
 

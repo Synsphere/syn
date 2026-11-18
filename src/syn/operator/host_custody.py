@@ -35,7 +35,7 @@ def request(body):
         result = subprocess.run(
             [powershell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
              "-File", script, "-Pipe", pipe],
-            input=raw+"\n", capture_output=True, text=True, timeout=300 if body.get("op") in ("create", "group_key", "dag_anchor") else 30,
+            input=raw+"\n", capture_output=True, text=True, timeout=300 if body.get("op") in ("create", "group_key", "dag_anchor", "peer_record") else 30,
             check=False)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise SynProtocolError("Windows host custody broker is unavailable") from error
@@ -129,6 +129,23 @@ class HostHdOperatorSigner:
         if len(hashes) != 8 or any(len(x) != 32 for x in hashes):
             raise SynProtocolError("Host returned invalid candidate public hashes")
         return hashes
+
+    def sign_peer_record(self, body) -> bytes:
+        """Request a fixed public binding, with host-retained exact approval."""
+        from syn.peer_record import DOMAIN, canonical, validate_body
+        validate_body(body, expected_operator=self.expected_public_hash.hex())
+        try:
+            signature = bytes.fromhex(self._call("peer_record", body=body))
+        except (ValueError, TypeError) as error:
+            raise SynProtocolError("Invalid host peer record signature") from error
+        if len(signature) != 64:
+            raise SynProtocolError("Host peer record signature has wrong length")
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        try:
+            Ed25519PublicKey.from_public_bytes(self.public_key).verify(signature, DOMAIN + canonical(body))
+        except Exception as error:
+            raise SynProtocolError("Host peer signature differs from pinned Operator") from error
+        return signature
 
     def device_commitment(self, hardware_id: bytes) -> str:
         if type(hardware_id) is not bytes or not 6 <= len(hardware_id) <= 256:

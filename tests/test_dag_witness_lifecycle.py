@@ -42,6 +42,8 @@ def test_operator_dag_preparation_precedes_scheduler_dispatch(monkeypatch, fail_
             calls.append('p2p-stop')
         def status(self):
             return {'running': True}
+        def check(self):
+            pass
     class Operator:
         server = types.SimpleNamespace(expected_hash='ab' * 32)
         def start(self):

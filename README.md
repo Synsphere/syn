@@ -288,36 +288,64 @@ public keys.
 
 ### libp2p networking
 
-This section describes existing peer discovery. The required account-bound,
-encrypted private Syn mesh and per-Agent topology are specified in the
-[current architecture](docs/architecture.md); discovery is not that acceptance.
+Syn starts a managed TCP/Noise/Yamux host using pinned `libp2p==0.7.0`. Its
+Amino DHT client uses the five official IPFS bootstrap peers and
+`/ipfs/kad/1.0.0` to discover Operators by their existing base-public-key hash.
+The node runs for the API application's lifetime and closes during graceful
+shutdown. Public discovery, signed identity bindings, configuration and measured
+limits are described in the [Amino guide](docs/development/p2p-amino.md).
 
-The API starts a py-libp2p node with its application lifespan and closes it during
-graceful shutdown. By default it listens on ephemeral TCP ports on every IPv4 and
-IPv6 interface. Use the optional `[p2p]` configuration table to choose fixed
-listening addresses or connect to bootstrap peers:
+An installed Operator advertises a standard provider record under
+`0x12 0x20 || SHA256(raw_base_public_key)`. Its separately generated libp2p PeerID
+can change on restart while the Operator hash stays stable. The node serves the
+32-byte public key over Bitswap and an expiring Operator-signed transport binding
+over `/syn/operator/peer-record/1.0.0`. Discovery verifies that binding before
+returning a peer. It grants no mesh membership, enrollment or DAG authority;
+those contracts remain in the [current architecture](docs/architecture.md).
+
+The optional `[p2p]` table supports fixed listening ports and explicit public
+addresses. Defaults listen on ephemeral TCP ports on IPv4 and IPv6 interfaces:
 
 ```toml
 [p2p]
 enabled = true
+aminoEnabled = true
+publishOperatorRecord = true
 mdnsEnabled = true
 upnpEnabled = true
 listenAddresses = ["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001"]
-bootstrapPeers = ["/dnsaddr/bootstrap.libp2p.io/p2p/<peer-id>"]
+announceAddresses = []
+# Omit bootstrapPeers to use the five official DNSaddr/PeerID pins.
+# bootstrapPeers = []  # Explicitly disables configured bootstrap seeds.
 startupTimeoutSeconds = 15
 ```
 
-Built-in libp2p mDNS advertisement and LAN peer discovery are enabled by default.
-Discovered peers are added to the host peerstore. `GET /p2p/status` returns the
-node's runtime peer ID, bound multiaddresses, configured bootstrap peers, and
-discovered peer IDs. Set `mdnsEnabled = false` to disable only LAN discovery, or
-`enabled = false` when the application must run without its libp2p network.
+When upgrading an existing `config.toml`, an existing `bootstrapPeers = []`
+continues to mean no configured bootstrap seeds. Remove that setting to adopt
+the official defaults. `aminoEnabled = false` disables DHT discovery and provider
+announcements; `publishOperatorRecord = false` disables this Operator's public
+binding and public-key provider service. `enabled = false` disables this host.
 
-UPnP IGD discovery and TCP port forwarding are also enabled by default. When the
-router supports UPnP and reports a public address, py-libp2p maps each active TCP
-listener port to the host and removes those mappings during graceful shutdown.
-`GET /p2p/status` reports the gateway's `upnpExternalIp` when discovery succeeds.
-Set `upnpEnabled = false` to prevent the application from changing router mappings.
+```sh
+curl --fail http://127.0.0.1:8000/p2p/status
+curl --fail http://127.0.0.1:8000/p2p/peer-record
+# Replace OPERATOR_BASE_HASH with the independently selected 64-character hash.
+curl --fail 'http://127.0.0.1:8000/p2p/operators/OPERATOR_BASE_HASH?network=syn'
+```
+
+Publication waits for a permitted public TCP address. Configure
+`announceAddresses` when using manual forwarding; the address must reach the
+actual listener. On Windows, the host broker asks for approval of the exact
+Operator/network/transport/address binding. Bounded refreshes reuse that approval;
+a new transport identity after restart requires another approval. `--api-only`
+has no Operator signer and publishes no Operator record.
+
+Built-in mDNS and UPnP are enabled by default. `mdnsEnabled = false` disables LAN
+discovery; `upnpEnabled = false` prevents router port-mapping changes. Only a
+successful mapping with a public external IP is considered for publication.
+`GET /p2p/status` reports listener addresses, peers, gateway IP, Amino availability
+and publication state. `announced` means provider messages were sent; it does
+not establish remote storage, public visibility or inbound reachability.
 
 
 ## Reliable Python tests on Windows
