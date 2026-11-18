@@ -186,8 +186,17 @@ class SynConfig:
 
 def loadConfig(path: str | Path = "config.toml") -> SynConfig:
     configPath = Path(path)
-    with configPath.open("rb") as configFile:
-        raw = tomllib.load(configFile)
+    try:
+        with configPath.open("rb") as configFile:
+            raw = tomllib.load(configFile)
+    except tomllib.TOMLDecodeError as error:
+        # Keep the original diagnostic (including line/column when provided by
+        # Python) and identify the file. Never echo the configuration contents:
+        # the database URL may contain a password.
+        raise ValueError(
+            f"Invalid Syn TOML configuration {configPath}: {error}. "
+            "The existing file was not modified. Correct its syntax before restarting."
+        ) from error
 
     try:
         database = raw["database"]

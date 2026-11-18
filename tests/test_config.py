@@ -153,8 +153,51 @@ def test_non_boolean_auto_migrate_is_rejected(tmp_path: Path, value: str) -> Non
 
 
 def test_malformed_toml_is_reported(tmp_path: Path) -> None:
-    with pytest.raises(tomllib.TOMLDecodeError):
-        loadConfig(writeConfig(tmp_path, "[database\nurl = 'broken'\n"))
+    path = writeConfig(tmp_path, "[database\nurl = 'broken'\n")
+    before = path.read_bytes()
+    with pytest.raises(ValueError, match="Invalid Syn TOML configuration") as exc:
+        loadConfig(path)
+    assert str(path) in str(exc.value)
+    assert "line" in str(exc.value).lower()  # Python's TOML parser position
+    assert path.read_bytes() == before
+    assert isinstance(exc.value.__cause__, tomllib.TOMLDecodeError)
+
+
+def test_legacy_config_kept_unchanged_with_new_feature_defaults(tmp_path: Path) -> None:
+    path = writeConfig(tmp_path, '[database]\nurl = "postgresql+psycopg://localhost/syn"\n')
+    original = path.read_bytes()
+    config = loadConfig(path)
+    assert config.p2p.quicEnabled
+    assert config.p2p.webRtcEnabled
+    assert config.p2p.webTransportEnabled
+    assert config.p2p.dns4Enabled
+    assert path.read_bytes() == original
+
+
+def test_bootstrap_creates_private_valid_config_without_replacement(tmp_path, monkeypatch):
+    import os
+    from syn.startup import ensure_database_config
+
+    path = tmp_path / "config.toml"
+    monkeypatch.setenv("SYN_DATABASE_URL", "postgresql+psycopg://user:secret@localhost/syn")
+    ensure_database_config(path)
+    assert tomllib.loads(path.read_text(encoding="utf-8"))["database"]["url"].endswith("/syn")
+    assert path.stat().st_mode & 0o777 == 0o600
+    original = path.read_bytes()
+    monkeypatch.setenv("SYN_DATABASE_URL", "postgresql+psycopg://elsewhere/other")
+    ensure_database_config(path)
+    assert path.read_bytes() == original
+    assert not list(tmp_path.glob(".syn-config-*.tmp"))
+
+
+def test_bootstrap_does_not_repair_or_replace_invalid_existing_config(tmp_path, monkeypatch):
+    from syn.startup import ensure_database_config
+
+    path = writeConfig(tmp_path, "[database\ninvalid\n")
+    original = path.read_bytes()
+    monkeypatch.setenv("SYN_DATABASE_URL", "postgresql+psycopg://localhost/syn")
+    ensure_database_config(path)
+    assert path.read_bytes() == original
 
 
 def test_amino_defaults_and_explicit_empty_bootstrap(tmp_path):

@@ -90,12 +90,32 @@ def ensure_database_config(path):
     if parsed.get_backend_name() != "postgresql" or not parsed.database:
         raise ValueError("Syn requires a PostgreSQL URL with a database name")
     text = "[database]\nurl = "+json.dumps(url)+"\nautoMigrate = true\necho = false\n"
-    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(path, flags, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as stream:
-        stream.write(text)
-        stream.flush()
-        os.fsync(stream.fileno())
+    import tempfile
+    import tomllib
+    # Validate the exact bytes before publishing them. os.link publishes only
+    # when the destination is missing, even if another process races setup.
+    tomllib.loads(text)
+    if not path.parent.is_dir():
+        raise RuntimeError(f"Configuration directory does not exist: {path.parent}")
+    fd, temporary = tempfile.mkstemp(prefix=".syn-config-", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary, path, follow_symlinks=False)
+        except FileExistsError:
+            # A concurrent launcher already wrote a config; never clobber it.
+            return
+        # Best-effort durability of the directory entry, not just file data.
+        directory_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        os.unlink(temporary)
     print(f"Created private database configuration: {path}", flush=True)
 
 
