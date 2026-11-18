@@ -109,6 +109,14 @@ class AuthenticatedPubsub(Pubsub):
     def __init__(self, host, router, *, admitted_peers=(), **kwargs):
         if kwargs.get("strict_signing", True) is not True:
             raise ValueError("Private Pubsub requires strict message signatures")
+        # Enforce 0.8.1's receive-side quotas even when callers supply kwargs.
+        # These are limits on wire traffic, not on Agent certificate admission.
+        for key, maximum in (("max_inbound_rpc_size", 65536),
+                             ("max_subscriptions_per_rpc", MAX_PEERS),
+                             ("max_subscriptions_per_peer", MAX_PEERS)):
+            value = kwargs.setdefault(key, maximum)
+            if type(value) is not int or not 1 <= value <= maximum:
+                raise ValueError(f"Private Pubsub {key} exceeds its receiver bound")
         self._admissions = {}
         self._streams = {}
         self._operations = {}

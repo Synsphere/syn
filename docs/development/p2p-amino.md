@@ -1,6 +1,6 @@
 # Public Operator discovery through Amino
 
-This milestone implements public Operator discovery with `libp2p==0.7.0`,
+This milestone implements public Operator discovery with `libp2p==0.8.1`,
 TCP, Noise and Yamux. Syn joins the public IPFS Amino DHT as a **client** on
 `/ipfs/kad/1.0.0`. It bootstraps, follows closer peers, announces its own provider
 record and resolves other providers. It does not register or advertise an

@@ -418,7 +418,9 @@ class GossipRelay(PrivateRelay):
                 muxer_opt={"/yamux/1.0.0": Yamux})
             self.host = host
             router = GossipSub([PROTOCOL_ID_V11], degree=MAX_PEERS, degree_low=1,
-                               degree_high=MAX_PEERS, heartbeat_interval=1)
+                               degree_high=MAX_PEERS, heartbeat_interval=1,
+                               adaptive_gossip_enabled=False, eclipse_protection_enabled=False,
+                               max_messages_per_topic_per_second=128.0)
             self.pubsub = AuthenticatedPubsub(host, router, strict_signing=True,
                                              admitted_peers=tuple(self.peers))
             self.pubsub.set_topic_validator(self.topic, self._validate, False)

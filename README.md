@@ -288,7 +288,7 @@ public keys.
 
 ### libp2p networking
 
-Syn starts a managed TCP/Noise/Yamux host using pinned `libp2p==0.7.0`. Its
+Syn starts a managed TCP/Noise/Yamux host using pinned `libp2p==0.8.1`. Its
 Amino DHT client uses the five official IPFS bootstrap peers and
 `/ipfs/kad/1.0.0` to discover Operators by their existing base-public-key hash.
 The node runs for the API application's lifetime and closes during graceful

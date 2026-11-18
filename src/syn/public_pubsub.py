@@ -187,8 +187,13 @@ class _PublicPubsub(Pubsub):
         self._inbound_count = 0
         self._incoming_epoch = {}
         self._message_slots = trio.Semaphore(32)
+        # 0.8.1 exposes independent inbound frame and subscription quotas.
+        # Keep the upstream parser limits no looser than Syn's existing bounds.
         super().__init__(_PublicHost(self, host), router, strict_signing=True,
-                         validation_cache_size=1024, max_concurrent_validator_count=16)
+                         validation_cache_size=1024, max_concurrent_validator_count=16,
+                         max_inbound_rpc_size=MAX_RPC_BYTES,
+                         max_subscriptions_per_rpc=MAX_RPC_ITEMS,
+                         max_subscriptions_per_peer=MAX_RPC_ITEMS)
 
     def selected_groups(self, peer, groups=None):
         """Public discovery evidence, never a private identity allowlist.
@@ -374,8 +379,15 @@ class PublicPubsubService:
         self._maintenance_count = 0
         self._nursery = None
         self._running = False
+        # Stay on the existing v1.1 wire profile during the library migration.
+        # Upstream 0.8.1 rate-limits *locally published* messages to 10/s by
+        # default, which would silently truncate Syn's bounded burst delivery.
+        # Preserve a finite 512/s cap and deterministic legacy mesh geometry;
+        # enabling v1.2/2.0 and their adaptive limits is a separate milestone.
         self.router = _PublicRouter([PROTOCOL_ID_V11], degree=6, degree_low=4,
-            degree_high=12, heartbeat_interval=1, do_px=False)
+            degree_high=12, heartbeat_interval=1, do_px=False,
+            adaptive_gossip_enabled=False, eclipse_protection_enabled=False,
+            max_messages_per_topic_per_second=512.0)
         self.pubsub = _PublicPubsub(host, self.router, self)
 
     def _available(self):
