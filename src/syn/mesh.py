@@ -140,7 +140,7 @@ def main(argv=None):
     if os.name != "posix" or os.getuid() != 0:
         raise SystemExit("Private native relay requires the privileged local deployment controller")
     config = parse(private_read(args.config))
-    if config.get("profile") == "syn.private-gossipsub-config/1":
+    if config.get("profile") in {"syn.private-gossipsub-config/1", "syn.private-gossipsub-config/2"}:
         import trio
         from syn.mesh_gossipsub import GossipRelay
 

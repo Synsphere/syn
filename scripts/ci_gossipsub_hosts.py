@@ -20,7 +20,7 @@ from libp2p.crypto.ed25519 import create_new_key_pair
 from libp2p.peer.id import ID
 
 from syn.agent import pubsub
-from syn.mesh_gossipsub import PROFILE, GossipRelay
+from syn.mesh_gossipsub import LEGACY_PROFILE as PROFILE, GossipRelay
 from syn_client.group import CERT_DOMAIN, COMMIT_DOMAIN
 from syn_client.operator_protocol import canonical, receive, send
 from syn_client.pubsub import MESSAGE_DOMAIN, scope, verify_message, verify_reply

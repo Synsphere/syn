@@ -219,6 +219,7 @@ def test_gossipsub_receive_finishes_after_subscription_poll_deadline():
             active=True,
             stopped=stopped,
             hellos={},
+            local_nodes=frozenset(),
             peers={},
             expected=1,
             topic="fixture",

@@ -124,7 +124,7 @@ class AgentServer(OperatorServer):
 
     def dispatch(self, conn, request):
         from syn_client.operator_protocol import peer_uid, send
-        if request.get("profile") == "syn.private-pubsub-link/1":
+        if request.get("profile") in {"syn.private-pubsub-link/1", "syn.private-pubsub-link/2"}:
             self.status(self.health_request())
             self.pubsub.attach(conn, request)
         elif request.get("profile") == "syn.private-pubsub-request/1":

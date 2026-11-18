@@ -303,6 +303,15 @@ over `/syn/operator/peer-record/1.0.0`. Discovery verifies that binding before
 returning a peer. It grants no mesh membership, enrollment or DAG authority;
 those contracts remain in the [current architecture](docs/architecture.md).
 
+Private GossipSub relays now support
+[group-provider discovery](docs/development/gossipsub-discovery.md) through the
+same Amino protocol. The current-source `syn.private-gossipsub-config/2` profile
+advertises and looks up the pub-sub group's exact identifying hash, with no
+configured remote relay list. Native Agent proofs bind discovered relays to
+their authenticated transport identities before private GossipSub admission.
+The runtime, native Agents, and client package must be updated together; existing
+v1 manual relay configurations remain supported.
+
 The optional `[p2p]` table supports fixed listening ports and explicit public
 addresses. Defaults listen on ephemeral TCP ports on IPv4 and IPv6 interfaces:
 

@@ -17,6 +17,8 @@ from .operator_protocol import SynProtocolError, canonical, exact, hex_bytes, uu
 HELLO_DOMAIN = b"syn.private-pubsub.hello/1\0"
 MESSAGE_DOMAIN = b"syn.private-pubsub.message/1\0"
 REPLY_DOMAIN = b"syn.private-pubsub.reply/1\0"
+RELAY_BINDING_DOMAIN = b"syn.private-pubsub.relay-binding/1\0"
+RELAY_BINDING_PROFILE = "syn.private-pubsub-relay-binding/1"
 MAX_PEERS = 8
 MAX_PAYLOAD = 8192
 MAX_QUEUE = 64
@@ -55,6 +57,69 @@ def scope(value):
     if len(commitments) != 1:
         raise SynProtocolError("Private pub-sub members do not share the same current group commitment")
     return value
+
+
+def group_hash(selected):
+    """Public discovery identifier for this exact frozen pub-sub scope.
+
+    The roster order is immaterial, but every certificate and the complete
+    workspace/session/group/epoch context is committed. Publishing this hash
+    does not grant membership or prove that a provider hosts an Agent.
+    """
+    selected = scope(selected)
+    members = sorted(selected["members"], key=lambda cert: cert["body"]["node_public_key_hash"])
+    return hashlib.sha256(canonical({**selected, "members": members})).hexdigest()
+
+
+def relay_peer_id(public_key):
+    """Standard libp2p PeerID for a raw Ed25519 relay public key.
+
+    This only encodes the identity multihash of the 36-byte PublicKey protobuf;
+    the public client has no libp2p runtime dependency or transport secrets.
+    """
+    if type(public_key) is not bytes or len(public_key) != 32:
+        raise SynProtocolError("Relay transport public key must be 32-byte Ed25519")
+    raw = b"\x00\x24\x08\x01\x12\x20" + public_key
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    number, encoded = int.from_bytes(raw, "big"), ""
+    while number:
+        number, digit = divmod(number, 58)
+        encoded = alphabet[digit] + encoded
+    return "1" * (len(raw) - len(raw.lstrip(b"\0"))) + encoded
+
+
+def relay_proof_body(hello, selected, relay_public_key, *, now=None):
+    """Build the fixed native attestation; no caller-chosen signing payload."""
+    hello = exact(hello, {"body", "public_key", "certificate", "signature"}, "pub-sub hello")
+    public = hex_bytes(hello["public_key"], 32, "pub-sub sender public key")
+    body = verify_hello(hello, selected, expected_node=hashlib.sha256(public).hexdigest(), now=now)
+    return {"profile": RELAY_BINDING_PROFILE, "group_hash": group_hash(selected),
+            "relay_peer_id": relay_peer_id(relay_public_key), "relay_public_key": relay_public_key.hex(),
+            "node": body["node"], "boot_id": body["boot_id"],
+            "hello_sha256": hashlib.sha256(canonical(hello)).hexdigest(), "issued_at": body["issued_at"]}
+
+
+def verify_relay_proof(packet, selected, *, expected_peer_id, now=None):
+    """Authenticate a discovered relay's assignment using a selected Agent.
+
+    ``expected_peer_id`` must come from the encrypted, authenticated stream.
+    Returning the original signed hello preserves the existing ready roster
+    and message verification. Callers still reject overlapping assignments and
+    require the complete selected cohort before enabling delivery.
+    """
+    packet = exact(packet, {"hello", "binding"}, "pub-sub relay proof")
+    binding = exact(packet["binding"], {"body", "signature"}, "pub-sub relay binding")
+    body = exact(binding["body"], {"profile", "group_hash", "relay_peer_id", "relay_public_key",
+                                  "node", "boot_id", "hello_sha256", "issued_at"}, "pub-sub relay binding body")
+    relay_public = hex_bytes(body["relay_public_key"], 32, "relay transport public key")
+    expected = relay_proof_body(packet["hello"], selected, relay_public, now=now)
+    if (type(body["issued_at"]) is not int or body != expected or not isinstance(expected_peer_id, str)
+            or body["relay_peer_id"] != expected_peer_id):
+        raise SynProtocolError("Relay proof differs from its selected scope, live Agent or authenticated transport")
+    public = hex_bytes(packet["hello"]["public_key"], 32, "pub-sub sender public key")
+    _signature(public, hex_bytes(binding["signature"], 64, "relay binding signature"),
+               RELAY_BINDING_DOMAIN + canonical(body))
+    return packet["hello"]
 
 
 def member(public, certificate, selected):

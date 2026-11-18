@@ -20,7 +20,8 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from syn_client.operator_protocol import SynProtocolError, canonical, exact, hex_bytes, parse, peer_uid, receive, send
 from syn_client.pubsub import (HELLO_DOMAIN, MAX_PAYLOAD, MAX_QUEUE, MESSAGE_DOMAIN, REPLY_DOMAIN,
-                               scope, verify_hello, verify_message)
+                               RELAY_BINDING_DOMAIN, relay_peer_id, relay_proof_body,
+                               scope, verify_hello, verify_message, verify_relay_proof)
 from .group import load_group, load_group_custody
 
 KEY_DOMAIN = b"syn.private-pubsub.sender-key.hkdf-sha256/1\0"
@@ -54,9 +55,15 @@ class NativePubSub:
                 "signature": server.signer.sign(HELLO_DOMAIN + canonical(body)).hex()}
 
     def attach(self, conn, request):
-        request = exact(request, {"profile", "scope"}, "private relay link")
-        if request["profile"] != "syn.private-pubsub-link/1" or peer_uid(conn) != 0:
+        profile = request.get("profile") if isinstance(request, dict) else None
+        fields = {"profile", "scope"}
+        if profile == "syn.private-pubsub-link/2":
+            fields.add("relay_public_key")
+        request = exact(request, fields, "private relay link")
+        if profile not in {"syn.private-pubsub-link/1", "syn.private-pubsub-link/2"} or peer_uid(conn) != 0:
             raise SynProtocolError("Private Syn relay requires the privileged local controller")
+        relay_public = (hex_bytes(request["relay_public_key"], 32, "relay transport public key")
+                        if profile == "syn.private-pubsub-link/2" else None)
         selected = scope(request["scope"])
         own, _, members = load_group_custody(self.server.config, self.server.expected_hash)
         selected_nodes = sorted(packet["body"]["node_public_key_hash"] for packet in selected["members"])
@@ -70,7 +77,14 @@ class NativePubSub:
                 raise SynProtocolError("A running Agent mesh session cannot be replaced or rebound")
             self.selected = selected
             try:
-                send(conn, self.hello())
+                hello = self.hello()
+                response = hello
+                if relay_public is not None:
+                    body = relay_proof_body(hello, selected, relay_public)
+                    response = {"hello": hello, "binding": {"body": body,
+                        "signature": self.server.signer.sign(RELAY_BINDING_DOMAIN + canonical(body)).hex()}}
+                    verify_relay_proof(response, selected, expected_peer_id=relay_peer_id(relay_public))
+                send(conn, response)
                 self.connection = conn.dup()
                 self.connection.settimeout(1)
                 self.reader = threading.Thread(target=self._read, name="syn-private-pubsub", daemon=True)

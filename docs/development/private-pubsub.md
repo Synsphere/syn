@@ -69,29 +69,61 @@ An Agent cannot be silently rebound to another mesh while running.
 
 ## GossipSub across hosts
 
-The optional `syn.private-gossipsub-config/1` profile gives each host its own
-relay. Each relay attaches to the local Agent sockets and uses GossipSub
-over authenticated TCP peer connections to reach the other relays. Configure
-the same fresh scope on every host and assign each Agent to exactly one
-relay. The relays exchange signed Agent hellos and compare the resulting
-roster before any local Agent becomes ready.
+The current-source `syn.private-gossipsub-config/2` profile discovers relays
+through Amino provider records under the pub-sub group's identifying hash.
+Each host supplies the same fresh scope and its own local Agent endpoints;
+remote relay PeerIDs and addresses are discovered instead of listed in a
+`peers` configuration. The [group-discovery guide](gossipsub-discovery.md)
+defines the exact hash, canonical configuration, public-address requirements,
+startup limits, and current qualification.
+
+Each provider is initially an untrusted candidate. Its native Agents must
+sign proofs binding their current scope, node and live boot to that relay's
+Noise-authenticated transport PeerID. Private GossipSub streams and topic
+metadata are gated until these proofs pass. The relays then compare the full
+signed live roster before any local Agent becomes ready. Each Agent belongs to
+exactly one authenticated relay in the cohort; its signing and encryption
+secrets remain in native custody. The initial authentication request does expose
+the initiating Agent's public identity, certificate, and scope metadata to the
+candidate; Noise protects it in transit, not from that recipient. Group keys
+and application plaintext are not supplied.
 
 ```mermaid
-flowchart LR
-    AgentA[Native Syn Agent A] <-->|Private Unix socket| RelayA[Host A relay]
-    RelayA <-->|GossipSub signed ciphertext| RelayB[Host B relay]
-    RelayB <-->|Private Unix socket| AgentB[Native Syn Agent B]
+flowchart TB
+    DHT[Amino group provider records]
+    RelayA[Host A relay] <-->|Advertise and discover| DHT
+    RelayB[Host B relay] <-->|Advertise and discover| DHT
+    RelayA <-->|Authenticate, then GossipSub| RelayB
+    AgentA[Native Syn Agent A] <-->|Private Unix socket| RelayA
+    AgentB[Native Syn Agent B] <-->|Private Unix socket| RelayB
 ```
 
-*Deployment diagram. The two-host acceptance harness exercises both TCP
-directions with synthetic custody and verifies the signed receive result.*
+*The DHT locates candidate transports; native Agent proofs establish admission.
+The local integration test exercises two discovered relays and signed encrypted
+delivery in both directions with explicitly synthetic custody.*
+
+Update the Syn runtime, native Agent processes, and public client package
+together for v2. Its native attachment uses `syn.private-pubsub-link/2` to obtain
+the fixed-purpose relay binding. This source addition does not alter the
+published 0.4.0 release evidence above. The relay uses TCP, Noise and Yamux;
+it remains a DHT client and opens no inbound Kademlia handler. Its default seeds
+are the official IPFS bootstrappers. Public deployment needs reachable public
+addresses; relay UPnP and mDNS are disabled.
+
+### Existing manual configurations
+
+The `syn.private-gossipsub-config/1` profile remains available for existing
+manual configurations. Each host retains its own relay and the operator's
+explicit peer-to-Agent assignments. The original two-host acceptance harness
+continues to exercise this mode.
 
 Prepare a private directory owned by the relay account. Generate a separate
 32-byte relay identity in it with `umask 077` and
 `openssl rand -out relay.seed 32`. Run
 `python -m syn.mesh --peer-id /private/relay/relay.seed` to obtain the public
 libp2p peer ID. Exchange peer IDs and addresses with the other host through
-the operator. The identity file stays local to its relay.
+the operator. The identity file stays local to its relay. These peer exchange
+steps apply to the legacy manual profile; v2 uses group-provider discovery.
 
 Run `python -m syn.mesh --config /private/relay/gossip.json` as the privileged
 local controller, using canonical JSON and mode `0600`. The configuration
@@ -114,8 +146,8 @@ from selected peers and verifies that the sending Agent belongs to that
 peer’s assignment. The receiving Agent checks the same group membership,
 signature, boot, epoch and sequence before decryption.
 
-GossipSub delivery is volatile. The relay discards duplicate, reordered
-and invalid remote envelopes. Loss of a selected relay fences the live
+In both profiles GossipSub delivery is volatile. The relay discards duplicate,
+reordered and invalid remote envelopes. Loss of a selected relay fences the live
 session. Start a fresh scope to recover. A publish acknowledgement records
 local submission, and an Agent’s signed receive result establishes
 reception. Context and browser RPC continue to use [directed
