@@ -5,9 +5,9 @@ endpoints. It waits for new blocks and rollbacks, creates native Syn Events and
 observation Embers, and records each observation in both the observing node's
 transaction ledger and the block Event's transaction ledger.
 
-The service is disabled by default. It starts and stops with `syn-server`, after
-the existing node identity and transaction ledger have been prepared. No Oura
-process, Cardano node installation or new Python dependency is required on the
+The supplied `config.example.toml` enables the service. It starts and stops with
+`syn-server`, after the existing node identity and transaction ledger have been
+prepared. No Oura process, Cardano node installation or new Python dependency is required on the
 observing Syn host.
 
 ## Relationship to Oura
@@ -153,9 +153,9 @@ The configured magic must match the chosen nodes; change both magic and peers
 when selecting another network. Endpoint syntax is `hostname:port`, `IPv4:port`
 or `[IPv6]:port`, with an explicit TCP port and at most eight unique endpoints.
 
-The main `config.example.toml` includes these peers with `enabled = false`;
-set it to `true` to start following them. The programmatic default remains an
-empty peer list when no peers are configured. Syn follows each selected endpoint
+The main `config.example.toml` includes these peers with `enabled = true`.
+Omitting the Cardano configuration leaves the service disabled with an empty
+peer list. Syn follows each selected endpoint
 directly, with its own durable cursor; it does not import Cardano's topology
 governor or discover additional Cardano relays through libp2p.
 

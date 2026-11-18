@@ -107,6 +107,7 @@ def test_server_builds_application_and_disposes_engine() -> None:
         config.p2p,
         positionRuntime=positionRuntimeCls.return_value,
         cardanoConfig=config.cardano,
+        bluetoothConfig=config.bluetooth,
     )
     runServer.assert_called_once_with(
         app,

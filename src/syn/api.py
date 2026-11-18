@@ -57,6 +57,7 @@ def createApp(
     operatorRuntime=None,
     witnessConfig=None,
     cardanoConfig=None,
+    bluetoothConfig=None,
 ) -> FastAPI:
     from .positions.types import digest
     scheduler = ProcessScheduler(sessions, handlers,
@@ -67,6 +68,9 @@ def createApp(
     from .cardano.runtime import CardanoRuntime
     cardano = CardanoRuntime(sessions, positionRuntime.nodeRef if positionRuntime else None,
                             cardanoConfig)
+    from .bluetooth.runtime import BluetoothRuntime
+    bluetooth = BluetoothRuntime(sessions, positionRuntime.nodeRef if positionRuntime else None,
+                                 bluetoothConfig)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -81,6 +85,7 @@ def createApp(
                         raise RuntimeError("Node scheduler lost readiness") from scheduler.fault
                     p2pNode.check()
                     cardano.check()
+                    bluetooth.check()
                     if operatorRuntime is not None:
                         operatorRuntime.check()
                         if "operator-dag-sync" in handlers:
@@ -89,6 +94,7 @@ def createApp(
                 except Exception as error:
                     app.state.awarenessFault = error
                     logging.getLogger("uvicorn.error").error("Syn node lost readiness; API is fenced")
+                    await bluetooth.stop()
                     await cardano.stop()
                     await p2pNode.stop()
                     await scheduler.stop()
@@ -115,6 +121,7 @@ def createApp(
                 await scheduler.start(prepare=prepare)
             await p2pNode.start()
             await cardano.start()
+            await bluetooth.start()
             watchdog = asyncio.create_task(supervise())
             yield
         finally:
@@ -122,28 +129,32 @@ def createApp(
                 watchdog.cancel()
                 await asyncio.gather(watchdog, return_exceptions=True)
             try:
-                await cardano.stop()
+                await bluetooth.stop()
             finally:
                 try:
-                    await p2pNode.stop()
+                    await cardano.stop()
                 finally:
                     try:
-                        if operatorRuntime is not None:
-                            await run_in_threadpool(operatorRuntime.close)
+                        await p2pNode.stop()
                     finally:
-                        await scheduler.stop()
+                        try:
+                            if operatorRuntime is not None:
+                                await run_in_threadpool(operatorRuntime.close)
+                        finally:
+                            await scheduler.stop()
 
     app = FastAPI(title="Syn API", lifespan=lifespan)
     app.state.processScheduler = scheduler
     app.state.sessions = sessions
     app.state.p2pNode = p2pNode
     app.state.cardano = cardano
+    app.state.bluetooth = bluetooth
     app.state.awarenessFault = None
 
     @app.middleware("http")
     async def readiness_fence(request, call_next):
-        if app.state.awarenessFault is not None:
-            return JSONResponse({"detail": "Node Operator, scheduler or peer transport is not ready"}, status_code=503)
+        if app.state.awarenessFault is not None and request.url.path != "/bluetooth/status":
+            return JSONResponse({"detail": "Node awareness, Operator, scheduler or peer transport is not ready"}, status_code=503)
         return await call_next(request)
 
     from .communication import communicationRouter, communicationTokens as loadCommunicationTokens
@@ -173,6 +184,11 @@ def createApp(
     async def cardanoStatus(request: Request) -> dict[str, Any]:
         """Report independent trusted-node followers and durable checkpoints."""
         return request.app.state.cardano.status()
+
+    @app.get("/bluetooth/status")
+    async def bluetoothStatus(request: Request) -> dict[str, Any]:
+        """Report native adapters, half-duplex activity and observation accounting."""
+        return request.app.state.bluetooth.status()
 
     @app.get("/p2p/peer-record")
     async def p2pPeerRecord(request: Request) -> dict[str, Any]:

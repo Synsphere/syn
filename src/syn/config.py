@@ -11,6 +11,7 @@ from .clocks.config import ClockConfig
 from .radios.config import RadioConfig
 from .witnessing.config import WitnessConfig
 from .cardano.config import CardanoConfig
+from .bluetooth.config import BluetoothConfig
 from .p2p_defaults import IPFS_BOOTSTRAP_PEERS
 
 
@@ -108,6 +109,7 @@ class SynConfig:
     radio: RadioConfig = RadioConfig()
     witnessing: WitnessConfig = WitnessConfig()
     cardano: CardanoConfig = CardanoConfig()
+    bluetooth: BluetoothConfig = BluetoothConfig()
 
 
 def loadConfig(path: str | Path = "config.toml") -> SynConfig:
@@ -170,6 +172,7 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
         radio=RadioConfig.from_dict(raw.get("radio", {})),
         witnessing=WitnessConfig.from_dict(raw.get("witnessing", {})),
         cardano=CardanoConfig.from_dict(raw.get("cardano", {})),
+        bluetooth=BluetoothConfig.from_dict(raw.get("bluetooth", {})),
         database=DatabaseConfig(url=url, echo=echo, autoMigrate=autoMigrate),
         p2p=P2PConfig(
             enabled=enabled,

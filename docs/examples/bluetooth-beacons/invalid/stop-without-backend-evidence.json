@@ -1,0 +1,20 @@
+{
+  "profile": "syn.bluetooth-advertising-observation/1",
+  "eventRef": "syn://event/example-beacon-stopped",
+  "nodeRef": "syn://thing/example-node",
+  "beaconRef": "syn://thing/example-ibeacon",
+  "planRef": "syn://ember/example-beacon-plan",
+  "planSha256": "b29879db5a6e5fb0d2492b7d2c1fa6c15146af585f053e6b3237c5e77ce04f7c",
+  "deviceId": "256db4661964a2dcc498ccedd194111e2d52de61dcf1aa3e24c2cef8aee157b7",
+  "observedAt": "2026-11-18T12:00:02Z",
+  "status": "stopped",
+  "evidenceKind": "local-plan",
+  "airReceptionVerified": false,
+  "binding": {
+    "backend": "bluez-dbus",
+    "adapterLocator": "/org/bluez/hci0",
+    "connectionEpoch": "example-attachment-1",
+    "controllerKey": "6987203331324b491fd6854d8024fd3f37f7af58422a6c927f2f48865bbb5d11"
+  },
+  "sessionId": "761b9d7e-1ccb-483b-9b7e-8b12c2c9208f"
+}

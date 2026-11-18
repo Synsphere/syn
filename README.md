@@ -385,11 +385,44 @@ change only that peer's current-chain projection; the original Events and
 observations remain. This observes trusted nodes without asserting finality or
 independently validating Cardano consensus.
 
-Enable `[cardano]` and set `peers` in the configuration, then run `syn-server`
-normally. Native Operator/Agent awareness runtimes also honor this table in
+The example configuration enables Cardano observation with the three selected
+mainnet backbone peers. Run `syn-server` normally. Native Operator/Agent
+awareness runtimes also honor this table in
 their selected configuration. `GET /cardano/status` reports the API node's
 configured peers, progress and saved checkpoints. No Cardano connection is made
 unless this service is explicitly enabled with trusted endpoints.
+
+### Bluetooth beacons and observations
+
+The [native Bluetooth service](docs/development/bluetooth-runtime.md) is enabled
+in the example configuration. Every transmitted frame contains a fixed Syn
+marker. Complete node references use a fragmented Syn service-data transport,
+with a manufacturer-data iBeacon transport for Windows. Compact iBeacon and
+Eddystone UID frames carry Syn namespaces and node hash hints. Each usable
+controller alternates a complete beacon sequence with a listening window;
+unsupported transmissions are diagnosed and the receiver remains available.
+
+Transmission intent, native start/stop acknowledgements, receptions and losses
+become native Events and observation Embers with atomic node/Event ledger
+receipts. Identifiable peers are recorded as advertised, unauthenticated claims;
+known Things receive an `advertised-peer` target without being modified.
+Repeated identical OS reports retain counts, timestamps and RSSI ranges.
+`GET /bluetooth/status` reports adapters, activity, failures and queue accounting.
+
+Linux uses BlueZ per-controller sessions. Windows exposes its OS-managed
+default publisher/watcher. macOS is scan-only. Observation covers advertisements
+and discovery reports exposed by the OS; it is not a general Bluetooth packet
+sniffer. No successful reception or authenticated identity is inferred from an
+advertiser's start acknowledgement.
+
+The [Bluetooth beacon specification](docs/development/bluetooth-beacons.md)
+defines payload generation, adapter capability evidence, compiled advertising
+plans and execution observations. It includes a
+[JSON Schema](docs/schemas/bluetooth-beacons.schema.json) and offline examples
+for common beacon formats, raw GAP data and registered extensions. Every
+definition requires a Syn identity policy. That broader compiler contract
+remains a specification; the native runtime implements the bounded branded
+formats above, rather than arbitrary raw definitions or extension code.
 
 ## Reliable Python tests on Windows
 

@@ -1,0 +1,29 @@
+{
+  "profile": "syn.bluetooth-advertising-plan/1",
+  "planRef": "syn://ember/example-no-adapter-plan",
+  "nodeRef": "syn://thing/example-node",
+  "generatedAt": "2026-11-18T12:00:01Z",
+  "definition": {
+    "emberRef": "syn://ember/example-beacon-definition",
+    "beaconRef": "syn://thing/example-ibeacon",
+    "revision": 1,
+    "sha256": "18e3a850b896535170ede85fca4e579b69bf710f02ec986638efd4ca1a19b596"
+  },
+  "requestedAdvertising": {
+    "mode": "legacy",
+    "connectable": false,
+    "scannable": false,
+    "primaryPhy": "le-1m",
+    "interval": {
+      "minUnits625us": 160,
+      "maxUnits625us": 160
+    },
+    "requestedTxPowerDbm": null,
+    "txPowerPolicy": "controller-default"
+  },
+  "schedule": {
+    "mode": "single"
+  },
+  "targets": [],
+  "reasons": []
+}

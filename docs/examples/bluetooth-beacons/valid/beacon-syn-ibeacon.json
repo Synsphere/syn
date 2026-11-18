@@ -1,0 +1,76 @@
+{
+  "profile": "syn.bluetooth-beacon/1",
+  "beaconRef": "syn://thing/example-syn-ibeacon",
+  "nodeRef": "syn://thing/example-node",
+  "identity": {
+    "branding": "Syn",
+    "emitter": "nodeRef",
+    "marker": "every-frame",
+    "fullReference": "required-per-sequence",
+    "shortHints": "allowed-with-full-reference",
+    "authentication": "advertised-claim"
+  },
+  "revision": 1,
+  "adapterSelection": {
+    "mode": "all-compatible",
+    "unavailable": "wait"
+  },
+  "advertising": {
+    "mode": "legacy",
+    "connectable": false,
+    "scannable": false,
+    "primaryPhy": "le-1m",
+    "interval": {
+      "minUnits625us": 160,
+      "maxUnits625us": 160
+    },
+    "requestedTxPowerDbm": null,
+    "txPowerPolicy": "controller-default"
+  },
+  "frames": [
+    {
+      "frameId": "syn-ibeacon-00",
+      "payload": {
+        "format": "ibeacon",
+        "uuid": "53594e01-9786-0912-4004-a5001873796e",
+        "major": 14895,
+        "minor": 12148,
+        "measuredPowerAt1mDbm": -59
+      }
+    },
+    {
+      "frameId": "syn-ibeacon-01",
+      "payload": {
+        "format": "ibeacon",
+        "uuid": "53594e01-9786-0912-4104-a568696e672f",
+        "major": 25976,
+        "minor": 24941,
+        "measuredPowerAt1mDbm": -59
+      }
+    },
+    {
+      "frameId": "syn-ibeacon-02",
+      "payload": {
+        "format": "ibeacon",
+        "uuid": "53594e01-9786-0912-4204-a5706c652d6e",
+        "major": 28516,
+        "minor": 25923,
+        "measuredPowerAt1mDbm": -59
+      }
+    },
+    {
+      "frameId": "syn-ibeacon-03",
+      "payload": {
+        "format": "ibeacon",
+        "uuid": "53594e01-9786-0912-4304-a59ee1140000",
+        "major": 0,
+        "minor": 0,
+        "measuredPowerAt1mDbm": -59
+      }
+    }
+  ],
+  "schedule": {
+    "mode": "round-robin",
+    "dwellMs": 1000
+  }
+}

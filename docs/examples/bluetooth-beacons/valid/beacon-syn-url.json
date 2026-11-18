@@ -1,0 +1,48 @@
+{
+  "profile": "syn.bluetooth-beacon/1",
+  "beaconRef": "syn://thing/example-syn-url-beacon",
+  "nodeRef": "syn://thing/example-node",
+  "identity": {
+    "branding": "Syn",
+    "emitter": "nodeRef",
+    "marker": "every-frame",
+    "fullReference": "required-per-sequence",
+    "shortHints": "allowed-with-full-reference",
+    "authentication": "advertised-claim"
+  },
+  "revision": 1,
+  "adapterSelection": {
+    "mode": "all-compatible",
+    "unavailable": "wait"
+  },
+  "advertising": {
+    "mode": "extended",
+    "connectable": false,
+    "scannable": false,
+    "primaryPhy": "le-1m",
+    "interval": {
+      "minUnits625us": 160,
+      "maxUnits625us": 160
+    },
+    "requestedTxPowerDbm": null,
+    "txPowerPolicy": "controller-default",
+    "secondaryPhy": "le-1m"
+  },
+  "frames": [
+    {
+      "frameId": "syn-url",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 128,
+        "serviceUuid": "6c22a4f1-77cd-4f3a-9da8-405c82bd7f9a",
+        "template": {
+          "kind": "syn-url-utf8",
+          "url": "syn://thing/example-node"
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "mode": "single"
+  }
+}

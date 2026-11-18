@@ -38,12 +38,12 @@ publicPubsubProviderRepublishSeconds = 10800
 # docs/development/p2p-amino.md
 # docs/development/public-gossipsub.md
 
-# Optional native Cardano node-to-node observation. Selected mainnet TCP nodes;
-# these endpoints are independent of Syn's libp2p discovery and public groups.
+# Native Cardano node-to-node observation is enabled in this example.
+# These mainnet TCP nodes are independent of Syn's libp2p discovery and public groups.
 # The Cardano Developer Portal documents all three bootstrap peers on port 3001:
 # https://developers.cardano.org/docs/operate-a-stake-pool/node-operations/topology/
 [cardano]
-enabled = false
+enabled = true
 networkMagic = 764824073  # Mainnet. Change both magic and peers for another network.
 peers = [
     "backbone.cardano.iog.io:3001",
@@ -60,3 +60,25 @@ reconnectDelaySeconds = 2
 maxReconnectDelaySeconds = 60
 # Protocol, Types, dual-ledger observations, rollback and reachability:
 # docs/development/cardano.md
+
+# Every transmitted frame is branded as Syn. Send a complete identity sequence,
+# then listen for all OS-visible Bluetooth advertisements on that controller.
+[bluetooth]
+enabled = true
+# Service-data identity is preferred; syn-ibeacon is the Windows-compatible
+# full-identity fallback. Compact iBeacon/Eddystone frames carry Syn node hints.
+formats = ["syn", "syn-ibeacon", "ibeacon", "eddystone-uid"]
+frameDurationSeconds = 0.5
+listenSeconds = 20
+startupJitterSeconds = 5
+cycleJitterSeconds = 5
+inventoryRefreshSeconds = 10
+retrySeconds = 5
+backendTimeoutSeconds = 10
+observationWindowSeconds = 1  # Identical reports retain count and first/last time.
+maxPendingObservations = 512  # Overflow produces an explicit loss Event.
+maxAdapters = 16
+# Optional AltBeacon requires adding "altbeacon" above AND a company ID you may use.
+# companyId = ...
+# Native behavior, identities and ledger records:
+# docs/development/bluetooth-runtime.md

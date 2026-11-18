@@ -1,0 +1,17 @@
+{
+  "profile": "syn.bluetooth-advertising-observation/1",
+  "eventRef": "syn://event/example-beacon-rejected",
+  "nodeRef": "syn://thing/example-node",
+  "beaconRef": "syn://thing/example-ibeacon",
+  "planRef": "syn://ember/example-beacon-plan",
+  "planSha256": "b29879db5a6e5fb0d2492b7d2c1fa6c15146af585f053e6b3237c5e77ce04f7c",
+  "deviceId": "256db4661964a2dcc498ccedd194111e2d52de61dcf1aa3e24c2cef8aee157b7",
+  "observedAt": "2026-11-18T12:00:02Z",
+  "status": "rejected",
+  "evidenceKind": "backend-error",
+  "airReceptionVerified": false,
+  "reason": {
+    "code": "synthetic-rejected",
+    "message": "Example observation only; no transmission was performed."
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "profile": "syn.bluetooth-advertising-plan/1",
+  "planRef": "syn://ember/example-beacon-plan",
+  "nodeRef": "syn://thing/example-node",
+  "generatedAt": "2026-11-18T12:00:01Z",
+  "definition": {
+    "emberRef": "syn://ember/example-beacon-definition",
+    "beaconRef": "syn://thing/example-ibeacon",
+    "revision": 1,
+    "sha256": "18e3a850b896535170ede85fca4e579b69bf710f02ec986638efd4ca1a19b596"
+  },
+  "requestedAdvertising": {
+    "mode": "legacy",
+    "connectable": false,
+    "scannable": false,
+    "primaryPhy": "le-1m",
+    "interval": {
+      "minUnits625us": 160,
+      "maxUnits625us": 160
+    },
+    "requestedTxPowerDbm": null,
+    "txPowerPolicy": "controller-default"
+  },
+  "schedule": {
+    "mode": "round-robin",
+    "dwellMs": 1000
+  },
+  "targets": [
+    {
+      "deviceId": "256db4661964a2dcc498ccedd194111e2d52de61dcf1aa3e24c2cef8aee157b7",
+      "status": "compatible",
+      "capability": {
+        "emberRef": "syn://ember/example-advertising-capabilities",
+        "sha256": "4a8df54277b768b875ca83c069fb44ba11de707fb73884df1e4dbcb5485473a8",
+        "observedAt": "2026-11-18T12:00:00Z",
+        "validUntil": "2026-11-18T12:00:30Z"
+      },
+      "binding": {
+        "backend": "bluez-dbus",
+        "adapterLocator": "/org/bluez/hci0",
+        "connectionEpoch": "example-attachment-1",
+        "controllerKey": "6987203331324b491fd6854d8024fd3f37f7af58422a6c927f2f48865bbb5d11"
+      },
+      "reasons": [],
+      "effectiveAdvertising": {
+        "mode": "legacy",
+        "connectable": false,
+        "scannable": false,
+        "primaryPhy": "le-1m",
+        "interval": {
+          "minUnits625us": 160,
+          "maxUnits625us": 160
+        },
+        "requestedTxPowerDbm": null,
+        "txPowerPolicy": "controller-default"
+      },
+      "frames": [
+        {
+          "frameId": "syn-00",
+          "payloadSha256": "5c90327077636d11089af1eb6f0d0ded55e4f4acb60e416aac60fa009511edee",
+          "encoder": {
+            "encoderTypeRef": "syn://type/syn-service-beacon-encoder-v1",
+            "implementationRef": "syn://cog/example-syn-service-beacon-encoder",
+            "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          "advertisingDataHex": "0201061b2174533c18de1d7780525ddbc8963ae05f4005a5001873796e3a2f",
+          "scanResponseDataHex": "",
+          "periodicDataHex": "",
+          "generatedAt": "2026-11-18T12:00:01Z",
+          "validUntil": "2026-11-18T12:00:30Z"
+        },
+        {
+          "frameId": "syn-01",
+          "payloadSha256": "164d22c0499063300af073aefc0ca7e3df3d614af5f134335b1507e5a2bda213",
+          "encoder": {
+            "encoderTypeRef": "syn://type/syn-service-beacon-encoder-v1",
+            "implementationRef": "syn://cog/example-syn-service-beacon-encoder",
+            "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          "advertisingDataHex": "0201061b2174533c18de1d7780525ddbc8963ae05f4105a52f7468696e672f",
+          "scanResponseDataHex": "",
+          "periodicDataHex": "",
+          "generatedAt": "2026-11-18T12:00:01Z",
+          "validUntil": "2026-11-18T12:00:30Z"
+        },
+        {
+          "frameId": "syn-02",
+          "payloadSha256": "1c23aa591c248cdf33d75ae7dc03c7440c210951a5e9ae23092ba820016f00da",
+          "encoder": {
+            "encoderTypeRef": "syn://type/syn-service-beacon-encoder-v1",
+            "implementationRef": "syn://cog/example-syn-service-beacon-encoder",
+            "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          "advertisingDataHex": "0201061b2174533c18de1d7780525ddbc8963ae05f4205a56578616d706c65",
+          "scanResponseDataHex": "",
+          "periodicDataHex": "",
+          "generatedAt": "2026-11-18T12:00:01Z",
+          "validUntil": "2026-11-18T12:00:30Z"
+        },
+        {
+          "frameId": "syn-03",
+          "payloadSha256": "f3ca21a4dbf6d0738391fb9e9bd3250c2f5f6704b56c85984e47210d65db4193",
+          "encoder": {
+            "encoderTypeRef": "syn://type/syn-service-beacon-encoder-v1",
+            "implementationRef": "syn://cog/example-syn-service-beacon-encoder",
+            "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          "advertisingDataHex": "0201061b2174533c18de1d7780525ddbc8963ae05f4305a52d6e6f6465439e",
+          "scanResponseDataHex": "",
+          "periodicDataHex": "",
+          "generatedAt": "2026-11-18T12:00:01Z",
+          "validUntil": "2026-11-18T12:00:30Z"
+        },
+        {
+          "frameId": "syn-04",
+          "payloadSha256": "bf4a9826fdf19e15d92d9c303345bdeb774972023dc447825fc2079b5c148fcf",
+          "encoder": {
+            "encoderTypeRef": "syn://type/syn-service-beacon-encoder-v1",
+            "implementationRef": "syn://cog/example-syn-service-beacon-encoder",
+            "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          "advertisingDataHex": "020106162174533c18de1d7780525ddbc8963ae05f4405a5e114",
+          "scanResponseDataHex": "",
+          "periodicDataHex": "",
+          "generatedAt": "2026-11-18T12:00:01Z",
+          "validUntil": "2026-11-18T12:00:30Z"
+        },
+        {
+          "frameId": "identity",
+          "payloadSha256": "0c314cbe9af3b831f9c89c3bfc7a71bf1d967e1173d2975030eb46333ffc27ef",
+          "encoder": {
+            "encoderTypeRef": "syn://type/ibeacon-encoder-v1",
+            "implementationRef": "syn://cog/example-ibeacon-encoder",
+            "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          "advertisingDataHex": "0201061aff4c00021593f9ca4a2d3d5e03b687af0874f6683c5e38d166c5",
+          "scanResponseDataHex": "",
+          "periodicDataHex": "",
+          "generatedAt": "2026-11-18T12:00:01Z",
+          "validUntil": "2026-11-18T12:00:30Z"
+        }
+      ]
+    },
+    {
+      "deviceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "rejected",
+      "reasons": [
+        {
+          "code": "backend-unsupported",
+          "message": "Synthetic second backend cannot emit this manufacturer-data format."
+        }
+      ]
+    },
+    {
+      "deviceId": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "status": "unresolved",
+      "reasons": [
+        {
+          "code": "capabilities-unknown",
+          "message": "Synthetic third adapter has no fresh advertising capability report."
+        }
+      ]
+    }
+  ],
+  "reasons": []
+}

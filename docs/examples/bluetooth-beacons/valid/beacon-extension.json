@@ -1,0 +1,49 @@
+{
+  "profile": "syn.bluetooth-beacon/1",
+  "beaconRef": "syn://thing/example-extension-beacon",
+  "nodeRef": "syn://thing/example-node",
+  "identity": {
+    "branding": "Syn",
+    "emitter": "nodeRef",
+    "marker": "every-frame",
+    "fullReference": "required-per-sequence",
+    "shortHints": "allowed-with-full-reference",
+    "authentication": "advertised-claim"
+  },
+  "revision": 1,
+  "adapterSelection": {
+    "mode": "all-compatible",
+    "unavailable": "wait"
+  },
+  "advertising": {
+    "mode": "legacy",
+    "connectable": false,
+    "scannable": false,
+    "primaryPhy": "le-1m",
+    "interval": {
+      "minUnits625us": 160,
+      "maxUnits625us": 160
+    },
+    "requestedTxPowerDbm": null,
+    "txPowerPolicy": "controller-default"
+  },
+  "frames": [
+    {
+      "frameId": "custom",
+      "payload": {
+        "format": "extension",
+        "encoderTypeRef": "syn://type/example-vendor-beacon-encoder",
+        "implementationSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "schemaRef": "syn://cog/example-vendor-beacon-schema-v1",
+        "schemaSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "parameters": {
+          "tag": "example",
+          "counter": 1
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "mode": "single"
+  }
+}

@@ -1,0 +1,2295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "syn://cog/bluetooth-beacons-schema-v1",
+  "title": "Syn Bluetooth beacon contracts v1",
+  "description": "Generic knowledge payload contracts for advertising capabilities, Syn-branded beacon definitions, immutable compiled plans and execution observations. The native runtime implements a bounded subset separately.",
+  "$comment": "This generic schema is not the native runtime configuration or a general-purpose compiler. JSON Schema validates shape and local constraints only. Every definition must declare a Syn identity policy; a semantic compiler must verify a recognized Syn marker in every emitted frame and a complete canonical emitter nodeRef transport in every sequence. It must also validate UTF-8/AD serialization, total budgets, canonical digests, immutable references, freshness, time, permissions, adapter/controller binding, encoder support, credentials, cryptography and resource leases. Reject duplicate JSON keys before validation; cap input size and nesting (recommended 256 KiB and depth 16) before decoding extensions.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/capabilities"
+    },
+    {
+      "$ref": "#/$defs/definition"
+    },
+    {
+      "$ref": "#/$defs/plan"
+    },
+    {
+      "$ref": "#/$defs/observation"
+    }
+  ],
+  "$defs": {
+    "thingRef": {
+      "type": "string",
+      "pattern": "^syn://thing/[a-z0-9]+(?:[-_][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 267
+    },
+    "emberRef": {
+      "type": "string",
+      "pattern": "^syn://ember/[a-z0-9]+(?:[-_][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 267
+    },
+    "eventRef": {
+      "type": "string",
+      "pattern": "^syn://event/[a-z0-9]+(?:[-_][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 267
+    },
+    "typeRef": {
+      "type": "string",
+      "pattern": "^syn://type/[a-z0-9]+(?:[-_][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 266
+    },
+    "credentialRef": {
+      "type": "string",
+      "pattern": "^syn://credential/[a-z0-9]+(?:[-_][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 272
+    },
+    "cogRef": {
+      "type": "string",
+      "pattern": "^syn://cog/[a-z0-9]+(?:[-_][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 265
+    },
+    "objectRef": {
+      "type": "string",
+      "pattern": "^syn://(?:type|thing|event|ember|cog|credential|enigma|pondle|snug|om)/[a-z0-9]+(?:[-_][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 272
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "deviceId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 40
+    },
+    "frameId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 64
+    },
+    "uuid128": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\\s\\S])"
+    },
+    "binding": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "enum": [
+            "bluez-dbus",
+            "bluez-management",
+            "linux-hci",
+            "windows-winrt",
+            "apple-corebluetooth",
+            "android",
+            "extension"
+          ]
+        },
+        "adapterLocator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "connectionEpoch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "controllerKey": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "backend",
+        "adapterLocator",
+        "connectionEpoch",
+        "controllerKey"
+      ],
+      "additionalProperties": false,
+      "$comment": "controllerKey deduplicates backend views of the same physical controller. A provider-local deviceId or hci index is not permanent hardware identity. The backend must revalidate locator, epoch and controller ownership immediately before use; JSON Schema cannot prove this binding."
+    },
+    "phySupport": {
+      "type": "object",
+      "properties": {
+        "le1M": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "le2M": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "leCoded": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "le1M",
+        "le2M",
+        "leCoded"
+      ],
+      "additionalProperties": false
+    },
+    "modes": {
+      "type": "object",
+      "properties": {
+        "legacy": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "extended": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "periodic": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "legacy",
+        "extended",
+        "periodic"
+      ],
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "legacyAdvertisingDataBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 31
+        },
+        "extendedAdvertisingDataBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1650
+        },
+        "periodicAdvertisingDataBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1650
+        },
+        "scanResponseDataBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1650
+        },
+        "advertisingSets": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 240
+        },
+        "minimumTxPowerDbm": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -127,
+          "maximum": 20
+        },
+        "maximumTxPowerDbm": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -127,
+          "maximum": 20
+        }
+      },
+      "required": [
+        "legacyAdvertisingDataBytes",
+        "extendedAdvertisingDataBytes",
+        "periodicAdvertisingDataBytes",
+        "scanResponseDataBytes",
+        "advertisingSets",
+        "minimumTxPowerDbm",
+        "maximumTxPowerDbm"
+      ],
+      "additionalProperties": false,
+      "$comment": "Null means unknown, zero means known zero. Limits are usable ceilings, not evidence that resources are free. The compiler intersects controller, backend and live-resource constraints and accounts for AD framing and bytes inserted by the OS. Min/max relationships require semantic validation."
+    },
+    "encoder": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "encoderTypeRef": {
+          "$ref": "#/$defs/typeRef"
+        },
+        "implementationRef": {
+          "$ref": "#/$defs/cogRef"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "status": {
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "encoderTypeRef",
+        "implementationRef",
+        "sha256",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "capabilityPin": {
+      "type": "object",
+      "properties": {
+        "emberRef": {
+          "$ref": "#/$defs/emberRef"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "observedAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "validUntil": {
+          "$ref": "#/$defs/timestamp"
+        }
+      },
+      "required": [
+        "emberRef",
+        "sha256",
+        "observedAt",
+        "validUntil"
+      ],
+      "additionalProperties": false
+    },
+    "reason": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])",
+          "maxLength": 80
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "adapterSelection": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "all-compatible",
+            "first-compatible",
+            "explicit"
+          ]
+        },
+        "deviceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/deviceId"
+          },
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true
+        },
+        "unavailable": {
+          "enum": [
+            "wait",
+            "skip",
+            "fail"
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "unavailable"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "explicit"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "deviceIds"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "deviceIds"
+              ]
+            }
+          }
+        }
+      ],
+      "$comment": "all-compatible fans out to distinct usable connected controllers after deduplication; first-compatible uses stable (controllerKey, deviceId) order. Explicit IDs are node-scoped inventory IDs. Unknown support is unresolved, never compatible. Unavailable controls execution handling; it never permits silent downgrade or reuse of a stale adapter binding."
+    },
+    "interval": {
+      "type": "object",
+      "properties": {
+        "minUnits625us": {
+          "type": "integer",
+          "minimum": 32,
+          "maximum": 16777215
+        },
+        "maxUnits625us": {
+          "type": "integer",
+          "minimum": 32,
+          "maximum": 16777215
+        }
+      },
+      "required": [
+        "minUnits625us",
+        "maxUnits625us"
+      ],
+      "additionalProperties": false,
+      "$comment": "One unit is 0.625 ms. Semantic validation must enforce min <= max and the narrower supported interval range of the selected OS/backend. This setting does not assert an exact over-air interval."
+    },
+    "periodicInterval": {
+      "type": "object",
+      "properties": {
+        "minUnits1250us": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 65535
+        },
+        "maxUnits1250us": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "minUnits1250us",
+        "maxUnits1250us"
+      ],
+      "additionalProperties": false,
+      "$comment": "One unit is 1.25 ms. This is distinct from the ordinary advertising interval; semantic validation must enforce min <= max and the backend's accepted range."
+    },
+    "advertising": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "legacy",
+            "extended",
+            "periodic"
+          ]
+        },
+        "connectable": {
+          "const": false
+        },
+        "scannable": {
+          "const": false
+        },
+        "primaryPhy": {
+          "enum": [
+            "le-1m",
+            "le-coded"
+          ]
+        },
+        "secondaryPhy": {
+          "enum": [
+            "le-1m",
+            "le-2m",
+            "le-coded"
+          ]
+        },
+        "interval": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/interval"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "periodicInterval": {
+          "$ref": "#/$defs/periodicInterval"
+        },
+        "requestedTxPowerDbm": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -127,
+          "maximum": 20
+        },
+        "txPowerPolicy": {
+          "enum": [
+            "controller-default",
+            "exact",
+            "nearest"
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "connectable",
+        "scannable",
+        "primaryPhy",
+        "interval",
+        "requestedTxPowerDbm",
+        "txPowerPolicy"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "legacy"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "primaryPhy": {
+                "const": "le-1m"
+              },
+              "interval": {
+                "properties": {
+                  "minUnits625us": {
+                    "maximum": 16384
+                  },
+                  "maxUnits625us": {
+                    "maximum": 16384
+                  }
+                }
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "secondaryPhy"
+                  ]
+                },
+                {
+                  "required": [
+                    "periodicInterval"
+                  ]
+                }
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "secondaryPhy"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "periodic"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "periodicInterval"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "periodicInterval"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "txPowerPolicy": {
+                "const": "controller-default"
+              }
+            },
+            "required": [
+              "txPowerPolicy"
+            ]
+          },
+          "then": {
+            "properties": {
+              "requestedTxPowerDbm": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "requestedTxPowerDbm": {
+                "type": "integer",
+                "minimum": -127,
+                "maximum": 20
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "v1 is non-connectable, non-scannable broadcast only: no GATT server or scan-response payload. Periodic mode also needs extended announcement support; interval configures its announcement and periodicInterval configures periodic events. exact requires usable backend power control and exact acceptance; nearest records the selected value; controller-default deliberately makes no physical-power promise. PHY support and interval consistency require a semantic compiler. A null ordinary interval explicitly selects backend-managed timing; no setter is required, and an unreported effective interval remains null. A concrete interval requires supported backend.intervalControl and accepted range; never invent an effective interval. periodicInterval remains required and concrete for periodic mode."
+    },
+    "schedule": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "single",
+            "round-robin"
+          ]
+        },
+        "dwellMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 86400000
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "round-robin"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "dwellMs"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "dwellMs"
+              ]
+            }
+          }
+        }
+      ],
+      "$comment": "single requires exactly one frame; round-robin requires at least two. Reconfiguration latency and minimum effective dwell must be checked per backend. A requested dwell is not a claim that every scheduled packet was transmitted."
+    },
+    "clockBinding": {
+      "type": "object",
+      "properties": {
+        "clockEmberRef": {
+          "$ref": "#/$defs/emberRef"
+        },
+        "maximumUncertaintyMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000
+        }
+      },
+      "required": [
+        "clockEmberRef",
+        "maximumUncertaintyMs"
+      ],
+      "additionalProperties": false,
+      "$comment": "The codec resolves this immutable Syn clock observation and checks freshness, health, uncertainty and the EID time mapping held by the credential. A local reference does not prove authorization, correctness or availability. No key, time-mapping secret or resolver secret is embedded in a public definition."
+    },
+    "telemetry": {
+      "type": "object",
+      "properties": {
+        "batteryMillivolts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "temperatureQ8_8": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -32767,
+          "maximum": 32767
+        },
+        "advertisingCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "uptimeDeciseconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        }
+      },
+      "required": [
+        "batteryMillivolts",
+        "temperatureQ8_8",
+        "advertisingCount",
+        "uptimeDeciseconds"
+      ],
+      "additionalProperties": false,
+      "$comment": "Eddystone telemetry: battery 0 means unavailable; null temperature encodes reserved 0x8000. Integer temperatureQ8_8 uses 1/256 degree C. uptimeDeciseconds is a count in 0.1-second units. Counters and readings must have an actual telemetry source when an implementation updates them."
+    },
+    "adStructure": {
+      "type": "object",
+      "properties": {
+        "adType": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "dataHex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+          "maxLength": 508
+        }
+      },
+      "required": [
+        "adType",
+        "dataHex"
+      ],
+      "additionalProperties": false,
+      "$comment": "An AD structure encodes [length, adType, data], with length=1+len(data); the value can contain at most 254 bytes. Wire framing is generated, not supplied. Aggregate size, assigned-type rules, duplicates, placement and OS-inserted fields require semantic checks."
+    },
+    "jsonValue": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "maxLength": 4096
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jsonValue"
+          },
+          "minItems": 0,
+          "maxItems": 64
+        },
+        {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*(?![\\s\\S])",
+            "maxLength": 80
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        }
+      ]
+    },
+    "payloadIbeacon": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "ibeacon"
+        },
+        "uuid": {
+          "$ref": "#/$defs/uuid128"
+        },
+        "major": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "measuredPowerAt1mDbm": {
+          "type": "integer",
+          "minimum": -128,
+          "maximum": 127
+        }
+      },
+      "required": [
+        "format",
+        "uuid",
+        "major",
+        "minor",
+        "measuredPowerAt1mDbm"
+      ],
+      "additionalProperties": false,
+      "$comment": "The encoder supplies Apple company ID 0x004c and iBeacon prefix 0x0215, UUID and big-endian major/minor. measuredPowerAt1mDbm is calibrated RSSI, not a command to set radio output power. Named v1 format requires conventional legacy LE 1M advertising."
+    },
+    "payloadAltbeacon": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "altbeacon"
+        },
+        "companyId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "beaconIdHex": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+        },
+        "referenceRssiAt1mDbm": {
+          "type": "integer",
+          "minimum": -127,
+          "maximum": 0
+        },
+        "manufacturerReserved": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      },
+      "required": [
+        "format",
+        "companyId",
+        "beaconIdHex",
+        "referenceRssiAt1mDbm",
+        "manufacturerReserved"
+      ],
+      "additionalProperties": false,
+      "$comment": "The encoder supplies AltBeacon code 0xbeac. companyId is encoded little-endian in Manufacturer Specific Data; the 20-byte beacon ID is opaque. Reference RSSI is calibrated at 1 m, distinct from requested hardware power."
+    },
+    "payloadEddystoneUid": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "eddystone-uid"
+        },
+        "rangingDataAt0mDbm": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 20
+        },
+        "namespaceHex": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{20}(?![\\s\\S])"
+        },
+        "instanceHex": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{12}(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "format",
+        "rangingDataAt0mDbm",
+        "namespaceHex",
+        "instanceHex"
+      ],
+      "additionalProperties": false,
+      "$comment": "Encoder supplies FEAA service UUID, UID frame type 0x00 and two zero RFU bytes. Ranging data is calibrated RSSI at 0 m; it is not the controller output-power request."
+    },
+    "payloadEddystoneUrl": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "eddystone-url"
+        },
+        "rangingDataAt0mDbm": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 20
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^/?#\\s]+(?:[/?#][^\\s]*)?(?![\\s\\S])",
+          "maxLength": 2048
+        }
+      },
+      "required": [
+        "format",
+        "rangingDataAt0mDbm",
+        "url"
+      ],
+      "additionalProperties": false,
+      "$comment": "Only standard HTTP/HTTPS URL schemes are accepted. The encoder must use scheme code 0..3 and verify that the encoded remainder occupies 1..17 bytes after standard Eddystone expansion compression. This cannot be established by the source string length. syn:// URLs cannot be substituted; use service-data with a syn-url-utf8 template."
+    },
+    "payloadEddystoneTlm": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "eddystone-tlm"
+        },
+        "telemetry": {
+          "$ref": "#/$defs/telemetry"
+        }
+      },
+      "required": [
+        "format",
+        "telemetry"
+      ],
+      "additionalProperties": false,
+      "$comment": "Plaintext TLM frame type 0x20, version 0. A semantic compiler must ensure useful association/interleaving with an identity-bearing Eddystone frame; TLM itself carries no stable beacon identifier."
+    },
+    "payloadEddystoneEid": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "eddystone-eid"
+        },
+        "rangingDataAt0mDbm": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 20
+        },
+        "identityCredentialRef": {
+          "$ref": "#/$defs/credentialRef"
+        },
+        "rotationExponent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "clockBinding": {
+          "$ref": "#/$defs/clockBinding"
+        }
+      },
+      "required": [
+        "format",
+        "rangingDataAt0mDbm",
+        "identityCredentialRef",
+        "rotationExponent",
+        "clockBinding"
+      ],
+      "additionalProperties": false,
+      "$comment": "Frame type 0x30. The codec obtains protected identity key and resolver/time state through the credential handle and computes the 8-byte rotating EID. No inline private key, arbitrary hand-entered EID or unverified clock is accepted by this definition."
+    },
+    "payloadEddystoneEtlm": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "eddystone-etlm"
+        },
+        "telemetry": {
+          "$ref": "#/$defs/telemetry"
+        },
+        "identityCredentialRef": {
+          "$ref": "#/$defs/credentialRef"
+        },
+        "rotationExponent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "clockBinding": {
+          "$ref": "#/$defs/clockBinding"
+        }
+      },
+      "required": [
+        "format",
+        "telemetry",
+        "identityCredentialRef",
+        "rotationExponent",
+        "clockBinding"
+      ],
+      "additionalProperties": false,
+      "$comment": "Encrypted TLM uses frame type 0x20, version 1, 12 encrypted telemetry bytes, a fresh 2-byte salt and 2-byte MIC. The codec must bind it to the corresponding EID state, enforce nonce/salt requirements and protect credentials. JSON Schema does not perform AES, derive keys or verify the MIC."
+    },
+    "payloadGap": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "gap"
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/adStructure"
+          },
+          "minItems": 1,
+          "maxItems": 64
+        }
+      },
+      "required": [
+        "format",
+        "elements"
+      ],
+      "additionalProperties": false,
+      "$comment": "Ordered complete logical AD structures, not HCI packets or arbitrary radio waveforms. Exact ordering is retained. Byte sums and profile-specific AD semantics are checked after serialization."
+    },
+    "payloadManufacturer": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "manufacturer-data"
+        },
+        "companyId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "dataHex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+          "maxLength": 504
+        }
+      },
+      "required": [
+        "format",
+        "companyId",
+        "dataHex"
+      ],
+      "additionalProperties": false,
+      "$comment": "AD type 0xff; encoder adds the little-endian 2-byte company ID. The body bound reserves both company-ID bytes in the 254-byte AD value. The request does not establish ownership of a company ID."
+    },
+    "synUrlTemplate": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "syn-url-utf8"
+        },
+        "url": {
+          "$ref": "#/$defs/objectRef"
+        }
+      },
+      "required": [
+        "kind",
+        "url"
+      ],
+      "additionalProperties": false,
+      "$comment": "Encode the entire canonical Syn reference as UTF-8 bytes, with no implicit truncation, hashing or URL shortening. Budget checks include the service UUID and AD framing; a full Syn URL may require extended advertising."
+    },
+    "payloadService": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "service-data"
+        },
+        "uuidBits": {
+          "enum": [
+            16,
+            32,
+            128
+          ]
+        },
+        "serviceUuid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 36
+        },
+        "dataHex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+          "maxLength": 504
+        },
+        "template": {
+          "$ref": "#/$defs/synUrlTemplate"
+        }
+      },
+      "required": [
+        "format",
+        "uuidBits",
+        "serviceUuid"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "dataHex"
+          ],
+          "not": {
+            "required": [
+              "template"
+            ]
+          }
+        },
+        {
+          "required": [
+            "template"
+          ],
+          "not": {
+            "required": [
+              "dataHex"
+            ]
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "uuidBits": {
+                "const": 16
+              }
+            },
+            "required": [
+              "uuidBits"
+            ]
+          },
+          "then": {
+            "properties": {
+              "serviceUuid": {
+                "pattern": "^[0-9a-f]{4}(?![\\s\\S])"
+              },
+              "dataHex": {
+                "type": "string",
+                "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+                "maxLength": 504
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "uuidBits": {
+                "const": 32
+              }
+            },
+            "required": [
+              "uuidBits"
+            ]
+          },
+          "then": {
+            "properties": {
+              "serviceUuid": {
+                "pattern": "^[0-9a-f]{8}(?![\\s\\S])"
+              },
+              "dataHex": {
+                "type": "string",
+                "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+                "maxLength": 500
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "uuidBits": {
+                "const": 128
+              }
+            },
+            "required": [
+              "uuidBits"
+            ]
+          },
+          "then": {
+            "properties": {
+              "serviceUuid": {
+                "$ref": "#/$defs/uuid128"
+              },
+              "dataHex": {
+                "type": "string",
+                "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+                "maxLength": 476
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "AD types 0x16/0x20/0x21 correspond to 16/32/128-bit service data. UUIDs are textual canonical values, serialized with Bluetooth wire byte order. Body limits 252/250/238 exclude the UUID bytes. A semantic compiler validates template byte length, assigned UUID rules and complete transport budgets."
+    },
+    "payloadExtension": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "extension"
+        },
+        "encoderTypeRef": {
+          "$ref": "#/$defs/typeRef"
+        },
+        "implementationSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "schemaRef": {
+          "$ref": "#/$defs/cogRef"
+        },
+        "schemaSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "parameters": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*(?![\\s\\S])",
+            "maxLength": 80
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "encoderTypeRef",
+        "implementationSha256",
+        "schemaRef",
+        "schemaSha256",
+        "parameters"
+      ],
+      "additionalProperties": false,
+      "$comment": "parameters is the sole open, codec-owned object: validate it against the independently pinned schemaRef/schemaSha256, whose codec contract must close its own parameter objects. Only a locally installed approved encoder with the pinned digest may run. Host registry supplies requirements and transport support; caller declarations cannot grant capabilities. This does not implement Bluetooth Mesh, PAwR, GATT, positioning or audio protocol stacks."
+    },
+    "payload": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/payloadIbeacon"
+        },
+        {
+          "$ref": "#/$defs/payloadAltbeacon"
+        },
+        {
+          "$ref": "#/$defs/payloadEddystoneUid"
+        },
+        {
+          "$ref": "#/$defs/payloadEddystoneUrl"
+        },
+        {
+          "$ref": "#/$defs/payloadEddystoneTlm"
+        },
+        {
+          "$ref": "#/$defs/payloadEddystoneEid"
+        },
+        {
+          "$ref": "#/$defs/payloadEddystoneEtlm"
+        },
+        {
+          "$ref": "#/$defs/payloadGap"
+        },
+        {
+          "$ref": "#/$defs/payloadManufacturer"
+        },
+        {
+          "$ref": "#/$defs/payloadService"
+        },
+        {
+          "$ref": "#/$defs/payloadExtension"
+        }
+      ]
+    },
+    "frame": {
+      "type": "object",
+      "properties": {
+        "frameId": {
+          "$ref": "#/$defs/frameId"
+        },
+        "payload": {
+          "$ref": "#/$defs/payload"
+        }
+      },
+      "required": [
+        "frameId",
+        "payload"
+      ],
+      "additionalProperties": false,
+      "$comment": "The enclosing definition.identity applies to every emitted frame. Generic bytes and future formats remain expressible, but a semantic compiler must independently verify the recognized Syn marker and the complete-sequence reference transport; a local name containing Syn alone is insufficient."
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "const": "syn.bluetooth-advertising-capabilities/1"
+        },
+        "capabilitiesRef": {
+          "$ref": "#/$defs/emberRef"
+        },
+        "nodeRef": {
+          "$ref": "#/$defs/thingRef"
+        },
+        "inventoryRef": {
+          "$ref": "#/$defs/thingRef"
+        },
+        "deviceId": {
+          "$ref": "#/$defs/deviceId"
+        },
+        "capabilityEmberRef": {
+          "$ref": "#/$defs/emberRef"
+        },
+        "observedAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "validUntil": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "controller": {
+          "type": "object",
+          "properties": {
+            "advertisingModes": {
+              "$ref": "#/$defs/modes"
+            },
+            "phys": {
+              "$ref": "#/$defs/phySupport"
+            },
+            "scanResponse": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "txPowerSelection": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "limits": {
+              "$ref": "#/$defs/limits"
+            }
+          },
+          "required": [
+            "advertisingModes",
+            "phys",
+            "scanResponse",
+            "txPowerSelection",
+            "limits"
+          ],
+          "additionalProperties": false
+        },
+        "backend": {
+          "type": "object",
+          "properties": {
+            "adapterSelection": {
+              "enum": [
+                "explicit",
+                "default-only",
+                "system-managed",
+                "unknown"
+              ]
+            },
+            "advertisingModes": {
+              "$ref": "#/$defs/modes"
+            },
+            "phys": {
+              "$ref": "#/$defs/phySupport"
+            },
+            "rawAdStructures": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "manufacturerData": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "serviceData16": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "serviceData32": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "serviceData128": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "txPowerSelection": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "encoders": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/encoder"
+              },
+              "minItems": 0,
+              "maxItems": 64
+            },
+            "limits": {
+              "$ref": "#/$defs/limits"
+            },
+            "intervalControl": {
+              "enum": [
+                "supported",
+                "unsupported",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "adapterSelection",
+            "advertisingModes",
+            "phys",
+            "rawAdStructures",
+            "manufacturerData",
+            "serviceData16",
+            "serviceData32",
+            "serviceData128",
+            "txPowerSelection",
+            "encoders",
+            "limits",
+            "intervalControl"
+          ],
+          "additionalProperties": false
+        },
+        "availability": {
+          "type": "object",
+          "properties": {
+            "connected": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "powered": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "permission": {
+              "enum": [
+                "granted",
+                "denied",
+                "unknown"
+              ]
+            },
+            "availableAdvertisingSets": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 240
+            },
+            "reasonCodes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])",
+                "maxLength": 80
+              },
+              "minItems": 0,
+              "maxItems": 32,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "connected",
+            "powered",
+            "permission",
+            "availableAdvertisingSets",
+            "reasonCodes"
+          ],
+          "additionalProperties": false
+        },
+        "effectiveLimits": {
+          "$ref": "#/$defs/limits"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "minItems": 1,
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "profile",
+        "capabilitiesRef",
+        "nodeRef",
+        "inventoryRef",
+        "deviceId",
+        "capabilityEmberRef",
+        "observedAt",
+        "validUntil",
+        "binding",
+        "controller",
+        "backend",
+        "availability",
+        "effectiveLimits",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "$comment": "An immutable capability observation, not an authority grant or proof that an adapter is still connected. Existing radio inventory descriptors provide candidate identities only. Fresh backend/controller evidence must support each positive claim; scan success, canTransmit=true, BLE-version labels or existing feature strings do not prove advertising eligibility. Availability, unknowns, epoch, controller deduplication, OS adapter routing and effective limit intersections require semantic evaluation."
+    },
+    "definition": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "const": "syn.bluetooth-beacon/1"
+        },
+        "beaconRef": {
+          "$ref": "#/$defs/thingRef"
+        },
+        "nodeRef": {
+          "$ref": "#/$defs/thingRef"
+        },
+        "identity": {
+          "$ref": "#/$defs/synIdentityPolicy"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "adapterSelection": {
+          "$ref": "#/$defs/adapterSelection"
+        },
+        "advertising": {
+          "$ref": "#/$defs/advertising"
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/frame"
+          },
+          "minItems": 1,
+          "maxItems": 64
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule"
+        }
+      },
+      "required": [
+        "profile",
+        "beaconRef",
+        "nodeRef",
+        "identity",
+        "revision",
+        "adapterSelection",
+        "advertising",
+        "frames",
+        "schedule"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "frames": {
+                "contains": {
+                  "properties": {
+                    "payload": {
+                      "properties": {
+                        "format": {
+                          "enum": [
+                            "ibeacon",
+                            "altbeacon",
+                            "eddystone-uid",
+                            "eddystone-url",
+                            "eddystone-tlm",
+                            "eddystone-eid",
+                            "eddystone-etlm"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "format"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "payload"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "frames"
+            ]
+          },
+          "then": {
+            "properties": {
+              "advertising": {
+                "properties": {
+                  "mode": {
+                    "const": "legacy"
+                  },
+                  "primaryPhy": {
+                    "const": "le-1m"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "schedule": {
+                "properties": {
+                  "mode": {
+                    "const": "single"
+                  }
+                },
+                "required": [
+                  "mode"
+                ]
+              }
+            },
+            "required": [
+              "schedule"
+            ]
+          },
+          "then": {
+            "properties": {
+              "frames": {
+                "maxItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "frames": {
+                "minItems": 2
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "Validates a beacon definition knowledge payload, not a native Thing/Ember envelope. frameIds must be unique. Named v1 beacon profiles retain their conventional legacy LE 1M transport; changed transports need an explicit independently defined extension profile. Aggregate encoding budgets, per-frame encoder compatibility, EID/TLM relationships, frame uniqueness and resource scheduling require a semantic compiler. Schema default annotations never enable RF transmission. The required identity policy binds all frame claims to nodeRef. A semantic compiler must reject missing or unrecognized per-frame Syn markers, hint-only sequences, truncated or mismatched full references, and unsupported identity transports; declaring the policy does not make arbitrary payload bytes Syn-branded. JSON Schema does not generate companion identity frames."
+    },
+    "encodedFrame": {
+      "type": "object",
+      "properties": {
+        "frameId": {
+          "$ref": "#/$defs/frameId"
+        },
+        "payloadSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "encoder": {
+          "type": "object",
+          "properties": {
+            "encoderTypeRef": {
+              "$ref": "#/$defs/typeRef"
+            },
+            "implementationRef": {
+              "$ref": "#/$defs/cogRef"
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "encoderTypeRef",
+            "implementationRef",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        "advertisingDataHex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+          "maxLength": 3300
+        },
+        "scanResponseDataHex": {
+          "const": ""
+        },
+        "periodicDataHex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+          "maxLength": 3300
+        },
+        "generatedAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "validUntil": {
+          "$ref": "#/$defs/timestamp"
+        }
+      },
+      "required": [
+        "frameId",
+        "payloadSha256",
+        "encoder",
+        "advertisingDataHex",
+        "scanResponseDataHex",
+        "periodicDataHex",
+        "generatedAt",
+        "validUntil"
+      ],
+      "additionalProperties": false,
+      "$comment": "Buffers contain complete serialized AD structures (no HCI header). Exact bytes and hashes are compiler outputs; the schema does not prove that they correspond to the pinned definition or encoder. Credentials and raw identity keys never appear in these buffers; EID/eTLM contain only their defined public encoded output. Semantic compilation must enforce generatedAt < validUntil <= capability expiry; EID/eTLM expiry must also precede the current rotation boundary minus clock uncertainty. Expired buffers require recompilation and must never be replayed as current ephemeral identifiers. Every resulting frame must satisfy the pinned definition identity policy; a separate identity frame does not excuse an unbranded payload frame."
+    },
+    "planTarget": {
+      "type": "object",
+      "properties": {
+        "deviceId": {
+          "$ref": "#/$defs/deviceId"
+        },
+        "status": {
+          "enum": [
+            "compatible",
+            "rejected",
+            "unresolved"
+          ]
+        },
+        "capability": {
+          "$ref": "#/$defs/capabilityPin"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reason"
+          },
+          "minItems": 0,
+          "maxItems": 32
+        },
+        "effectiveAdvertising": {
+          "$ref": "#/$defs/advertising"
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/encodedFrame"
+          },
+          "minItems": 1,
+          "maxItems": 64
+        }
+      },
+      "required": [
+        "deviceId",
+        "status",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "compatible"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "capability",
+              "binding",
+              "effectiveAdvertising",
+              "frames"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "effectiveAdvertising"
+                  ]
+                },
+                {
+                  "required": [
+                    "frames"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "reasons": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "compatible"
+              },
+              "effectiveAdvertising": {
+                "properties": {
+                  "mode": {
+                    "const": "legacy"
+                  }
+                },
+                "required": [
+                  "mode"
+                ]
+              }
+            },
+            "required": [
+              "status",
+              "effectiveAdvertising"
+            ]
+          },
+          "then": {
+            "properties": {
+              "frames": {
+                "items": {
+                  "properties": {
+                    "advertisingDataHex": {
+                      "type": "string",
+                      "pattern": "^(?:[0-9a-f]{2})*(?![\\s\\S])",
+                      "maxLength": 62
+                    },
+                    "periodicDataHex": {
+                      "const": ""
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "compatible"
+              },
+              "effectiveAdvertising": {
+                "properties": {
+                  "mode": {
+                    "const": "extended"
+                  }
+                },
+                "required": [
+                  "mode"
+                ]
+              }
+            },
+            "required": [
+              "status",
+              "effectiveAdvertising"
+            ]
+          },
+          "then": {
+            "properties": {
+              "frames": {
+                "items": {
+                  "properties": {
+                    "periodicDataHex": {
+                      "const": ""
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "A compatible target must have an immutable capability pin and a concrete live adapter binding. Default-only/system-managed backends cannot pretend to select arbitrary explicit adapters. Reject impossible configurations; unresolved is for missing/unknown evidence. No silent truncation or capability downgrade. Resource allocation and cross-field matching remain semantic checks."
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "const": "syn.bluetooth-advertising-plan/1"
+        },
+        "planRef": {
+          "$ref": "#/$defs/emberRef"
+        },
+        "nodeRef": {
+          "$ref": "#/$defs/thingRef"
+        },
+        "generatedAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "definition": {
+          "type": "object",
+          "properties": {
+            "emberRef": {
+              "$ref": "#/$defs/emberRef"
+            },
+            "beaconRef": {
+              "$ref": "#/$defs/thingRef"
+            },
+            "revision": {
+              "$ref": "#/$defs/revision"
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "emberRef",
+            "beaconRef",
+            "revision",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        "requestedAdvertising": {
+          "$ref": "#/$defs/advertising"
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/planTarget"
+          },
+          "minItems": 0,
+          "maxItems": 128
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reason"
+          },
+          "minItems": 0,
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "profile",
+        "planRef",
+        "nodeRef",
+        "generatedAt",
+        "definition",
+        "requestedAdvertising",
+        "schedule",
+        "targets",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "$comment": "Immutable knowledge payload. Hash definitions/capabilities/payloads using existing syn.radios.types.canonical (ASCII JSON, sorted keys, compact separators, ensure_ascii=True, allow_nan=False) then SHA-256; digest alone is not proof of source trust. A semantic compiler resolves pins, enforces unique devices and physical controllers, freshness, frame equivalence, requested/effective differences, adapter selection and aggregate resource budgets before any executor accepts the plan. An empty target set is valid when no adapter is connected or selected; plan-level reasons must explain it. The executor applies the definition's wait/skip/fail policy without inventing an adapter identity. The pinned definition must include its explicit Syn identity policy; a compatible target must contain the full-reference transport and every emitted frame must have a recognized Syn marker. The compiler must reject hint-only sequences and arbitrary caller-supplied compatibility labels.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "targets": {
+                "maxItems": 0
+              }
+            },
+            "required": [
+              "targets"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reasons": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "const": "syn.bluetooth-advertising-observation/1"
+        },
+        "eventRef": {
+          "$ref": "#/$defs/eventRef"
+        },
+        "nodeRef": {
+          "$ref": "#/$defs/thingRef"
+        },
+        "beaconRef": {
+          "$ref": "#/$defs/thingRef"
+        },
+        "planRef": {
+          "$ref": "#/$defs/emberRef"
+        },
+        "planSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "deviceId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/deviceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observedAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "status": {
+          "enum": [
+            "prepared",
+            "started",
+            "stopped",
+            "rejected",
+            "disconnected"
+          ]
+        },
+        "evidenceKind": {
+          "enum": [
+            "local-plan",
+            "backend-callback",
+            "backend-error",
+            "inventory-observation"
+          ]
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "sessionId": {
+          "$ref": "#/$defs/uuid128"
+        },
+        "frameIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/frameId"
+          },
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "reason": {
+          "$ref": "#/$defs/reason"
+        },
+        "controllerReportedTxPowerDbm": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -127,
+          "maximum": 20
+        },
+        "airReceptionVerified": {
+          "const": false
+        }
+      },
+      "required": [
+        "profile",
+        "eventRef",
+        "nodeRef",
+        "beaconRef",
+        "planRef",
+        "planSha256",
+        "deviceId",
+        "observedAt",
+        "status",
+        "evidenceKind",
+        "airReceptionVerified"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "prepared"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidenceKind": {
+                "const": "local-plan"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "started"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "binding",
+              "sessionId",
+              "frameIds"
+            ],
+            "properties": {
+              "evidenceKind": {
+                "const": "backend-callback"
+              },
+              "frameIds": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "stopped",
+                  "disconnected"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "binding",
+              "sessionId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "rejected",
+                  "disconnected"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "started",
+                  "stopped",
+                  "disconnected"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "deviceId": {
+                "$ref": "#/$defs/deviceId"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "deviceId": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "deviceId"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "prepared",
+                  "rejected"
+                ]
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "binding"
+                  ]
+                },
+                {
+                  "required": [
+                    "sessionId"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "stopped"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidenceKind": {
+                "const": "backend-callback"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "disconnected"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidenceKind": {
+                "enum": [
+                  "backend-callback",
+                  "backend-error",
+                  "inventory-observation"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "This is the knowledge payload shared by a native execution Event and its observation Ember, not either primitive envelope. Record native eventTargets/relationships and ledger receipts using Syn's existing transaction mechanisms. started means the backend reported advertising active/accepted, never that another radio received a packet. Reception requires a separate independently sourced observation. No execution or database writing is supplied by this schema. A null deviceId is allowed only for prepared/rejected whole-definition outcomes (for example no connected adapters), without a binding/session. local-plan evidence accompanies preparation or validation rejection only; stopped requires backend callback evidence, and disconnection requires backend or inventory evidence."
+    },
+    "synIdentityPolicy": {
+      "type": "object",
+      "properties": {
+        "branding": {
+          "const": "Syn"
+        },
+        "emitter": {
+          "const": "nodeRef"
+        },
+        "marker": {
+          "const": "every-frame"
+        },
+        "fullReference": {
+          "const": "required-per-sequence"
+        },
+        "shortHints": {
+          "const": "allowed-with-full-reference"
+        },
+        "authentication": {
+          "const": "advertised-claim"
+        }
+      },
+      "required": [
+        "branding",
+        "emitter",
+        "marker",
+        "fullReference",
+        "shortHints",
+        "authentication"
+      ],
+      "additionalProperties": false,
+      "$comment": "emitter=nodeRef binds the claim to the enclosing definition.nodeRef; there is no second independently selectable identity. Every encoded advertising or periodic frame must carry a recognized Syn marker. Every complete scheduled sequence must include losslessly encoded full canonical nodeRef transport, either in one frame or a bounded fragment sequence. Short hints may accompany that transport but cannot independently resolve a node reference or authenticate it. A declaration is not wire evidence: schema validation cannot establish marker bytes, completeness, reference equality, source continuity or authenticity. Reject unbranded frames and sequences without full-reference transport during semantic compilation, including generic, telemetry and extension formats."
+    }
+  }
+}

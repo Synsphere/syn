@@ -167,6 +167,8 @@ def test_native_runtime_owns_cardano_inside_scheduler_lifetime():
             events.append("cardano.stop")
 
     native.scheduler, native.cardano = Scheduler(), Cardano()
+    from syn.bluetooth.runtime import BluetoothRuntime
+    native.bluetooth = BluetoothRuntime(None, None)
     asyncio.run(native._serve())
     assert native.ready.is_set() and native.fault is None
     assert events == ["scheduler.start", "position.prepare", "cardano.start", "cardano.check",

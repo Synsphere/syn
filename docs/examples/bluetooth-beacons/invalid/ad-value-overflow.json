@@ -1,0 +1,84 @@
+{
+  "profile": "syn.bluetooth-beacon/1",
+  "beaconRef": "syn://thing/example-raw-format-catalogue",
+  "nodeRef": "syn://thing/example-node",
+  "identity": {
+    "branding": "Syn",
+    "emitter": "nodeRef",
+    "marker": "every-frame",
+    "fullReference": "required-per-sequence",
+    "shortHints": "allowed-with-full-reference",
+    "authentication": "advertised-claim"
+  },
+  "revision": 1,
+  "adapterSelection": {
+    "mode": "all-compatible",
+    "unavailable": "wait"
+  },
+  "advertising": {
+    "mode": "extended",
+    "connectable": false,
+    "scannable": false,
+    "primaryPhy": "le-1m",
+    "interval": {
+      "minUnits625us": 160,
+      "maxUnits625us": 160
+    },
+    "requestedTxPowerDbm": null,
+    "txPowerPolicy": "controller-default",
+    "secondaryPhy": "le-1m"
+  },
+  "frames": [
+    {
+      "frameId": "gap",
+      "payload": {
+        "format": "gap",
+        "elements": [
+          {
+            "adType": 9,
+            "dataHex": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "frameId": "manufacturer",
+      "payload": {
+        "format": "manufacturer-data",
+        "companyId": 65535,
+        "dataHex": "010203"
+      }
+    },
+    {
+      "frameId": "service16",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 16,
+        "serviceUuid": "ffff",
+        "dataHex": "0102"
+      }
+    },
+    {
+      "frameId": "service32",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 32,
+        "serviceUuid": "ffffffff",
+        "dataHex": "0102"
+      }
+    },
+    {
+      "frameId": "service128",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 128,
+        "serviceUuid": "6c22a4f1-77cd-4f3a-9da8-405c82bd7f9a",
+        "dataHex": "0102"
+      }
+    }
+  ],
+  "schedule": {
+    "mode": "round-robin",
+    "dwellMs": 1000
+  }
+}

@@ -160,6 +160,8 @@ class NativePositionRuntime:
                 schedulerKey="node-"+digest(self.runtime.nodeRef), maxConcurrentJobs=settings.maxConcurrentJobs)
             from syn.cardano.runtime import CardanoRuntime
             self.cardano = CardanoRuntime(self.runtime.sessions, self.runtime.nodeRef, config.cardano)
+            from syn.bluetooth.runtime import BluetoothRuntime
+            self.bluetooth = BluetoothRuntime(self.runtime.sessions, self.runtime.nodeRef, config.bluetooth)
         except BaseException:
             self.engine.dispose()
             raise
@@ -171,9 +173,11 @@ class NativePositionRuntime:
         try:
             await self.scheduler.start(prepare=self.runtime.prepare)
             await self.cardano.start()
+            await self.bluetooth.start()
             self.ready.set()
             while not self.stopped.is_set() and self.scheduler.running:
                 self.cardano.check()
+                self.bluetooth.check()
                 await asyncio.sleep(.1)
             if self.scheduler.fault:
                 self.fault = self.scheduler.fault
@@ -183,9 +187,12 @@ class NativePositionRuntime:
         finally:
             try:
                 try:
-                    await self.cardano.stop()
+                    await self.bluetooth.stop()
                 finally:
-                    await self.scheduler.stop()
+                    try:
+                        await self.cardano.stop()
+                    finally:
+                        await self.scheduler.stop()
             except BaseException as error:
                 self.fault = error
                 self.ready.set()

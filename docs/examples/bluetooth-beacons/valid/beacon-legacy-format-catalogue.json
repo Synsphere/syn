@@ -1,0 +1,116 @@
+{
+  "profile": "syn.bluetooth-beacon/1",
+  "beaconRef": "syn://thing/example-legacy-format-catalogue",
+  "nodeRef": "syn://thing/example-node",
+  "identity": {
+    "branding": "Syn",
+    "emitter": "nodeRef",
+    "marker": "every-frame",
+    "fullReference": "required-per-sequence",
+    "shortHints": "allowed-with-full-reference",
+    "authentication": "advertised-claim"
+  },
+  "revision": 1,
+  "adapterSelection": {
+    "mode": "all-compatible",
+    "unavailable": "wait"
+  },
+  "advertising": {
+    "mode": "legacy",
+    "connectable": false,
+    "scannable": false,
+    "primaryPhy": "le-1m",
+    "interval": {
+      "minUnits625us": 160,
+      "maxUnits625us": 160
+    },
+    "requestedTxPowerDbm": null,
+    "txPowerPolicy": "controller-default"
+  },
+  "frames": [
+    {
+      "frameId": "ibeacon",
+      "payload": {
+        "format": "ibeacon",
+        "uuid": "c3a32d20-8b7a-4a0b-9f06-d26cef4d9a21",
+        "major": 1,
+        "minor": 2,
+        "measuredPowerAt1mDbm": -59
+      }
+    },
+    {
+      "frameId": "altbeacon",
+      "payload": {
+        "format": "altbeacon",
+        "companyId": 65535,
+        "beaconIdHex": "0123456789abcdef0123456789abcdef01234567",
+        "referenceRssiAt1mDbm": -59,
+        "manufacturerReserved": 0
+      }
+    },
+    {
+      "frameId": "eddystone-uid",
+      "payload": {
+        "format": "eddystone-uid",
+        "rangingDataAt0mDbm": -20,
+        "namespaceHex": "0102030405060708090a",
+        "instanceHex": "0b0c0d0e0f10"
+      }
+    },
+    {
+      "frameId": "eddystone-url",
+      "payload": {
+        "format": "eddystone-url",
+        "rangingDataAt0mDbm": -20,
+        "url": "https://example.com/"
+      }
+    },
+    {
+      "frameId": "eddystone-tlm",
+      "payload": {
+        "format": "eddystone-tlm",
+        "telemetry": {
+          "batteryMillivolts": 3000,
+          "temperatureQ8_8": null,
+          "advertisingCount": 123,
+          "uptimeDeciseconds": 1200
+        }
+      }
+    },
+    {
+      "frameId": "eddystone-eid",
+      "payload": {
+        "format": "eddystone-eid",
+        "rangingDataAt0mDbm": -20,
+        "identityCredentialRef": "syn://credential/example-eid-key-handle",
+        "rotationExponent": 10,
+        "clockBinding": {
+          "clockEmberRef": "syn://ember/example-clock-observation",
+          "maximumUncertaintyMs": 1000
+        }
+      }
+    },
+    {
+      "frameId": "eddystone-etlm",
+      "payload": {
+        "format": "eddystone-etlm",
+        "identityCredentialRef": "syn://credential/example-eid-key-handle",
+        "rotationExponent": 10,
+        "clockBinding": {
+          "clockEmberRef": "syn://ember/example-clock-observation",
+          "maximumUncertaintyMs": 1000
+        },
+        "telemetry": {
+          "batteryMillivolts": 3000,
+          "temperatureQ8_8": null,
+          "advertisingCount": 123,
+          "uptimeDeciseconds": 1200
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "mode": "round-robin",
+    "dwellMs": 1000
+  }
+}

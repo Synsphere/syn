@@ -87,7 +87,8 @@ def main(arguments: Sequence[str] | None = None) -> None:
             runtime_args["identity"] = operator.server.expected_hash
         runtime = PositionRuntime(sessions, config.database.url, config.position, **runtime_args)
         handlers = {**defaultJobHandlers(config.database.url), **runtime.handlers()}
-        app_args = {"positionRuntime": runtime, "cardanoConfig": config.cardano}
+        app_args = {"positionRuntime": runtime, "cardanoConfig": config.cardano,
+                    "bluetoothConfig": config.bluetooth}
         if operator is not None:
             from .operator.dag import run_sync as sync_operator_dag
             handlers["operator-dag-sync"] = partial(sync_operator_dag, config.database.url, operator_path)

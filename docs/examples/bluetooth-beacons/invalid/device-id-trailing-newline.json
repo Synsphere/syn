@@ -1,0 +1,96 @@
+{
+  "profile": "syn.bluetooth-advertising-capabilities/1",
+  "capabilitiesRef": "syn://ember/example-advertising-capabilities",
+  "nodeRef": "syn://thing/example-node",
+  "inventoryRef": "syn://thing/radio-inventory-f780954b2098a70c96c19472fd8782bd067a2f4df63b51ab",
+  "deviceId": "256db4661964a2dcc498ccedd194111e2d52de61dcf1aa3e24c2cef8aee157b7\n",
+  "capabilityEmberRef": "syn://ember/example-radio-capability",
+  "observedAt": "2026-11-18T12:00:00Z",
+  "validUntil": "2026-11-18T12:00:30Z",
+  "binding": {
+    "backend": "bluez-dbus",
+    "adapterLocator": "/org/bluez/hci0",
+    "connectionEpoch": "example-attachment-1",
+    "controllerKey": "6987203331324b491fd6854d8024fd3f37f7af58422a6c927f2f48865bbb5d11"
+  },
+  "controller": {
+    "advertisingModes": {
+      "legacy": "supported",
+      "extended": "supported",
+      "periodic": "unknown"
+    },
+    "phys": {
+      "le1M": "supported",
+      "le2M": "supported",
+      "leCoded": "unknown"
+    },
+    "scanResponse": "supported",
+    "txPowerSelection": "supported",
+    "limits": {
+      "legacyAdvertisingDataBytes": 31,
+      "extendedAdvertisingDataBytes": 254,
+      "periodicAdvertisingDataBytes": null,
+      "scanResponseDataBytes": 31,
+      "advertisingSets": 2,
+      "minimumTxPowerDbm": -20,
+      "maximumTxPowerDbm": 8
+    }
+  },
+  "backend": {
+    "adapterSelection": "explicit",
+    "advertisingModes": {
+      "legacy": "supported",
+      "extended": "supported",
+      "periodic": "unsupported"
+    },
+    "phys": {
+      "le1M": "supported",
+      "le2M": "supported",
+      "leCoded": "unknown"
+    },
+    "rawAdStructures": "supported",
+    "manufacturerData": "supported",
+    "serviceData16": "supported",
+    "serviceData32": "supported",
+    "serviceData128": "supported",
+    "txPowerSelection": "supported",
+    "encoders": [
+      {
+        "format": "ibeacon",
+        "encoderTypeRef": "syn://type/ibeacon-encoder-v1",
+        "implementationRef": "syn://cog/example-ibeacon-encoder",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "status": "supported"
+      }
+    ],
+    "limits": {
+      "legacyAdvertisingDataBytes": 31,
+      "extendedAdvertisingDataBytes": 254,
+      "periodicAdvertisingDataBytes": null,
+      "scanResponseDataBytes": 31,
+      "advertisingSets": 2,
+      "minimumTxPowerDbm": -20,
+      "maximumTxPowerDbm": 8
+    },
+    "intervalControl": "supported"
+  },
+  "availability": {
+    "connected": true,
+    "powered": true,
+    "permission": "granted",
+    "availableAdvertisingSets": 1,
+    "reasonCodes": []
+  },
+  "effectiveLimits": {
+    "legacyAdvertisingDataBytes": 31,
+    "extendedAdvertisingDataBytes": 254,
+    "periodicAdvertisingDataBytes": null,
+    "scanResponseDataBytes": 31,
+    "advertisingSets": 2,
+    "minimumTxPowerDbm": -20,
+    "maximumTxPowerDbm": 8
+  },
+  "evidence": [
+    "Synthetic example only; no physical adapter was queried."
+  ]
+}

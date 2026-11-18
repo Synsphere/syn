@@ -1,0 +1,91 @@
+{
+  "profile": "syn.bluetooth-beacon/1",
+  "beaconRef": "syn://thing/example-ibeacon",
+  "nodeRef": "syn://thing/example-node",
+  "identity": {
+    "branding": "Syn",
+    "emitter": "nodeRef",
+    "marker": "every-frame",
+    "fullReference": "optional",
+    "shortHints": "allowed-with-full-reference",
+    "authentication": "advertised-claim"
+  },
+  "revision": 1,
+  "adapterSelection": {
+    "mode": "all-compatible",
+    "unavailable": "wait"
+  },
+  "advertising": {
+    "mode": "legacy",
+    "connectable": false,
+    "scannable": false,
+    "primaryPhy": "le-1m",
+    "interval": {
+      "minUnits625us": 160,
+      "maxUnits625us": 160
+    },
+    "requestedTxPowerDbm": null,
+    "txPowerPolicy": "controller-default"
+  },
+  "frames": [
+    {
+      "frameId": "syn-00",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 128,
+        "serviceUuid": "5fe03a96-c8db-5d52-8077-1dde183c5374",
+        "dataHex": "4005a5001873796e3a2f"
+      }
+    },
+    {
+      "frameId": "syn-01",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 128,
+        "serviceUuid": "5fe03a96-c8db-5d52-8077-1dde183c5374",
+        "dataHex": "4105a52f7468696e672f"
+      }
+    },
+    {
+      "frameId": "syn-02",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 128,
+        "serviceUuid": "5fe03a96-c8db-5d52-8077-1dde183c5374",
+        "dataHex": "4205a56578616d706c65"
+      }
+    },
+    {
+      "frameId": "syn-03",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 128,
+        "serviceUuid": "5fe03a96-c8db-5d52-8077-1dde183c5374",
+        "dataHex": "4305a52d6e6f6465439e"
+      }
+    },
+    {
+      "frameId": "syn-04",
+      "payload": {
+        "format": "service-data",
+        "uuidBits": 128,
+        "serviceUuid": "5fe03a96-c8db-5d52-8077-1dde183c5374",
+        "dataHex": "4405a5e114"
+      }
+    },
+    {
+      "frameId": "identity",
+      "payload": {
+        "format": "ibeacon",
+        "uuid": "93f9ca4a-2d3d-5e03-b687-af0874f6683c",
+        "major": 24120,
+        "minor": 53606,
+        "measuredPowerAt1mDbm": -59
+      }
+    }
+  ],
+  "schedule": {
+    "mode": "round-robin",
+    "dwellMs": 1000
+  }
+}

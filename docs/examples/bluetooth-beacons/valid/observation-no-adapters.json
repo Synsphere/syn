@@ -1,0 +1,17 @@
+{
+  "profile": "syn.bluetooth-advertising-observation/1",
+  "eventRef": "syn://event/example-no-adapter-rejection",
+  "nodeRef": "syn://thing/example-node",
+  "beaconRef": "syn://thing/example-ibeacon",
+  "planRef": "syn://ember/example-no-adapter-plan",
+  "planSha256": "3d8ab2d7412d76fe6157e2ff569f018d31bc28863fb3506b62138d4c35cb3ac9",
+  "deviceId": null,
+  "observedAt": "2026-11-18T12:00:02Z",
+  "status": "rejected",
+  "evidenceKind": "local-plan",
+  "airReceptionVerified": false,
+  "reason": {
+    "code": "no-connected-adapters",
+    "message": "No local adapter has a fresh connected backend binding."
+  }
+}
