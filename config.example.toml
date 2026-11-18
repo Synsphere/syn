@@ -7,15 +7,26 @@ autoMigrate = true
 enabled = true
 mdnsEnabled = true
 upnpEnabled = true
-# QUIC/UDP is optional. TCP portproxy on Windows 10 does NOT forward UDP.
-# quicEnabled = true
-# quicListenAddresses = ["/ip4/0.0.0.0/udp/4001/quic-v1"]
+# Transport capabilities default on, with UDP listeners on ephemeral ports.
+# Explicit false disables a capability; no UDP router mapping is implied.
+quicEnabled = true
+webRtcEnabled = true  # Reports missing-optional-dependency without aiortc/aioice/av.
+webTransportEnabled = true
+webSocketEnabled = true
+# Resolve /dns4/ peer addresses to validated IPv4 destinations before dialing.
+dns4Enabled = true
+# On Windows 10 WSL NAT, TCP portproxy does not forward these UDP listeners.
+# The Windows-host UDP bridge needs separate provisioning and policy approval.
 # UPnP discovery must originate on the router's LAN. WSL2 NAT needs mirrored
 # networking (see docs/development/runtime-network-recovery.md).
 upnpDiscoveryDelayMilliseconds = 2000
 # Optional when automatic selection chooses a VPN/virtual adapter:
 # upnpMulticastInterface = "192.168.1.50" # this computer's LAN IPv4, not the router
 listenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
+# Local UDP listeners; they are not public announcements without real reachability.
+quicListenAddresses = ["/ip4/0.0.0.0/udp/0/quic-v1"]
+webRtcListenAddresses = ["/ip4/0.0.0.0/udp/0/webrtc-direct"]
+webTransportListenAddresses = ["/ip4/0.0.0.0/udp/0/quic-v1/webtransport"]
 startupTimeoutSeconds = 15
 
 # Omit bootstrapPeers to use the five official IPFS/Amino DNSaddr bootstrappers.

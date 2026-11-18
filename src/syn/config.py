@@ -29,9 +29,16 @@ class P2PConfig:
     upnpEnabled: bool = True
     upnpMulticastInterface: str | None = None
     upnpDiscoveryDelayMilliseconds: int = 2000
-    # QUIC is independent of TCP. Public UDP reachability is not implied by a bind.
-    quicEnabled: bool = False
+    # Transports are enabled locally by default. Public UDP forwarding and
+    # router publication still require separate verified host policy.
+    quicEnabled: bool = True
     quicListenAddresses: tuple[str, ...] = ("/ip4/0.0.0.0/udp/0/quic-v1",)
+    webRtcEnabled: bool = True  # WebRTC Direct needs the optional aiortc wheel.
+    webRtcListenAddresses: tuple[str, ...] = ("/ip4/0.0.0.0/udp/0/webrtc-direct",)
+    webTransportEnabled: bool = True
+    webTransportListenAddresses: tuple[str, ...] = ("/ip4/0.0.0.0/udp/0/quic-v1/webtransport",)
+    webSocketEnabled: bool = True
+    dns4Enabled: bool = True
     listenAddresses: tuple[str, ...] = (
         "/ip4/0.0.0.0/tcp/0",
         "/ip6/::/tcp/0",
@@ -56,6 +63,7 @@ class P2PConfig:
 
     def __post_init__(self):
         for name in ("enabled", "mdnsEnabled", "upnpEnabled", "aminoEnabled", "quicEnabled",
+                     "webRtcEnabled", "webTransportEnabled", "webSocketEnabled", "dns4Enabled",
                      "publishOperatorRecord", "allowPrivateAddresses", "publicPubsubEnabled"):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"p2p.{name} must be true or false")
@@ -73,6 +81,26 @@ class P2PConfig:
             raise ValueError("p2p.upnpDiscoveryDelayMilliseconds must be an integer from 100 to 10000")
         if self.publicGossipsubVersion not in ("1.1", "1.2") or type(self.publicGossipsubVersion) is not str:
             raise ValueError("p2p.publicGossipsubVersion must be '1.1' or '1.2'")
+        for name, signature in (("webRtcListenAddresses", ("udp", "webrtc-direct")),
+                                ("webTransportListenAddresses", ("udp", "quic-v1", "webtransport"))):
+            values = getattr(self, name)
+            if (type(values) is not tuple or len(values) > 8
+                    or any(type(value) is not str or len(value) > 128 for value in values)
+                    or len(set(values)) != len(values)):
+                raise ValueError(f"p2p.{name} must be a bounded unique tuple")
+            for value in values:
+                parts = value.split("/")
+                try:
+                    if (parts[:2] not in (["", "ip4"], ["", "ip6"])
+                            or tuple(parts[3::2]) != signature or len(parts) != 2 * len(signature) + 2):
+                        raise ValueError
+                    ip = ipaddress.ip_address(parts[2])
+                    port = int(parts[4])
+                    if (f"ip{ip.version}" != parts[1] or str(ip) != parts[2]
+                            or str(port) != parts[4] or not 0 <= port <= 65535 or ip.is_multicast):
+                        raise ValueError
+                except (ValueError, TypeError):
+                    raise ValueError(f"p2p.{name} contains a noncanonical UDP transport address") from None
         if (type(self.quicListenAddresses) is not tuple or len(self.quicListenAddresses) > 8
                 or any(type(item) is not str for item in self.quicListenAddresses)
                 or len(set(self.quicListenAddresses)) != len(self.quicListenAddresses)
@@ -219,8 +247,14 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
             upnpEnabled=upnpEnabled,
             upnpMulticastInterface=p2p.get("upnpMulticastInterface"),
             upnpDiscoveryDelayMilliseconds=p2p.get("upnpDiscoveryDelayMilliseconds", 2000),
-            quicEnabled=p2p.get("quicEnabled", False),
+            quicEnabled=p2p.get("quicEnabled", True),
             quicListenAddresses=tuple(p2p.get("quicListenAddresses", ["/ip4/0.0.0.0/udp/0/quic-v1"])),
+            webRtcEnabled=p2p.get("webRtcEnabled", True),
+            webRtcListenAddresses=tuple(p2p.get("webRtcListenAddresses", ["/ip4/0.0.0.0/udp/0/webrtc-direct"])),
+            webTransportEnabled=p2p.get("webTransportEnabled", True),
+            webTransportListenAddresses=tuple(p2p.get("webTransportListenAddresses", ["/ip4/0.0.0.0/udp/0/quic-v1/webtransport"])),
+            webSocketEnabled=p2p.get("webSocketEnabled", True),
+            dns4Enabled=p2p.get("dns4Enabled", True),
             listenAddresses=tuple(listenAddresses),
             bootstrapPeers=tuple(bootstrapPeers),
             startupTimeoutSeconds=float(startupTimeoutSeconds),

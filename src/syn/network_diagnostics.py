@@ -15,6 +15,7 @@ _PATTERNS = (
     ("multiselectclient handshake: read failed", "multistreamRead"),
     ("failed to upgrade security for peer", "securityNegotiation"),
     ("failed to open tcp stream", "tcpDial"),
+    ("transportmanager.transport_for_dialing: no transport found", "unsupportedTransport"),
 )
 _COUNTS: Counter[str] = Counter()
 _LAST_REPORTED: dict[str, float] = {}

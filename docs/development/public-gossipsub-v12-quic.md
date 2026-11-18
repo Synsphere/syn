@@ -8,6 +8,10 @@ certificate-bound admissions, revocation and epoch fences unchanged.
 
 ## QUIC is an additional transport, not a replacement
 
+The newer default-on transport and DNS4 policy is documented in
+[default transport adapters and DNS4](transport-defaults-dns4.md). This older
+milestone page preserves the original opt-in release history.
+
 `quicEnabled = true` adds the configured UDP/QUIC-v1 listeners alongside the
 existing TCP listeners. The default QUIC port is ephemeral, so use a fixed
 UDP port for deployment. QUIC uses its own TLS 1.3 transport authentication;

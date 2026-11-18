@@ -31,6 +31,9 @@ from .amino import AminoDHTClient, dialable_tcp_addresses, seed_dial_addresses
 from .config import P2PConfig
 from .p2p_defaults import AMINO_PROTOCOL
 from .p2p_diagnostics import connection_diagnostics
+from .transport_capabilities import (create_host, enabled_listeners,
+                                     registered_transports, webrtc_dependencies_installed)
+from .dns4_dial import install_dns4_dialer
 from .outbound_families import OUTBOUND_FAMILIES
 from .network_diagnostics import diagnostics_snapshot
 from .upnp import SynUpnpManager
@@ -43,12 +46,12 @@ from syn_client.public_pubsub import group_descriptor
 logger = logging.getLogger(__name__)
 
 
-def requested_listen_addresses(config: P2PConfig):
-    """Build TCP and optional QUIC listeners without assuming UDP reachability."""
-    configured = list(config.listenAddresses)
-    if config.quicEnabled:
-        configured.extend(config.quicListenAddresses)
-    return [multiaddr.Multiaddr(value) for value in configured]
+def requested_listen_addresses(config: P2PConfig, *, webrtc_ready=None):
+    """Build enabled TCP/UDP listeners; no bind alone proves public reachability."""
+    if webrtc_ready is None:
+        webrtc_ready = webrtc_dependencies_installed()
+    return [multiaddr.Multiaddr(value) for value in
+            enabled_listeners(config, webrtc_ready=webrtc_ready)]
 
 
 class DiscoveryUnavailable(RuntimeError):
@@ -80,6 +83,8 @@ class Libp2pNode:
         self._record = None
         self._token = self._startup_scope = None
         self._host = self._dht = None
+        self._registeredTransports: tuple[str, ...] = ()
+        self._transportCapabilities: dict[str, str] = {}
         self._lookup_slots = None
         self._public = self._public_slots = None
         self._default_network = operator.config.get("network_id", "syn") if operator is not None else "syn"
@@ -153,9 +158,13 @@ class Libp2pNode:
             return {"enabled": self.config.enabled,
                 "running": self._thread is not None and self._thread.is_alive(),
                 "peerId": self._peerId, "listenAddresses": list(self._addresses),
+                "registeredTransports": list(self._registeredTransports),
+                "transportCapabilities": dict(self._transportCapabilities),
                 "quicEnabled": self.config.quicEnabled,
                 "quicListeners": [address for address in self._addresses
-                                  if "/udp/" in address and "/quic-v1" in address],
+                                  if "/udp/" in address and address.endswith("/quic-v1")],
+                "webRtcListeners": [address for address in self._addresses if "/webrtc-direct" in address],
+                "webTransportListeners": [address for address in self._addresses if "/webtransport" in address],
                 "quicPublicReachability": "unverified" if self.config.quicEnabled else "disabled",
                 "bootstrapPeers": list(self.config.bootstrapPeers),
                 "mdnsEnabled": self.config.mdnsEnabled,
@@ -390,22 +399,26 @@ class Libp2pNode:
         self._mapped_ports.clear()
         with trio.CancelScope() as scope:
             self._startup_scope = scope
-            addresses = requested_listen_addresses(self.config)
+            webrtc_ready = webrtc_dependencies_installed()
+            addresses = requested_listen_addresses(self.config, webrtc_ready=webrtc_ready)
             key_pair = create_new_key_pair()
-            host = new_host(key_pair=key_pair, bootstrap=[],
-                # The multi-transport constructor inspects every bind address.
-                # Passing only enable_quic=True without the mixed list can
-                # replace TCP, breaking existing Noise/Yamux ingress.
-                listen_addrs=addresses, enable_quic=self.config.quicEnabled,
-                # Syn owns discovery/mapping in a background task. Upstream's
-                # one-shot discovery blocks host startup and assumes every TCP
-                # listener (including IPv6-only ones) is an IPv4 NAT target.
+            host, caps = create_host(new_host, key_pair, self.config,
+                webrtc_ready=webrtc_ready, bootstrap=[],
+                # Let the 0.8.1 constructor register all requested transport
+                # adapters independently of which sockets are being listened on.
+                # Host.run() receives the mixed validated bind list below.
                 enable_upnp=False,
                 announce_addrs=([multiaddr.Multiaddr(a) for a in self.config.announceAddresses]
                                 if self.config.announceAddresses else None),
                 sec_opt={NOISE_PROTOCOL: NoiseTransport(key_pair, noise_key_pair().private_key)},
                 muxer_opt={YAMUX_PROTOCOL: Yamux})
+            with self._lock:
+                self._registeredTransports = tuple(registered_transports(host))
+                self._transportCapabilities = caps
             self._host = host
+            if self.config.dns4Enabled:
+                install_dns4_dialer(host, timeout=min(5.0, self.config.requestTimeoutSeconds),
+                                    allow_private=self.config.allowPrivateAddresses)
             if self.config.upnpEnabled:
                 self._upnp = SynUpnpManager(
                     multicast_interface=self.config.upnpMulticastInterface,

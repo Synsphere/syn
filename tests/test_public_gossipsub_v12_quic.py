@@ -53,11 +53,12 @@ def test_invalid_transport_or_protocol_config_rejected(key, value):
 
 
 def test_enabled_quic_adds_udp_without_removing_existing_tcp():
-    basic = requested_listen_addresses(isolated())
+    basic = requested_listen_addresses(isolated(quicEnabled=False,
+        webRtcEnabled=False, webTransportEnabled=False))
     assert all("/udp/" not in str(addr) for addr in basic)
     hybrid = requested_listen_addresses(isolated(
         listenAddresses=("/ip4/0.0.0.0/tcp/4001",),
-        quicEnabled=True,
+        quicEnabled=True, webRtcEnabled=False, webTransportEnabled=False,
         quicListenAddresses=("/ip4/0.0.0.0/udp/4001/quic-v1",)))
     assert [str(addr) for addr in hybrid] == [
         "/ip4/0.0.0.0/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic-v1"]
@@ -95,7 +96,7 @@ def test_real_quic_and_tcp_host_sockets_can_coexist():
     from multiaddr import Multiaddr
 
     async def exercise():
-        options = isolated(quicEnabled=True,
+        options = isolated(quicEnabled=True, webRtcEnabled=False, webTransportEnabled=False,
             listenAddresses=("/ip4/127.0.0.1/tcp/0",),
             quicListenAddresses=("/ip4/127.0.0.1/udp/0/quic-v1",))
         binds = requested_listen_addresses(options)
