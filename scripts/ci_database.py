@@ -34,6 +34,13 @@ def main() -> None:
     if not config.is_file() or os.environ.get("SYN_COMMUNICATION_TEST_URL") != url:
         raise SystemExit("Database acceptance requires both explicit fixture configurations")
     report = config.with_suffix(".junit.xml")
+    environment = dict(os.environ)
+    for name in (
+        "SYN_BLUETOOTH_TEST_DATABASE_URL",
+        "SYN_POSITION_TEST_DATABASE_URL",
+        "SYN_CARDANO_TEST_DATABASE_URL",
+    ):
+        environment[name] = url
     result = subprocess.run(
         [
             sys.executable,
@@ -48,6 +55,7 @@ def main() -> None:
             "--junitxml=" + str(report),
         ],
         check=False,
+        env=environment,
     )
     if result.returncode:
         raise SystemExit(result.returncode)
