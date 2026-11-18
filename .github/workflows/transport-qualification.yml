@@ -1,0 +1,53 @@
+name: Syn external transport qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      pinned_endpoints:
+        description: 'Three public pinned multiaddrs (QUIC, WebRTC Direct, WebTransport), one per line; same PeerID'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: syn-transport-witness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  public-witness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.23"
+          enable-cache: false
+          python-version: "3.13"
+      - name: Install exactly the locked Syn runtime
+        run: uv sync --locked --dev
+      - name: Offline qualification contract tests
+        run: uv run --locked python -m pytest -q tests/test_cross_network_qualification.py tests/test_multicast_qualification.py
+      - name: Verify actual UDP transport and pinned PeerID from this runner
+        env:
+          SYN_PINNED_ENDPOINTS: ${{ inputs.pinned_endpoints }}
+        run: |
+          # Input is passed as data through the environment, never shell-evaluated.
+          # Missing WebRTC native wheels fail qualification; do not fake success.
+          uv run --locked python scripts/qualify_syn_transports.py \
+            --peers-env SYN_PINNED_ENDPOINTS \
+            --trials 3 --min-success 2 --timeout 10 \
+            --report "$RUNNER_TEMP/syn-transport-qualification.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
+      - name: Retain machine-readable witness report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: syn-transport-qualification
+          path: ${{ runner.temp }}/syn-transport-qualification.json
+          if-no-files-found: warn
+          retention-days: 14
