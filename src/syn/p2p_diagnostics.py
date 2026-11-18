@@ -12,6 +12,8 @@ import logging
 import re
 from threading import get_ident
 
+from .network_diagnostics import ConnectionNoiseFilter
+
 
 _YAMUX_LOGGER = "libp2p.stream_muxer.yamux.yamux"
 _CLOSE_MESSAGE = re.compile(
@@ -59,7 +61,18 @@ def connection_diagnostics():
     logger = logging.getLogger(_YAMUX_LOGGER)
     selected = _ConnectionCloseFilter()
     logger.addFilter(selected)
+    # py-libp2p emits retryable dial/security failures through its ordinary
+    # logging handlers. Filter only Syn's libp2p thread and only known phrases;
+    # expose aggregated counts in /p2p/status instead of flooding the console.
+    noise = ConnectionNoiseFilter()
+    handlers = tuple(dict.fromkeys((*logging.getLogger().handlers,
+                                    *logging.getLogger("libp2p").handlers,
+                                    *logger.handlers)))
+    for handler in handlers:
+        handler.addFilter(noise)
     try:
         yield
     finally:
+        for handler in handlers:
+            handler.removeFilter(noise)
         logger.removeFilter(selected)

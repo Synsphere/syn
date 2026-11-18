@@ -23,6 +23,7 @@ from libp2p.peer.id import ID
 from libp2p.peer.peerinfo import PeerInfo
 
 from .p2p_defaults import AMINO_PROTOCOL, IPFS_BOOTSTRAP_PEERS
+from .outbound_families import OUTBOUND_FAMILIES
 
 K = 20
 ALPHA = 10
@@ -121,6 +122,8 @@ def dialable_tcp_addresses(
                 continue
             if not allow_private and not ip.is_global:
                 continue
+            if ip.version == 6 and not OUTBOUND_FAMILIES.ipv6():
+                continue
             normalized = Multiaddr(f"/ip{ip.version}/{ip.compressed}/tcp/{port}")
             encoded = normalized.to_bytes()
             if encoded not in seen:
@@ -130,6 +133,8 @@ def dialable_tcp_addresses(
                 break
         except (ValueError, TypeError, KeyError):
             continue
+    # Do not let an IPv6-first DNS response starve a reachable IPv4 route.
+    result.sort(key=lambda address: not str(address).startswith("/ip4/"))
     return result
 
 
@@ -313,6 +318,8 @@ class AminoDHTClient:
                 if not 1 <= port <= 65535:
                     return
                 kinds = ("A", "AAAA") if names[0] == "dns" else (("A",) if names[0] == "dns4" else ("AAAA",))
+                if not OUTBOUND_FAMILIES.ipv6():
+                    kinds = tuple(kind for kind in kinds if kind != "AAAA")
                 for kind in kinds:
                     if queries >= MAX_DNS_QUERIES:
                         return

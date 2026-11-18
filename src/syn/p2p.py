@@ -31,6 +31,8 @@ from .amino import AminoDHTClient, dialable_tcp_addresses, seed_dial_addresses
 from .config import P2PConfig
 from .p2p_defaults import AMINO_PROTOCOL
 from .p2p_diagnostics import connection_diagnostics
+from .outbound_families import OUTBOUND_FAMILIES
+from .network_diagnostics import diagnostics_snapshot
 from .upnp import SynUpnpManager
 from . import peer_record
 from .peer_record_transport import PeerRecordService, fetch_peer_record
@@ -148,6 +150,8 @@ class Libp2pNode:
                 "discoveredPeers": list(self._discoveredPeers),
                 "upnpEnabled": self.config.upnpEnabled, "upnpExternalIp": self._upnpExternalIp,
                 "upnp": deepcopy(self._upnp_status),
+                "outboundFamilies": OUTBOUND_FAMILIES.status(),
+                "dialDiagnostics": diagnostics_snapshot(),
                 "amino": deepcopy(self._amino), "publication": deepcopy(self._publication),
                 "publicPubsub": deepcopy(self._public_status)}
 
