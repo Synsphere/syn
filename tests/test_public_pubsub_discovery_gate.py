@@ -21,27 +21,20 @@ def test_ordinary_host_connections_never_negotiate_public_pubsub(monkeypatch):
             # DHT/host connection into a discovered group provider.
             for service in services:
                 await service.join("syn://type/ordinary-dht-connection")
-            notified = [trio.Event(), trio.Event()]
             attempts = []
-            for index, (host, service) in enumerate(zip(hosts, services)):
+            for host in hosts:
                 original_open = host.new_stream
-                original_notify = service.pubsub._handle_new_peer_safe
 
                 async def opening(peer, protocols, original=original_open):
                     if PROTOCOL_ID_V11 in protocols:
                         attempts.append(peer)
                     return await original(peer, protocols)
 
-                async def notification(peer, original=original_notify, event=notified[index]):
-                    await original(peer)
-                    event.set()
-
                 monkeypatch.setattr(host, "new_stream", opening)
-                monkeypatch.setattr(service.pubsub, "_handle_new_peer_safe", notification)
             await hosts[0].connect(info_from_p2p_addr(hosts[1].get_addrs()[0]))
-            with trio.fail_after(3):
-                for event in notified:
-                    await event.wait()
+            # Verify the absence of a GossipSub dial after connection tasks
+            # have reached quiescence; don't rely on an upstream private callback.
+            await wait_all_tasks_blocked()
             assert attempts == []
             assert all(not service.pubsub.peers for service in services)
             assert hosts[0].get_network().get_connections(hosts[1].get_id())

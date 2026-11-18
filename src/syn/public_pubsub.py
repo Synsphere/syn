@@ -235,6 +235,17 @@ class _PublicPubsub(Pubsub):
         while len(self._retry) > MAX_PUBLIC_PEERS * 2:
             self._retry.popitem(last=False)
 
+    def _schedule_peer_stream_retry(self, peer):
+        """Ignore only Trio's teardown race when the upstream task nursery closes."""
+        try:
+            super()._schedule_peer_stream_retry(peer)
+        except RuntimeError as error:
+            if str(error) != "Nursery is closed to new arrivals":
+                raise
+            # Upstream records the retry before scheduling it. A closed Trio
+            # nursery cannot run that retry, so clear the stale pending marker.
+            self._peer_stream_retries_pending.discard(peer)
+
     async def _handle_new_peer(self, peer):
         if (peer in self.peers or peer in self._opening or not self.can_attempt(peer)
                 or len(self.peers) + len(self._opening) >= MAX_PUBLIC_PEERS):

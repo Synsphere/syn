@@ -210,7 +210,8 @@ def test_upstream_bitswap_client_retrieves_exact_public_key_block():
             await client.connect(info_from_p2p_addr(server.get_addrs()[0]))
             async with trio.open_nursery() as nursery:
                 receiver.set_nursery(nursery)
-                actual = await receiver.get_block(service.cid, peer_id=server.get_id(), timeout=5)
+                actual = await receiver.new_session().get_block(
+                    service.cid, peer_id=server.get_id(), timeout=5)
                 assert actual == public
                 assert len(actual) == 32
                 assert service.cid == RAW_CID_PREFIX + hashlib.sha256(actual).digest()

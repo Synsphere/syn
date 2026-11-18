@@ -95,7 +95,7 @@ def test_bootstrap_uses_five_official_pinned_dnsaddr_peers():
         assert info_from_p2p_addr(address).peer_id
 
 
-def test_public_address_filter_preserves_transport_peer_pin():
+def test_public_address_filter_preserves_transport_peer_pin(monkeypatch):
     own, other = peer(1), peer(2)
     addresses = [
         Multiaddr("/ip4/0.0.0.0/tcp/4001"),
@@ -108,6 +108,7 @@ def test_public_address_filter_preserves_transport_peer_pin():
         Multiaddr("/ip4/8.8.8.8/udp/4001/quic-v1"),
         Multiaddr("/ip6/2001:4860:4860::8888/tcp/4001"),
     ]
+    monkeypatch.setattr("syn.amino.OUTBOUND_FAMILIES.ipv6", lambda: True)
     public = dialable_tcp_addresses(addresses, peer_id=own)
     assert [str(a) for a in public] == [
         "/ip4/8.8.8.8/tcp/4001", "/ip6/2001:4860:4860::8888/tcp/4001"]

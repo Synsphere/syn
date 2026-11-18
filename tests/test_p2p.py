@@ -24,6 +24,9 @@ def test_libp2p_node_starts_listens_and_stops() -> None:
                 upnpEnabled=False,
                 mdnsEnabled=False,
                 aminoEnabled=False,
+                quicEnabled=False,
+                webRtcEnabled=False,
+                webTransportEnabled=False,
                 bootstrapPeers=(),
             )
         )
@@ -63,11 +66,19 @@ def test_disabled_libp2p_node_does_not_start() -> None:
         node = Libp2pNode(P2PConfig(enabled=False, bootstrapPeers=()))
         await node.start()
         status = node.status()
-        assert {key: value for key, value in status.items() if key not in {"amino", "publication", "upnp"}} == {
+        assert {key: value for key, value in status.items()
+                if key not in {"amino", "publication", "upnp", "outboundFamilies", "dialDiagnostics"}} == {
             "enabled": False,
             "running": False,
             "peerId": None,
             "listenAddresses": [],
+            "registeredTransports": [],
+            "transportCapabilities": {},
+            "quicEnabled": True,
+            "quicListeners": [],
+            "webRtcListeners": [],
+            "webTransportListeners": [],
+            "quicPublicReachability": "unverified",
             "bootstrapPeers": [],
             "mdnsEnabled": True,
             "discoveredPeers": [],
@@ -180,7 +191,8 @@ def test_upnp_maps_only_ipv4_after_readiness_and_cleans_up(accepted) -> None:
                         break
                     await asyncio.sleep(0.01)
                 v4 = next(int(multiaddr.Multiaddr(address).value_for_protocol("tcp"))
-                          for address in node.status()["listenAddresses"] if address.startswith("/ip4/"))
+                          for address in node.status()["listenAddresses"]
+                          if address.startswith("/ip4/") and "/tcp/" in address)
                 assert manager.attempts == [(v4, "TCP")]
                 announced = [str(value) for value in node._public_addresses(node._host)]
                 assert announced == ([f"/ip4/8.8.8.8/tcp/{v4}"] if accepted else [])

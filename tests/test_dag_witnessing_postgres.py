@@ -22,14 +22,17 @@ def test_postgresql_witness_evidence_is_immutable(db, operation):
             'digest': digest, 'observer': hashlib.sha256(uuid4().bytes).hexdigest(),
             'peer': hashlib.sha256(uuid4().bytes).hexdigest(), 'receipt': 'ab' * 32})
     statement = {
-        'UPDATE': 'UPDATE "operatorDagWitnessRecords" SET body=\'{"changed":true}\' WHERE digest=:digest',
+        'UPDATE': 'UPDATE "operatorDagWitnessRecords" SET body=:body WHERE digest=:digest',
         'DELETE': 'DELETE FROM "operatorDagWitnessRecords" WHERE digest=:digest',
         'TRUNCATE': 'TRUNCATE TABLE "operatorDagWitnessRecords"',
     }[operation]
+    parameters = {'digest': digest}
+    if operation == 'UPDATE':
+        parameters['body'] = '{"changed":true}'
     savepoint = db.begin_nested()
     try:
         with pytest.raises(DBAPIError, match='immutable'):
-            db.execute(text(statement), {'digest': digest})
+            db.execute(text(statement), parameters)
     finally:
         savepoint.rollback()
     assert db.scalar(text('SELECT body FROM "operatorDagWitnessRecords" WHERE digest=:digest'),
