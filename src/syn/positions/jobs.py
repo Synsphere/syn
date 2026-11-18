@@ -9,6 +9,7 @@ from sqlalchemy import select, text
 from syn.recurrence import ensure_schedule, schedules
 from .config import PositionConfig
 from .providers import Device, discover, poll
+from .providers.base import ProviderUnavailable
 from .schema import devices, nodes, insert_ignore
 from .store import PositionStore
 from .types import digest
@@ -61,7 +62,7 @@ def run_discovery(databaseUrl, settings, nodeRef, *, schedulerKey):
                 if previous and device.provider == "serial" and previous["descriptor"]["options"].get("confirmed"):
                     device = replace(device, options=previous["descriptor"]["options"])
                 seen.add(device.id)
-                value = {"descriptor": device.to_dict(), "active": True, "lastSeen": now, "lastError": None}
+                value = {"descriptor": device.to_dict(), "active": True, "lastSeen": now, "lastError": previous["lastError"] if previous else None}
                 insert_ignore(session, devices, {"nodeRef": nodeRef, "deviceId": device.id, **value}, ["nodeRef", "deviceId"])
                 session.execute(devices.update().where(devices.c.nodeRef == nodeRef, devices.c.deviceId == device.id).values(**value))
                 interval = config.rescanSeconds if device.provider == "serial" and not device.options.get("confirmed") else config.pollSeconds
@@ -104,6 +105,15 @@ def run_poll(databaseUrl, settings, nodeRef, *, deviceId, schedulerKey, clockSet
                     return {"status": "busy", "readings": 0}
             try:
                 readings, options = poll(device, config)
+            except ProviderUnavailable as error:
+                # Missing/disconnected receivers are degraded input sources.
+                # Keep a redacted diagnostic in inventory and retry normally;
+                # do not emit a failed Job for every speculative serial port.
+                reason = type(error.__cause__).__name__ if error.__cause__ else type(error).__name__
+                with sessions.begin() as session:
+                    session.execute(devices.update().where(devices.c.nodeRef == nodeRef, devices.c.deviceId == deviceId)
+                                    .values(lastError="unavailable:" + reason))
+                return {"status": "unavailable", "readings": 0, "reason": reason}
             except Exception as error:
                 with sessions.begin() as session:
                     session.execute(devices.update().where(devices.c.nodeRef == nodeRef, devices.c.deviceId == deviceId)
