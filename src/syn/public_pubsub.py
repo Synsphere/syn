@@ -17,7 +17,7 @@ from google.protobuf.message import DecodeError
 from libp2p.exceptions import ValidationError
 from libp2p.network.stream.exceptions import StreamError, StreamReset
 from libp2p.peer.id import ID
-from libp2p.pubsub.gossipsub import GossipSub, PROTOCOL_ID_V11
+from libp2p.pubsub.gossipsub import GossipSub, PROTOCOL_ID_V11, PROTOCOL_ID_V12
 from libp2p.pubsub.pb import rpc_pb2
 from libp2p.pubsub.pubsub import Pubsub
 from libp2p.pubsub.utils import maybe_consume_signed_record
@@ -37,6 +37,8 @@ MAX_PUBLIC_PEERS = 128
 MAX_REMOTE_TOPICS = 512
 MAX_RPC_BYTES = 1024 * 1024
 MAX_RPC_ITEMS = 128
+MAX_IDONTWANT_IDS = 10
+MAX_IDONTWANT_ID_BYTES = 128
 MAX_BUFFER_BYTES = 16 * 1024 * 1024
 _GROUP_HASH = re.compile(r"[0-9a-f]{64}\Z")
 _PUBLIC_TOPIC = re.compile(r"/syn/public-pubsub/1/[0-9a-f]{64}\Z")
@@ -125,7 +127,19 @@ class _PublicRouter(GossipSub):
                         copied.backoff = min(copied.backoff, 3600)
         for message in rpc.control.iwant[:MAX_RPC_ITEMS]:
             selected.control.iwant.add().messageIDs.extend(message.messageIDs[:MAX_RPC_ITEMS])
-        # This service negotiates v1.1 only, so extension controls are ignored.
+        # IDONTWANT is a v1.2 feature. Never accept it from a v1.1
+        # peer, an unregistered sender or through an untrusted PX dial path.
+        if (sender_peer_id in self.pubsub.peers
+                and self.supports_protocol_feature(sender_peer_id, "idontwant")):
+            budget = MAX_IDONTWANT_IDS
+            for message in rpc.control.idontwant[:MAX_RPC_ITEMS]:
+                valid = [bytes(mid) for mid in message.messageIDs
+                         if 0 < len(mid) <= MAX_IDONTWANT_ID_BYTES]
+                selected.control.idontwant.add().messageIDs.extend(valid[:budget])
+                budget -= min(len(valid), budget)
+                if budget == 0:
+                    break
+        # v1.3+ extensions and PX suggestions remain outside this profile.
         await super().handle_rpc(selected, sender_peer_id)
 
 
@@ -379,14 +393,14 @@ class PublicPubsubService:
         self._maintenance_count = 0
         self._nursery = None
         self._running = False
-        # Stay on the existing v1.1 wire profile during the library migration.
-        # Upstream 0.8.1 rate-limits *locally published* messages to 10/s by
-        # default, which would silently truncate Syn's bounded burst delivery.
-        # Preserve a finite 512/s cap and deterministic legacy mesh geometry;
-        # enabling v1.2/2.0 and their adaptive limits is a separate milestone.
-        self.router = _PublicRouter([PROTOCOL_ID_V11], degree=6, degree_low=4,
+        # Prefer public v1.2 while retaining v1.1 for older peers. Private
+        # Agent cohorts still negotiate v1.1 under their own admission gate.
+        protocols = ([PROTOCOL_ID_V12, PROTOCOL_ID_V11]
+                     if config.publicGossipsubVersion == "1.2" else [PROTOCOL_ID_V11])
+        self.router = _PublicRouter(protocols, degree=6, degree_low=4,
             degree_high=12, heartbeat_interval=1, do_px=False,
             adaptive_gossip_enabled=False, eclipse_protection_enabled=False,
+            max_idontwant_messages=MAX_IDONTWANT_IDS,
             max_messages_per_topic_per_second=512.0)
         self.pubsub = _PublicPubsub(host, self.router, self)
 
@@ -419,6 +433,7 @@ class PublicPubsubService:
     def status(self):
         return {"enabled": True, "running": self._running,
                 "default_network_id": self.default_network,
+                "gossipsub_version": self.config.publicGossipsubVersion,
                 "groups": [self._group_status(group) for group in self._groups.values()],
                 "limits": {"groups": self.config.publicPubsubMaxGroups,
                     "messages_per_group": self.config.publicPubsubQueueSize,

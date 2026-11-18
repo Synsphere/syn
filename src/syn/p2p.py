@@ -43,6 +43,14 @@ from syn_client.public_pubsub import group_descriptor
 logger = logging.getLogger(__name__)
 
 
+def requested_listen_addresses(config: P2PConfig):
+    """Build TCP and optional QUIC listeners without assuming UDP reachability."""
+    configured = list(config.listenAddresses)
+    if config.quicEnabled:
+        configured.extend(config.quicListenAddresses)
+    return [multiaddr.Multiaddr(value) for value in configured]
+
+
 class DiscoveryUnavailable(RuntimeError):
     pass
 
@@ -145,6 +153,10 @@ class Libp2pNode:
             return {"enabled": self.config.enabled,
                 "running": self._thread is not None and self._thread.is_alive(),
                 "peerId": self._peerId, "listenAddresses": list(self._addresses),
+                "quicEnabled": self.config.quicEnabled,
+                "quicListeners": [address for address in self._addresses
+                                  if "/udp/" in address and "/quic-v1" in address],
+                "quicPublicReachability": "unverified" if self.config.quicEnabled else "disabled",
                 "bootstrapPeers": list(self.config.bootstrapPeers),
                 "mdnsEnabled": self.config.mdnsEnabled,
                 "discoveredPeers": list(self._discoveredPeers),
@@ -378,9 +390,13 @@ class Libp2pNode:
         self._mapped_ports.clear()
         with trio.CancelScope() as scope:
             self._startup_scope = scope
-            addresses = [multiaddr.Multiaddr(value) for value in self.config.listenAddresses]
+            addresses = requested_listen_addresses(self.config)
             key_pair = create_new_key_pair()
             host = new_host(key_pair=key_pair, bootstrap=[],
+                # The multi-transport constructor inspects every bind address.
+                # Passing only enable_quic=True without the mixed list can
+                # replace TCP, breaking existing Noise/Yamux ingress.
+                listen_addrs=addresses, enable_quic=self.config.quicEnabled,
                 # Syn owns discovery/mapping in a background task. Upstream's
                 # one-shot discovery blocks host startup and assumes every TCP
                 # listener (including IPv6-only ones) is an IPv4 NAT target.

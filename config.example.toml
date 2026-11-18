@@ -7,6 +7,9 @@ autoMigrate = true
 enabled = true
 mdnsEnabled = true
 upnpEnabled = true
+# QUIC/UDP is optional. TCP portproxy on Windows 10 does NOT forward UDP.
+# quicEnabled = true
+# quicListenAddresses = ["/ip4/0.0.0.0/udp/4001/quic-v1"]
 # UPnP discovery must originate on the router's LAN. WSL2 NAT needs mirrored
 # networking (see docs/development/runtime-network-recovery.md).
 upnpDiscoveryDelayMilliseconds = 2000
@@ -34,6 +37,7 @@ providerRepublishSeconds = 79200  # 22 hours; signed peer bindings refresh separ
 # Public groups are joined explicitly through /p2p/pubsub/groups or the client.
 # Every canonical Syn URL can identify a group; no object needs to exist locally.
 publicPubsubEnabled = true
+publicGossipsubVersion = "1.2"  # Prefer v1.2; fall back to v1.1 for old peers.
 publicPubsubMaxGroups = 32
 publicPubsubQueueSize = 256  # Retained messages per group; readers use independent cursors.
 publicPubsubDiscoveryIntervalSeconds = 15

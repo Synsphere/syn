@@ -29,6 +29,9 @@ class P2PConfig:
     upnpEnabled: bool = True
     upnpMulticastInterface: str | None = None
     upnpDiscoveryDelayMilliseconds: int = 2000
+    # QUIC is independent of TCP. Public UDP reachability is not implied by a bind.
+    quicEnabled: bool = False
+    quicListenAddresses: tuple[str, ...] = ("/ip4/0.0.0.0/udp/0/quic-v1",)
     listenAddresses: tuple[str, ...] = (
         "/ip4/0.0.0.0/tcp/0",
         "/ip6/::/tcp/0",
@@ -45,13 +48,14 @@ class P2PConfig:
     bootstrapRefreshSeconds: float = 600.0
     providerRepublishSeconds: float = 22 * 60 * 60
     publicPubsubEnabled: bool = True
+    publicGossipsubVersion: str = "1.2"
     publicPubsubMaxGroups: int = 32
     publicPubsubQueueSize: int = 256
     publicPubsubDiscoveryIntervalSeconds: float = 15.0
     publicPubsubProviderRepublishSeconds: float = 3 * 60 * 60
 
     def __post_init__(self):
-        for name in ("enabled", "mdnsEnabled", "upnpEnabled", "aminoEnabled",
+        for name in ("enabled", "mdnsEnabled", "upnpEnabled", "aminoEnabled", "quicEnabled",
                      "publishOperatorRecord", "allowPrivateAddresses", "publicPubsubEnabled"):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"p2p.{name} must be true or false")
@@ -67,6 +71,27 @@ class P2PConfig:
         if (type(self.upnpDiscoveryDelayMilliseconds) is not int
                 or not 100 <= self.upnpDiscoveryDelayMilliseconds <= 10000):
             raise ValueError("p2p.upnpDiscoveryDelayMilliseconds must be an integer from 100 to 10000")
+        if self.publicGossipsubVersion not in ("1.1", "1.2") or type(self.publicGossipsubVersion) is not str:
+            raise ValueError("p2p.publicGossipsubVersion must be '1.1' or '1.2'")
+        if (type(self.quicListenAddresses) is not tuple or len(self.quicListenAddresses) > 8
+                or any(type(item) is not str for item in self.quicListenAddresses)
+                or len(set(self.quicListenAddresses)) != len(self.quicListenAddresses)
+                or (self.quicEnabled and not self.quicListenAddresses)):
+            raise ValueError("p2p.quicListenAddresses must be a nonempty unique tuple when QUIC is enabled")
+        for value in self.quicListenAddresses:
+            if type(value) is not str or len(value) > 128:
+                raise ValueError("p2p.quicListenAddresses must contain canonical UDP/QUIC-v1 addresses")
+            parts = value.split("/")
+            try:
+                if len(parts) != 6 or parts[0] or parts[1] not in {"ip4", "ip6"} or parts[3] != "udp" or parts[5] != "quic-v1":
+                    raise ValueError
+                ip = ipaddress.ip_address(parts[2])
+                port = int(parts[4])
+                if (str(ip) != parts[2] or f"ip{ip.version}" != parts[1]
+                        or str(port) != parts[4] or not 0 <= port <= 65535 or ip.is_multicast):
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise ValueError("p2p.quicListenAddresses must contain canonical UDP/QUIC-v1 addresses") from None
         for name, limit, empty in (("listenAddresses", 16, False),
                                    ("bootstrapPeers", 32, True),
                                    ("announceAddresses", 16, True)):
@@ -194,6 +219,8 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
             upnpEnabled=upnpEnabled,
             upnpMulticastInterface=p2p.get("upnpMulticastInterface"),
             upnpDiscoveryDelayMilliseconds=p2p.get("upnpDiscoveryDelayMilliseconds", 2000),
+            quicEnabled=p2p.get("quicEnabled", False),
+            quicListenAddresses=tuple(p2p.get("quicListenAddresses", ["/ip4/0.0.0.0/udp/0/quic-v1"])),
             listenAddresses=tuple(listenAddresses),
             bootstrapPeers=tuple(bootstrapPeers),
             startupTimeoutSeconds=float(startupTimeoutSeconds),
@@ -206,6 +233,7 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
             bootstrapRefreshSeconds=p2p.get("bootstrapRefreshSeconds", 600.0),
             providerRepublishSeconds=p2p.get("providerRepublishSeconds", 22 * 60 * 60),
             publicPubsubEnabled=p2p.get("publicPubsubEnabled", True),
+            publicGossipsubVersion=p2p.get("publicGossipsubVersion", "1.2"),
             publicPubsubMaxGroups=p2p.get("publicPubsubMaxGroups", 32),
             publicPubsubQueueSize=p2p.get("publicPubsubQueueSize", 256),
             publicPubsubDiscoveryIntervalSeconds=p2p.get("publicPubsubDiscoveryIntervalSeconds", 15.0),

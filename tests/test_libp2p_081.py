@@ -2,7 +2,7 @@
 from importlib.metadata import version
 
 import pytest
-from libp2p.pubsub.gossipsub import GossipSub, PROTOCOL_ID_V11
+from libp2p.pubsub.gossipsub import GossipSub, PROTOCOL_ID_V11, PROTOCOL_ID_V12
 
 from syn.config import P2PConfig
 from syn.mesh_pubsub import AuthenticatedPubsub
@@ -19,7 +19,7 @@ def test_pinned_version_and_public_transport_receive_quotas():
                        bootstrapPeers=(), upnpEnabled=False, mdnsEnabled=False,
                        allowPrivateAddresses=True)
     service = PublicPubsubService(host, None, config, lambda: ())
-    assert service.router.protocols == [PROTOCOL_ID_V11]
+    assert service.router.protocols == [PROTOCOL_ID_V12, PROTOCOL_ID_V11]
     assert service.router.spam_protection_enabled is True
     assert service.router.max_messages_per_topic_per_second == 512.0
     assert service.router.adaptive_gossip_enabled is False
