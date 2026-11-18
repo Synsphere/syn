@@ -102,9 +102,14 @@ system_bus_owns() {
         org.freedesktop.DBus.GetNameOwner "string:$1" >/dev/null 2>&1
 }
 
-start_bluetooth_prerequisite() {
+start_bluetooth_prerequisite() (
     # Names come only from ensure_bluetooth_services below. Do not restart a
     # live bus, change boot settings, or launch an unmanaged privileged daemon.
+    # SysV's dbus script creates /run/dbus with mkdir and inherits this mask.
+    # Syn's private 077 mask would make that shared service directory 0700,
+    # denying the non-root node after the launcher drops privileges. Keep the
+    # service's ordinary 022 mask local to this subshell; Syn remains private.
+    umask 022
     if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
         set -- systemctl start "$1"
     elif command -v service >/dev/null 2>&1; then
@@ -122,10 +127,29 @@ start_bluetooth_prerequisite() {
     else
         return 1
     fi
+)
+
+repair_system_bus_runtime() {
+    # The previous bootstrap's inherited 077 mask can leave this public SysV
+    # runtime directory at 0700. The helper checks its exact owner, ACLs and
+    # inode before correcting that one mode; it never restarts a live bus.
+    [ "$(stat -c %a /run/dbus 2>/dev/null || true)" = 700 ] || return 0
+    command -v timeout >/dev/null 2>&1 || return 0
+    if [ "$(id -u)" = 0 ]; then
+        timeout --kill-after=1 5 python3 "$syn_root/scripts/repair-system-dbus.py" ||
+            notice 'System D-Bus directory repair could not run; inspect /run/dbus permissions. Bluetooth remains optional.'
+    elif command -v sudo >/dev/null 2>&1; then
+        timeout --kill-after=1 5 sudo -n python3 "$syn_root/scripts/repair-system-dbus.py" ||
+            notice 'System D-Bus directory is restricted; run sudo python3 scripts/repair-system-dbus.py from this checkout. Bluetooth remains optional.'
+    else
+        notice 'System D-Bus directory is restricted; an administrator should inspect /run/dbus permissions. Bluetooth remains optional.'
+    fi
+    return 0
 }
 
 ensure_bluetooth_services() {
     [ "$api_only" = 0 ] || return 0
+    repair_system_bus_runtime
     if ! system_bus_owns org.freedesktop.DBus; then
         notice 'Starting the Linux system D-Bus needed by Bluetooth.'
         if ! start_bluetooth_prerequisite dbus || ! system_bus_owns org.freedesktop.DBus; then

@@ -12,6 +12,8 @@ import struct
 import cbor2
 import pytest
 
+import syn.cardano.protocol as protocol
+
 from syn.cardano.protocol import (
     CardanoClient, CardanoProtocolError, Point, RollBackward, RollForward,
     UnsupportedEra, decode_block_header, decode_header,
@@ -350,3 +352,129 @@ def test_cancellation_closes_agency_in_flight_without_background_tasks():
                 assert client.writer.is_closing()
             assert client._reader_task.done() and client._keepalive_task.done()
     asyncio.run(run())
+
+
+@pytest.fixture(params=("asyncio", "uvloop"))
+def connection_runner(request):
+    factory = (asyncio.new_event_loop if request.param == "asyncio"
+               else pytest.importorskip("uvloop").new_event_loop)
+    def run(coroutine):
+        with asyncio.Runner(loop_factory=factory) as runner:
+            return runner.run(coroutine)
+    return run
+
+
+def test_tcp_handshake_and_chain_work_with_both_event_loops(connection_runner):
+    async def run():
+        async with WirePeer() as peer:
+            async with await CardanoClient.connect("127.0.0.1", peer.port, MAGIC,
+                                                   timeout=1) as client:
+                assert client.version == 14
+                assert (await client.intersect_tip()).point == Point(
+                    EXPECTED["slot"], EXPECTED["block_hash"])
+            await asyncio.wait_for(peer.closed.wait(), 1)
+            assert client._reader_task.done() and client._keepalive_task.done()
+    connection_runner(run())
+
+
+def test_compat_connect_races_past_stalled_ipv6_and_closes_loser(monkeypatch, connection_runner):
+    async def run():
+        loop = asyncio.get_running_loop()
+        real_connect = loop.sock_connect
+        real_resolve = loop.getaddrinfo
+        sockets = []
+        stalled = asyncio.Event()
+        cancelled = asyncio.Event()
+        # Exercise the public socket fallback on both implementations. The
+        # uvloop handshake test above selects it without this capability stub.
+        monkeypatch.setattr(protocol, "_supports_tcp_race", lambda _: False)
+        async with WirePeer() as peer:
+            async def resolve(host, port, **kwargs):
+                if host == "dual-stack.example":
+                    return [(socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("::1", peer.port, 0, 0)),
+                            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("127.0.0.1", peer.port))]
+                return await real_resolve(host, port, **kwargs)
+            async def connect(sock, endpoint):
+                sockets.append(sock)
+                if sock.family == socket.AF_INET6:
+                    stalled.set()
+                    try:
+                        await asyncio.Future()
+                    finally:
+                        cancelled.set()
+                await real_connect(sock, endpoint)
+            monkeypatch.setattr(loop, "getaddrinfo", resolve)
+            monkeypatch.setattr(loop, "sock_connect", connect)
+            async with await CardanoClient.connect("dual-stack.example", peer.port, MAGIC,
+                                                   timeout=1) as client:
+                assert stalled.is_set() and cancelled.is_set()
+                assert client.version == 14
+                assert sockets[0].fileno() == -1
+                assert sockets[1].fileno() >= 0
+            assert all(sock.fileno() == -1 for sock in sockets)
+    connection_runner(run())
+
+
+@pytest.mark.parametrize("cancel", (False, True))
+def test_compat_connect_timeout_and_cancellation_close_pending_sockets(monkeypatch, connection_runner, cancel):
+    async def run():
+        loop = asyncio.get_running_loop()
+        monkeypatch.setattr(protocol, "_supports_tcp_race", lambda _: False)
+        sockets = []
+        started = asyncio.Event()
+        async def resolve(*_args, **_kwargs):
+            return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("127.0.0.1", 3001))]
+        async def stall(sock, _endpoint):
+            sockets.append(sock)
+            started.set()
+            await asyncio.Future()
+        monkeypatch.setattr(loop, "getaddrinfo", resolve)
+        monkeypatch.setattr(loop, "sock_connect", stall)
+        task = asyncio.create_task(CardanoClient.connect("silent.example", 3001, MAGIC, timeout=.05))
+        await asyncio.wait_for(started.wait(), 1)
+        if cancel:
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        else:
+            with pytest.raises(CardanoProtocolError) as caught:
+                await task
+            assert caught.value.stage == "connect"
+            assert str(caught.value) == "Timed out waiting for the peer"
+        assert sockets and all(sock.fileno() == -1 for sock in sockets)
+        assert not [other for other in asyncio.all_tasks() if other is not asyncio.current_task()]
+    connection_runner(run())
+
+
+def test_handshake_timeout_closes_connection_on_both_event_loops(connection_runner):
+    async def run():
+        async with WirePeer(handshake_raw=b"") as peer:
+            with pytest.raises(CardanoProtocolError) as caught:
+                await CardanoClient.connect("127.0.0.1", peer.port, MAGIC, timeout=.05)
+            assert caught.value.stage == "handshake"
+            await asyncio.wait_for(peer.closed.wait(), 1)
+    connection_runner(run())
+
+
+def test_compat_stream_handoff_cancellation_closes_connected_socket(monkeypatch, connection_runner):
+    async def run():
+        monkeypatch.setattr(protocol, "_supports_tcp_race", lambda _: False)
+        original = asyncio.open_connection
+        entered = asyncio.Event()
+        sockets = []
+        async def handoff(*args, **kwargs):
+            if "sock" not in kwargs:
+                return await original(*args, **kwargs)
+            sockets.append(kwargs["sock"])
+            entered.set()
+            await asyncio.Future()
+        monkeypatch.setattr(asyncio, "open_connection", handoff)
+        async with WirePeer() as peer:
+            task = asyncio.create_task(CardanoClient.connect("127.0.0.1", peer.port, MAGIC, timeout=1))
+            await asyncio.wait_for(entered.wait(), 1)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            assert sockets and all(sock.fileno() == -1 for sock in sockets)
+            await asyncio.wait_for(peer.closed.wait(), 1)
+    connection_runner(run())

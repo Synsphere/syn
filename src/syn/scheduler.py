@@ -4,7 +4,8 @@ import asyncio
 import logging
 import traceback
 from collections.abc import Callable, Mapping
-from datetime import UTC, datetime
+from contextvars import copy_context
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -25,6 +26,37 @@ class SchedulerNotRunningError(RuntimeError):
 
 class UnknownHandlerError(ValueError):
     pass
+
+
+async def _run_owned_thread(function: Callable[..., Any], *arguments: Any) -> Any:
+    """Join startup work before cancellation can release its database lease.
+
+    Canceling an asyncio await does not stop its worker thread. Keep the worker
+    shielded and join it even if shutdown sends more than one cancellation.
+    The caller still receives cancellation after the operation has finished.
+    """
+    # Use a Future instead of a child Task: global asyncio shutdown cancels
+    # every Task directly, which would bypass shield and abandon to_thread.
+    worker = asyncio.get_running_loop().run_in_executor(
+        None, copy_context().run, function, *arguments)
+    canceled = None
+    while not worker.done():
+        try:
+            await asyncio.shield(worker)
+        except asyncio.CancelledError as error:
+            if canceled is None:
+                canceled = error
+        except BaseException:
+            # The worker's error is retrieved below, also when cancellation
+            # wins, so no failed background task is abandoned or unobserved.
+            break
+    if canceled is not None:
+        try:
+            worker.result()
+        except BaseException as error:
+            raise canceled from error
+        raise canceled
+    return worker.result()
 
 
 class ProcessScheduler:
@@ -50,6 +82,7 @@ class ProcessScheduler:
         self._lock = asyncio.Lock()
         self._pumpTask = None
         self._lease = None
+        self._preparing = False
 
     def _owned(self):
         criterion = dispatch.c.schedulerKey == self.schedulerKey
@@ -98,8 +131,12 @@ class ProcessScheduler:
             self._acquire()
             try:
                 if prepare is not None:
-                    await asyncio.to_thread(prepare, self)
-                await asyncio.to_thread(self._recover)
+                    self._preparing = True
+                    try:
+                        await _run_owned_thread(prepare, self)
+                    finally:
+                        self._preparing = False
+                await _run_owned_thread(self._recover)
             except BaseException:
                 self._release()
                 raise
@@ -168,6 +205,61 @@ class ProcessScheduler:
             raise UnknownHandlerError(handler)
         with self.sessions.begin() as session:
             ensure_schedule(session, key, self.schedulerKey, handler, arguments, intervalSeconds)
+
+    def reconcile_startup_schedule(self, key: str, handler: str,
+                                   arguments: dict[str, Any], intervalSeconds: float) -> Any:
+        """Run and audit one schedule before dispatch starts, recovering its marker.
+
+        Only a successful current execution can supersede that schedule's old
+        failure. Historical failed Jobs remain intact. Pending Jobs for this
+        exact schedule are canceled after success so startup's verified result
+        cannot immediately be followed by duplicate recovered work.
+        """
+        if not self._preparing or self._lease is None or self.running:
+            raise RuntimeError("Startup reconciliation requires scheduler preparation ownership")
+        lease = self._lease
+        if handler not in self.handlers:
+            raise UnknownHandlerError(handler)
+        # Validate ownership before invoking any authority-bearing handler. Do
+        # not hold a database transaction across a native approval/signing call.
+        with self.sessions.begin() as session:
+            ensure_schedule(session, key, self.schedulerKey, handler, arguments, intervalSeconds)
+            row = session.execute(select(schedules).where(
+                schedules.c.scheduleKey == key).with_for_update()).mappings().one()
+            if row["currentJobId"] is not None:
+                job = session.get(Job, row["currentJobId"])
+                binding = session.execute(select(dispatch).where(
+                    dispatch.c.jobId == row["currentJobId"])).mappings().first()
+                if (job is None or binding is None or binding["schedulerKey"] != self.schedulerKey
+                        or binding["scheduleKey"] != key or job.handler != handler):
+                    raise RuntimeError("Startup schedule has an inconsistent current Job binding")
+        started = datetime.now(UTC)
+        result = self.handlers[handler](**arguments)
+        if not self._preparing or self._lease is not lease or self.running:
+            raise RuntimeError("Startup preparation ended before reconciliation completed")
+        finished, completed_id = datetime.now(UTC), uuid4()
+        with self.sessions.begin() as session:
+            row = session.execute(select(schedules).where(
+                schedules.c.scheduleKey == key).with_for_update()).mappings().one()
+            if row["schedulerKey"] != self.schedulerKey or row["handler"] != handler:
+                raise RuntimeError("Startup schedule ownership changed during reconciliation")
+            pending = session.scalars(select(Job).join(dispatch, dispatch.c.jobId == Job.id).where(
+                dispatch.c.scheduleKey == key, dispatch.c.schedulerKey == self.schedulerKey,
+                Job.status.in_((JobStatus.queued, JobStatus.running))).with_for_update(of=Job)).all()
+            for job in pending:
+                job.status = JobStatus.canceled
+                job.finishedAt = finished
+                job.error = f"Superseded by verified startup Job {completed_id}"
+            completed = Job(id=completed_id, handler=handler, arguments=dict(arguments),
+                status=JobStatus.succeeded, result=result, createdAt=started,
+                startedAt=started, finishedAt=finished)
+            session.add(completed)
+            session.flush()
+            bind_job(session, completed_id, self.schedulerKey, key)
+            session.execute(schedules.update().where(schedules.c.scheduleKey == key).values(
+                currentJobId=completed_id, failures=0,
+                nextRunAt=finished + timedelta(seconds=intervalSeconds)))
+        return result
 
     async def cancelSchedule(self, key: str) -> None:
         with self.sessions.begin() as session:

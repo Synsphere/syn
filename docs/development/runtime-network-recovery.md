@@ -4,6 +4,10 @@ This update addresses the reported startup and connection problems in Syn's
 existing primitives. It includes UPnP, WSL networking guidance, DHT/GossipSub
 retry handling, Bluetooth prerequisites and Cardano connection diagnostics.
 
+For the follow-up addressing uvloop startup, Windows custody transport,
+system D-Bus permissions and stale scheduler failures, see
+[startup repair](runtime-startup-repair.md).
+
 ## What changed
 
 - UPnP discovery and mapping run in the background. An exception whose message

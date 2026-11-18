@@ -15,6 +15,7 @@ import asyncio
 from contextlib import suppress
 from dataclasses import dataclass
 from hashlib import blake2b
+import inspect
 import math
 import re
 import secrets
@@ -34,6 +35,8 @@ ERAS = {1: "shelley", 2: "allegra", 3: "mary", 4: "alonzo", 5: "babbage", 6: "co
 _HASH = re.compile(r"[0-9a-f]{64}\Z")
 _LIMITS = {0: 16 * 1024, 2: MAX_HEADER_BYTES + 4096,
            3: MAX_BLOCK_BYTES + 4096, 8: 1024}
+_CONNECTION_DELAY = .25
+_MAX_CONNECT_ADDRESSES = 32
 
 
 class CardanoProtocolError(RuntimeError):
@@ -71,6 +74,104 @@ def _protocol_error(error, stage):
     result = CardanoProtocolError(reason, stage=stage)
     result.__cause__ = error
     return result
+
+
+def _supports_tcp_race(loop):
+    try:
+        parameters = inspect.signature(loop.create_connection).parameters
+    except (TypeError, ValueError):
+        return False
+    return {"happy_eyeballs_delay", "interleave"} <= parameters.keys()
+
+
+async def _open_tcp(host, port):
+    """Race TCP addresses without requiring optional event-loop keywords.
+
+    CPython provides the race in create_connection. uvloop does not accept
+    its happy_eyeballs_delay/interleave arguments; use public socket APIs on
+    such loops, retaining the caller's single DNS/connect timeout.
+    """
+    loop = asyncio.get_running_loop()
+    if _supports_tcp_race(loop):
+        return await asyncio.open_connection(host, port, limit=65536,
+            happy_eyeballs_delay=_CONNECTION_DELAY, interleave=1)
+
+    resolved = await loop.getaddrinfo(host, port, type=socket.SOCK_STREAM,
+                                      proto=socket.IPPROTO_TCP)
+    families, seen = {}, set()
+    for address in resolved:
+        family, kind, protocol, _, endpoint = address
+        key = family, kind, protocol, endpoint
+        if family not in (socket.AF_INET, socket.AF_INET6) or key in seen:
+            continue
+        seen.add(key)
+        families.setdefault(family, []).append(address)
+        if len(seen) >= _MAX_CONNECT_ADDRESSES:
+            break
+    # Preserve DNS's preferred family, alternating the available families.
+    addresses = []
+    while any(families.values()):
+        for entries in families.values():
+            if entries:
+                addresses.append(entries.pop(0))
+    if not addresses:
+        raise OSError("No TCP address was resolved")
+
+    async def connect(address):
+        family, kind, protocol, _, endpoint = address
+        sock = socket.socket(family, kind, protocol)
+        try:
+            sock.setblocking(False)
+            await loop.sock_connect(sock, endpoint)
+            return sock
+        except BaseException:
+            sock.close()
+            raise
+
+    tasks, pending, errors = [], set(), []
+    winner = None
+    try:
+        try:
+            while addresses or pending:
+                if addresses:
+                    task = asyncio.create_task(connect(addresses.pop(0)))
+                    tasks.append(task)
+                    pending.add(task)
+                done, pending = await asyncio.wait(pending,
+                    timeout=_CONNECTION_DELAY if addresses else None,
+                    return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    try:
+                        winner = task.result()
+                    except OSError as error:
+                        errors.append(error)
+                        continue
+                    break
+                if winner is not None:
+                    break
+            if winner is None:
+                # Preserve a useful ordinary socket failure for diagnostics.
+                raise errors[-1] if errors else OSError("No TCP connection succeeded")
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            try:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            finally:
+                for task in tasks:
+                    if task.done() and not task.cancelled():
+                        with suppress(Exception):
+                            result = task.result()
+                            if result is not winner:
+                                result.close()
+        # Transfer only after loser cleanup, so cancellation during cleanup
+        # cannot strand a newly created stream without a caller to close it.
+        return await asyncio.open_connection(sock=winner, limit=65536)
+    except BaseException:
+        if winner is not None:
+            winner.close()
+        raise
 
 
 def _handshake_refusal(message):
@@ -338,10 +439,7 @@ class CardanoClient:
                 raise ValueError("Expected a finite positive protocol interval at most 300 seconds")
         try:
             async with asyncio.timeout(timeout):
-                # Race address families so an unusable IPv6 route does not
-                # consume the whole timeout before a working IPv4 is attempted.
-                reader, writer = await asyncio.open_connection(
-                    host, port, limit=65536, happy_eyeballs_delay=.25, interleave=1)
+                reader, writer = await _open_tcp(host, port)
         except (OSError, TimeoutError) as error:
             raise _protocol_error(error, "connect") from error
         client = cls(reader, writer, timeout, keepalive_interval)

@@ -16,6 +16,7 @@ def project(tmp_path):
     scripts.mkdir(parents=True)
     source = Path(__file__).resolve().parents[1] / "scripts" / "bootstrap-wsl.sh"
     shutil.copyfile(source, scripts / "bootstrap-wsl.sh")
+    shutil.copyfile(source.with_name("repair-system-dbus.py"), scripts / "repair-system-dbus.py")
     home = tmp_path / "home"
     (home / ".local" / "bin").mkdir(parents=True)
     # Isolate OS-discovery commands: never touch the CI runner's package manager.
@@ -26,6 +27,7 @@ def project(tmp_path):
         "service": "echo 'Unexpected service action in bootstrap test' >&2; exit 97\n",
         "systemctl": "echo 'Unexpected systemctl action in bootstrap test' >&2; exit 97\n",
         "sudo": "exit 98\n",
+        "stat": 'case "$*" in "-c %a /run/dbus") echo 755 ;; *) /usr/bin/stat "$@" ;; esac\n',
     }.items():
         tool = home / ".local" / "bin" / name
         tool.write_text("#!/bin/sh\n" + script)
@@ -181,3 +183,62 @@ def test_missing_bus_without_privilege_is_actionable_and_does_not_block_syn(proj
     attempts = (home / "sudo-attempts").read_text().splitlines()
     assert len(attempts) == 1 and attempts[0].startswith("-n ")
     assert "bluetooth" not in attempts[0]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Linux shell harness")
+def test_system_services_receive_public_runtime_umask_but_syn_stays_private(project):
+    fake_uv(project)
+    write_tool(project, "dbus-send", '''
+case "$*" in
+ *string:org.bluez) test -d "$HOME/runtime-bluetooth" ;;
+ *) test -d "$HOME/runtime-dbus" ;;
+esac
+''')
+    service = '''
+case "$*" in
+ 'dbus start'|'start dbus') name=dbus ;;
+ 'bluetooth start'|'start bluetooth') name=bluetooth ;;
+ *) exit 96 ;;
+esac
+mkdir "$HOME/runtime-$name"
+'''
+    write_tool(project, "service", service)
+    write_tool(project, "systemctl", service)
+    write_tool(project, "sudo", '[ "$1" = -n ] || exit 95\nshift\nexec "$@"\n')
+    result = run(project, offline=True)
+    assert result.returncode == 0, result.stderr
+    _, home = project
+    # A SysV service's bare mkdir must remain traversable by other local UIDs.
+    assert (home / "runtime-dbus").stat().st_mode & 0o777 == 0o755
+    assert (home / "runtime-bluetooth").stat().st_mode & 0o777 == 0o755
+    # The privilege/service scope must not relax subsequent Syn artifact modes.
+    assert (home / "uv-args").stat().st_mode & 0o777 == 0o600
+    assert (home / ".local/state/syn/venvs").stat().st_mode & 0o777 == 0o700
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Linux shell harness")
+def test_known_restricted_runtime_is_repaired_before_bus_probe(project):
+    fake_uv(project)
+    write_tool(project, "stat", '''
+case "$*" in
+ '-c %a /run/dbus') echo 700 ;;
+ *) /usr/bin/stat "$@" ;;
+esac
+''')
+    write_tool(project, "python3", '''
+case "$1" in
+ */scripts/repair-system-dbus.py) test "$#" = 1 || exit 92 ;;
+ *) exit 93 ;;
+esac
+printf '%s\\n' "$1" >> "$HOME/repair-invocations"
+touch "$HOME/runtime-repaired"
+''')
+    write_tool(project, "dbus-send", 'test -f "$HOME/runtime-repaired"\n')
+    write_tool(project, "sudo", '[ "$1" = -n ] || exit 95\nshift\nexec "$@"\n')
+    result = run(project, offline=True)
+    assert result.returncode == 0, result.stderr
+    root, home = project
+    assert (home / "repair-invocations").read_text().splitlines() == [
+        str(root / "scripts/repair-system-dbus.py")]
+    assert (home / "uv-args").exists()
+    assert "Starting the Linux system D-Bus" not in result.stdout

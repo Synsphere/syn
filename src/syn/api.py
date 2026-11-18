@@ -25,6 +25,17 @@ from .scheduler import JobHandler, ProcessScheduler, UnknownHandlerError
 templates = Jinja2Templates(directory=Path(__file__).with_name("templates"))
 
 
+def _exception_type_chain(error: BaseException) -> str:
+    """Bounded diagnostic context without request, credential or peer payloads."""
+    names, seen = [], set()
+    while error is not None and id(error) not in seen and len(names) < 5:
+        seen.add(id(error))
+        name = type(error).__name__
+        names.append(name if name.isidentifier() and len(name) <= 80 else "Exception")
+        error = error.__cause__ or (None if error.__suppress_context__ else error.__context__)
+    return " <- ".join(names)
+
+
 class AddJobRequest(BaseModel):
     handler: str = Field(min_length=1)
     arguments: dict[str, Any] = Field(default_factory=dict)
@@ -80,20 +91,28 @@ def createApp(
         async def supervise():
             while True:
                 await asyncio.sleep(1)
+                component = "scheduler"
                 try:
                     if scheduler.fault is not None:
                         raise RuntimeError("Node scheduler lost readiness") from scheduler.fault
+                    component = "libp2p"
                     p2pNode.check()
+                    component = "cardano"
                     cardano.check()
+                    component = "bluetooth"
                     bluetooth.check()
                     if operatorRuntime is not None:
+                        component = "operator"
                         operatorRuntime.check()
                         if "operator-dag-sync" in handlers:
+                            component = "operator-dag-jobs"
                             from .witnessing.runtime import check_local_jobs
                             await run_in_threadpool(check_local_jobs, sessions, scheduler.schedulerKey)
                 except Exception as error:
                     app.state.awarenessFault = error
-                    logging.getLogger("uvicorn.error").error("Syn node lost readiness; API is fenced")
+                    logging.getLogger("uvicorn.error").error(
+                        "Syn node lost readiness; API is fenced (component=%s; exception=%s)",
+                        component, _exception_type_chain(error))
                     await bluetooth.stop()
                     await cardano.stop()
                     await p2pNode.stop()
@@ -105,9 +124,9 @@ def createApp(
                 if positionRuntime is not None:
                     positionRuntime.prepare(manager)
                 if operatorRuntime is not None and "operator-dag-sync" in handlers:
-                    handlers["operator-dag-sync"](schedulerKey=manager.schedulerKey)
-                    manager.every("operator-dag-" + operatorRuntime.server.expected_hash,
-                                  "operator-dag-sync", {"schedulerKey": manager.schedulerKey}, 120)
+                    manager.reconcile_startup_schedule(
+                        "operator-dag-" + operatorRuntime.server.expected_hash,
+                        "operator-dag-sync", {"schedulerKey": manager.schedulerKey}, 120)
                 if operatorRuntime is not None and positionRuntime is not None and witnessConfig is not None:
                     from .witnessing.runtime import prepare as prepare_witnessing
                     prepare_witnessing(sessions, operatorRuntime.server, positionRuntime.nodeRef,

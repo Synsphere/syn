@@ -25,11 +25,15 @@ def test_operator_dag_preparation_precedes_scheduler_dispatch(monkeypatch, fail_
         def __init__(self, *args, **kwargs):
             self.schedulerKey = kwargs['schedulerKey']
             self.fault = None
+            self.handlers = args[1]
         async def start(self, prepare=None):
             calls.append('lease')
             prepare(self)
             calls.append('pump')
         def every(self, *args):
+            calls.append('schedule')
+        def reconcile_startup_schedule(self, key, handler, arguments, interval):
+            self.handlers[handler](**arguments)
             calls.append('schedule')
         async def stop(self):
             calls.append('scheduler-stop')

@@ -15,6 +15,36 @@ from dataclasses import dataclass
 from syn_client.operator_protocol import SynProtocolError
 
 
+# The broker serializes vault operations and may be displaying a native
+# approval dialog. Waiting for a free pipe must not share the short response
+# budget, and must never cause a submitted mutation to be replayed.
+CONNECT_TIMEOUT_SECONDS = 300
+RESPONSE_TIMEOUT_SECONDS = 30
+APPROVAL_TIMEOUT_SECONDS = 300
+_APPROVAL_OPERATIONS = {"create", "group_key", "dag_anchor", "peer_record", "sign"}
+_BRIDGE_FAILURES = {
+    "input-invalid": "request validation failed before submission",
+    "connect-timeout": "the serialized Windows broker remained busy or unavailable before submission",
+    "connect-denied": "Windows denied access to the custody pipe before submission",
+    "connect-failed": "the Windows custody pipe could not be opened before submission",
+    "write-timeout": "request submission timed out; the outcome is unconfirmed",
+    "write-failed": "request submission failed; the outcome is unconfirmed",
+    "read-timeout": "the broker response timed out; the outcome is unconfirmed",
+    "read-failed": "the broker response could not be read; the outcome is unconfirmed",
+    "response-invalid": "the broker response was empty or oversized; the outcome is unconfirmed",
+}
+
+
+def _transport_failure(result):
+    # Never echo arbitrary PowerShell stderr: it may contain request data,
+    # credentials or a script dump. Only our fixed diagnostic markers survive.
+    for line in str(getattr(result, "stderr", "")).splitlines():
+        match = re.fullmatch(r"SYN_HOST_CUSTODY_FAILURE:([a-z-]+)", line.strip())
+        if match and match[1] in _BRIDGE_FAILURES:
+            return _BRIDGE_FAILURES[match[1]]
+    return f"PowerShell/WSL bridge exited with status {result.returncode}; no trusted transport diagnostic was returned"
+
+
 def enabled() -> bool:
     return bool(os.environ.get("SYN_HOST_CUSTODY_PIPE"))
 
@@ -31,16 +61,26 @@ def request(body):
                      ensure_ascii=True, allow_nan=False)
     if len(raw) > 130_000:
         raise SynProtocolError("Host custody request exceeds size limit")
+    response_timeout = (APPROVAL_TIMEOUT_SECONDS if body.get("op") in _APPROVAL_OPERATIONS
+                        else RESPONSE_TIMEOUT_SECONDS)
     try:
         result = subprocess.run(
             [powershell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-             "-File", script, "-Pipe", pipe],
-            input=raw+"\n", capture_output=True, text=True, timeout=300 if body.get("op") in ("create", "group_key", "dag_anchor", "peer_record") else 30,
+             "-File", script, "-Pipe", pipe,
+             "-ConnectTimeoutMilliseconds", str(CONNECT_TIMEOUT_SECONDS * 1000),
+             "-ResponseTimeoutMilliseconds", str(response_timeout * 1000)],
+            input=raw+"\n", capture_output=True, text=True,
+            timeout=CONNECT_TIMEOUT_SECONDS + response_timeout + 10,
             check=False)
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise SynProtocolError("Windows host custody broker is unavailable") from error
-    if result.returncode != 0 or len(result.stdout) > 140_000:
-        raise SynProtocolError("Windows host custody transport failed; no fallback to WSL secrets")
+    except subprocess.TimeoutExpired as error:
+        raise SynProtocolError("Windows host custody transport deadline exceeded; request outcome is unconfirmed; no fallback to WSL secrets") from error
+    except OSError as error:
+        raise SynProtocolError("Windows host custody PowerShell bridge could not start; check WSL interop; no fallback to WSL secrets") from error
+    if result.returncode != 0:
+        raise SynProtocolError("Windows host custody transport failed: " + _transport_failure(result)
+                               + "; no fallback to WSL secrets")
+    if len(result.stdout) > 140_000:
+        raise SynProtocolError("Windows host custody response exceeds size limit; no fallback to WSL secrets")
     try:
         response = json.loads(result.stdout)
     except (ValueError, TypeError) as error:

@@ -161,9 +161,11 @@ def test_wsl_bridge_forwards_bounded_json_without_shell(monkeypatch):
     monkeypatch.setattr(module.subprocess, "run", fake_run)
     assert module.HostKeyringProxy().get_password("syn.operator", "owner.operator.control-state.v1") == "value"
     args, kwargs = captured[0]
-    assert args[-3:] == ["C:\\Syn Root\\pipe-client.ps1", "-Pipe", "SynHostCustody-"+"a"*32]
+    assert args[args.index("-File") + 1:] == [
+        "C:\\Syn Root\\pipe-client.ps1", "-Pipe", "SynHostCustody-"+"a"*32,
+        "-ConnectTimeoutMilliseconds", "300000", "-ResponseTimeoutMilliseconds", "30000"]
     assert kwargs["input"] == '{"account":"slot","op":"get","service":"syn.operator","slot":"owner.operator.control-state.v1"}\n'
-    assert kwargs["capture_output"] and kwargs["timeout"] == 30
+    assert kwargs["capture_output"] and kwargs["timeout"] == 340
 
 
 def test_bridge_fails_closed_when_windows_broker_unavailable(monkeypatch):
