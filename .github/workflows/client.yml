@@ -11,11 +11,27 @@ permissions:
 
 jobs:
   client:
+    name: client (${{ matrix.os }}, ${{ matrix.python }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-latest]
-        python: ["3.12", "3.13"]
+        include:
+          - os: ubuntu-24.04
+            python: "3.12"
+            mode: full
+            lint: false
+          - os: ubuntu-24.04
+            python: "3.13"
+            mode: full
+            lint: true
+          - os: windows-latest
+            python: "3.12"
+            mode: smoke
+            lint: false
+          - os: windows-latest
+            python: "3.13"
+            mode: smoke
+            lint: false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -25,17 +41,35 @@ jobs:
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           version: "0.12.23"
-          enable-cache: false
+          enable-cache: true
+          cache-dependency-glob: packages/syn-client/pyproject.toml
           python-version: ${{ matrix.python }}
       - name: Build and install client wheel without Syn application dependencies
         run: |
           uv build --wheel packages/syn-client --out-dir dist
           uv venv .client-venv
-          uv run --no-project --python .client-venv python -c "from pathlib import Path; import subprocess; wheels=list(Path('dist').glob('syn_client-*.whl')); assert len(wheels)==1; subprocess.run(['uv','pip','install','--python','.client-venv',str(wheels[0]),'cryptography==50.0.2','pytest==9.1.1','ruff==0.17.1'],check=True)"
-      - name: Check portable client and release tooling Python correctness
-        # Application/runtime correctness is owned by ci.yml. Keeping this lane
-        # scoped prevents unrelated legacy/runtime lint debt from blocking the
-        # dependency-free client portability matrix.
-        run: uv run --no-project --python .client-venv ruff check --isolated --select E4,E7,E9,F packages/syn-client/src packages/syn-client/tests scripts/ci_database.py scripts/build_release_contract.py scripts/stage_release.py scripts/ci_operator_native.py scripts/ci_operator_recovery.py scripts/ci_operator_consumer.py scripts/ci_operator_release.py scripts/check_operator_hd_reference.py scripts/private_interpreter.py scripts/ci_agent_native.py scripts/prepare_agent_runtime.py scripts/ci_agent_release.py scripts/ci_lan_enrollment.py scripts/ci_private_pubsub.py scripts/ci_potbot_private_mesh.py scripts/ci_group_rollover.py
-      - name: Test installed wheel on a clean import path
+          uv run --no-project --python .client-venv python -c "from pathlib import Path; import subprocess; wheels=list(Path('dist').glob('syn_client-*.whl')); assert len(wheels)==1; subprocess.run(['uv','pip','install','--python','.client-venv',str(wheels[0]),'cryptography==50.0.2'],check=True)"
+      - name: Install Linux test dependency
+        if: matrix.mode == 'full'
+        run: uv pip install --python .client-venv pytest==9.1.1
+      - name: Check portable client and release tooling Python correctness once
+        if: matrix.lint
+        # Application/runtime correctness is owned by ci.yml. Run this once on
+        # the newest supported Python instead of repeating identical Ruff work
+        # across every OS/Python matrix entry.
+        run: uvx --from ruff==0.17.1 ruff check --isolated --select E4,E7,E9,F packages/syn-client/src packages/syn-client/tests scripts/ci_database.py scripts/build_release_contract.py scripts/stage_release.py scripts/ci_operator_native.py scripts/ci_operator_recovery.py scripts/ci_operator_consumer.py scripts/ci_operator_release.py scripts/check_operator_hd_reference.py scripts/private_interpreter.py scripts/ci_agent_native.py scripts/prepare_agent_runtime.py scripts/ci_agent_release.py scripts/ci_lan_enrollment.py scripts/ci_private_pubsub.py scripts/ci_potbot_private_mesh.py scripts/ci_group_rollover.py
+      - name: Test installed wheel on a clean Linux import path
+        if: matrix.mode == 'full'
         run: uv run --no-project --python .client-venv python -I -m pytest -q packages/syn-client/tests -o cache_dir=.tmp-pytest/client-cache
+      - name: Verify installed wheel and native Ed25519 on Windows
+        if: matrix.mode == 'smoke'
+        run: >-
+          uv run --no-project --python .client-venv python -I -c
+          "from importlib import import_module; import pkgutil, syn_client;
+          [import_module(module.name) for module in pkgutil.walk_packages(syn_client.__path__, syn_client.__name__ + '.')];
+          from cryptography.hazmat.primitives import serialization;
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey;
+          from syn_client.custody import verify_ed25519;
+          key=Ed25519PrivateKey.generate(); message=b'syn-windows-portability'; signature=key.sign(message);
+          public=key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw);
+          verify_ed25519(public, signature, message); print('Windows portability smoke passed')"
