@@ -37,3 +37,26 @@ publicPubsubProviderRepublishSeconds = 10800
 # Protocol, host approval, publication states and diagnostics:
 # docs/development/p2p-amino.md
 # docs/development/public-gossipsub.md
+
+# Optional native Cardano node-to-node observation. Selected mainnet TCP nodes;
+# these endpoints are independent of Syn's libp2p discovery and public groups.
+# The Cardano Developer Portal documents all three bootstrap peers on port 3001:
+# https://developers.cardano.org/docs/operate-a-stake-pool/node-operations/topology/
+[cardano]
+enabled = false
+networkMagic = 764824073  # Mainnet. Change both magic and peers for another network.
+peers = [
+    "backbone.cardano.iog.io:3001",
+    "backbone.mainnet.emurgornd.com:3001",
+    "backbone.mainnet.cardanofoundation.org:3001",
+]
+# A fresh source starts at its peer's current tip; restarts use its saved cursor.
+# To begin after a known Shelley-or-later point on the first run, set BOTH:
+# startSlot = 202315107
+# startHash = "d03a37835e9f1ffb70e8a476334c69183ab5491c911faa7ea0d6ba285dd7c8b4"
+timeoutSeconds = 15
+keepaliveIntervalSeconds = 20
+reconnectDelaySeconds = 2
+maxReconnectDelaySeconds = 60
+# Protocol, Types, dual-ledger observations, rollback and reachability:
+# docs/development/cardano.md

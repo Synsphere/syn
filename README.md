@@ -367,6 +367,30 @@ and publication state. `announced` means provider messages were sent; it does
 not establish remote storage, public visibility or inbound reachability.
 
 
+### Cardano block observations
+
+The optional [Cardano observer](docs/development/cardano.md) connects directly to
+explicitly configured trusted Cardano TCP nodes. Its minimal Ouroboros client
+implements handshake, non-pipelined Chain Sync, single-block fetch and keepalive.
+Each endpoint has an independent durable cursor. A new source follows from the
+current tip by default; later connections resume from retained intersections.
+
+The migration installs `syn://type/blockchain`, the `Cardano` Thing at
+`syn://thing/cardano`, `syn://type/blockchain-block` and its
+`syn://type/cardano-block` subtype. A received block creates the Event
+`syn://event/<blockhash>`. An observation Ember is appended atomically to both
+the observer node's existing transaction ledger and the Event's ledger, with
+native `objectChronicle` links. Rollbacks append retraction observations and
+change only that peer's current-chain projection; the original Events and
+observations remain. This observes trusted nodes without asserting finality or
+independently validating Cardano consensus.
+
+Enable `[cardano]` and set `peers` in the configuration, then run `syn-server`
+normally. Native Operator/Agent awareness runtimes also honor this table in
+their selected configuration. `GET /cardano/status` reports the API node's
+configured peers, progress and saved checkpoints. No Cardano connection is made
+unless this service is explicitly enabled with trusted endpoints.
+
 ## Reliable Python tests on Windows
 
 Run focused tests through `pwsh ./scripts/Invoke-Tests.ps1 <test-path> [...]`.

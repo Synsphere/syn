@@ -106,6 +106,7 @@ def test_server_builds_application_and_disposes_engine() -> None:
         {**handlers, **positionRuntimeCls.return_value.handlers.return_value},
         config.p2p,
         positionRuntime=positionRuntimeCls.return_value,
+        cardanoConfig=config.cardano,
     )
     runServer.assert_called_once_with(
         app,

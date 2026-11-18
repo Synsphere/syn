@@ -10,6 +10,7 @@ from .positions.config import PositionConfig
 from .clocks.config import ClockConfig
 from .radios.config import RadioConfig
 from .witnessing.config import WitnessConfig
+from .cardano.config import CardanoConfig
 from .p2p_defaults import IPFS_BOOTSTRAP_PEERS
 
 
@@ -106,6 +107,7 @@ class SynConfig:
     clock: ClockConfig = ClockConfig()
     radio: RadioConfig = RadioConfig()
     witnessing: WitnessConfig = WitnessConfig()
+    cardano: CardanoConfig = CardanoConfig()
 
 
 def loadConfig(path: str | Path = "config.toml") -> SynConfig:
@@ -167,6 +169,7 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
         clock=ClockConfig.from_dict(raw.get("clock", {})),
         radio=RadioConfig.from_dict(raw.get("radio", {})),
         witnessing=WitnessConfig.from_dict(raw.get("witnessing", {})),
+        cardano=CardanoConfig.from_dict(raw.get("cardano", {})),
         database=DatabaseConfig(url=url, echo=echo, autoMigrate=autoMigrate),
         p2p=P2PConfig(
             enabled=enabled,

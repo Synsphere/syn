@@ -136,7 +136,7 @@ def test_migration_sql_and_single_alembic_head():
     assert 'BEFORE UPDATE OR DELETE' in sql and 'BEFORE TRUNCATE' in sql
     config = Config()
     config.set_main_option('script_location', str(ROOT / 'src/syn/alembic'))
-    assert ScriptDirectory.from_config(config).get_current_head() == '20261117_0020'
+    assert ScriptDirectory.from_config(config).get_current_head() == '20261118_0021'
     with pytest.raises(RuntimeError, match='archival'):
         module.downgrade()
 

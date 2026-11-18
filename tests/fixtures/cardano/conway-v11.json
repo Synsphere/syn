@@ -1,0 +1,23 @@
+{
+  "source_repository": "https://github.com/txpipe/pallas",
+  "source_commit": "daecef59a1979d89515524d9583cc28655af182c",
+  "source_path": "test_data/conway-v11.block",
+  "upstream_metadata_path": "test_data/conway-v11.md",
+  "license": "Apache-2.0",
+  "network": "mainnet",
+  "block_file_sha256": "d9ba463a1050bb497863aa3dc5201519dc4012a23b4a04b65429deccc7ee87fe",
+  "block_bytes_sha256": "c9671df28964469cb012041aed775ad0f14b60a80bcdbbafc7f05a4139f79eca",
+  "block_bytes": 5094,
+  "block_hash": "d03a37835e9f1ffb70e8a476334c69183ab5491c911faa7ea0d6ba285dd7c8b4",
+  "slot": 202315107,
+  "block_number": 14161299,
+  "previous_hash": "662ea4a0b0e589f4d8beed578a1899313ac594eed16e09ada1bd0fc7ec8be30c",
+  "block_era": 7,
+  "chain_sync_era": 6,
+  "header_offset": 3,
+  "header_bytes": 860,
+  "header_protocol_version": [
+    11,
+    0
+  ]
+}

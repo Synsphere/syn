@@ -56,6 +56,7 @@ def createApp(
     positionRuntime=None,
     operatorRuntime=None,
     witnessConfig=None,
+    cardanoConfig=None,
 ) -> FastAPI:
     from .positions.types import digest
     scheduler = ProcessScheduler(sessions, handlers,
@@ -63,6 +64,9 @@ def createApp(
         maxConcurrentJobs=positionRuntime.config.maxConcurrentJobs if positionRuntime else 4)
     p2pNode = Libp2pNode(p2pConfig or P2PConfig(),
                         operatorRuntime.server if operatorRuntime is not None else None)
+    from .cardano.runtime import CardanoRuntime
+    cardano = CardanoRuntime(sessions, positionRuntime.nodeRef if positionRuntime else None,
+                            cardanoConfig)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -76,6 +80,7 @@ def createApp(
                     if scheduler.fault is not None:
                         raise RuntimeError("Node scheduler lost readiness") from scheduler.fault
                     p2pNode.check()
+                    cardano.check()
                     if operatorRuntime is not None:
                         operatorRuntime.check()
                         if "operator-dag-sync" in handlers:
@@ -84,6 +89,7 @@ def createApp(
                 except Exception as error:
                     app.state.awarenessFault = error
                     logging.getLogger("uvicorn.error").error("Syn node lost readiness; API is fenced")
+                    await cardano.stop()
                     await p2pNode.stop()
                     await scheduler.stop()
                     return
@@ -108,6 +114,7 @@ def createApp(
             if positionRuntime is not None:
                 await scheduler.start(prepare=prepare)
             await p2pNode.start()
+            await cardano.start()
             watchdog = asyncio.create_task(supervise())
             yield
         finally:
@@ -115,18 +122,22 @@ def createApp(
                 watchdog.cancel()
                 await asyncio.gather(watchdog, return_exceptions=True)
             try:
-                await p2pNode.stop()
+                await cardano.stop()
             finally:
                 try:
-                    if operatorRuntime is not None:
-                        await run_in_threadpool(operatorRuntime.close)
+                    await p2pNode.stop()
                 finally:
-                    await scheduler.stop()
+                    try:
+                        if operatorRuntime is not None:
+                            await run_in_threadpool(operatorRuntime.close)
+                    finally:
+                        await scheduler.stop()
 
     app = FastAPI(title="Syn API", lifespan=lifespan)
     app.state.processScheduler = scheduler
     app.state.sessions = sessions
     app.state.p2pNode = p2pNode
+    app.state.cardano = cardano
     app.state.awarenessFault = None
 
     @app.middleware("http")
@@ -157,6 +168,11 @@ def createApp(
     @app.get("/p2p/status")
     async def p2pStatus(request: Request) -> dict[str, Any]:
         return request.app.state.p2pNode.status()
+
+    @app.get("/cardano/status")
+    async def cardanoStatus(request: Request) -> dict[str, Any]:
+        """Report independent trusted-node followers and durable checkpoints."""
+        return request.app.state.cardano.status()
 
     @app.get("/p2p/peer-record")
     async def p2pPeerRecord(request: Request) -> dict[str, Any]:
