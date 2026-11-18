@@ -7,6 +7,11 @@ autoMigrate = true
 enabled = true
 mdnsEnabled = true
 upnpEnabled = true
+# UPnP discovery must originate on the router's LAN. WSL2 NAT needs mirrored
+# networking (see docs/development/runtime-network-recovery.md).
+upnpDiscoveryDelayMilliseconds = 2000
+# Optional when automatic selection chooses a VPN/virtual adapter:
+# upnpMulticastInterface = "192.168.1.50" # this computer's LAN IPv4, not the router
 listenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
 startupTimeoutSeconds = 15
 

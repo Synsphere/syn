@@ -11,6 +11,7 @@ import asyncio
 from copy import deepcopy
 from functools import partial
 import hashlib
+import ipaddress
 import logging
 import re
 from threading import Event, Lock, Thread
@@ -29,6 +30,8 @@ from libp2p.stream_muxer.yamux.yamux import PROTOCOL_ID as YAMUX_PROTOCOL, Yamux
 from .amino import AminoDHTClient, dialable_tcp_addresses, seed_dial_addresses
 from .config import P2PConfig
 from .p2p_defaults import AMINO_PROTOCOL
+from .p2p_diagnostics import connection_diagnostics
+from .upnp import SynUpnpManager
 from . import peer_record
 from .peer_record_transport import PeerRecordService, fetch_peer_record
 from .public_pubsub import PublicPubsubService, PublicPubsubBusy, PublicPubsubUnavailable
@@ -59,6 +62,11 @@ class Libp2pNode:
         self._addresses: tuple[str, ...] = ()
         self._discoveredPeers: tuple[str, ...] = ()
         self._upnpExternalIp: str | None = None
+        self._upnp = None
+        self._upnp_status = {"enabled": config.enabled and config.upnpEnabled,
+            "state": "pending" if config.enabled and config.upnpEnabled else "disabled",
+            "reason": None, "devices": None, "lanAddress": None,
+            "externalIp": None, "mappings": []}
         self._record = None
         self._token = self._startup_scope = None
         self._host = self._dht = None
@@ -90,6 +98,11 @@ class Libp2pNode:
         self._ready.clear()
         self._stop.clear()
         self._error = None
+        with self._lock:
+            self._upnpExternalIp = None
+            self._upnp_status.update(
+                state="pending" if self.config.upnpEnabled else "disabled",
+                reason=None, devices=None, lanAddress=None, externalIp=None, mappings=[])
         self._thread = Thread(target=self._run, name="syn-libp2p", daemon=True)
         self._thread.start()
         try:
@@ -134,6 +147,7 @@ class Libp2pNode:
                 "mdnsEnabled": self.config.mdnsEnabled,
                 "discoveredPeers": list(self._discoveredPeers),
                 "upnpEnabled": self.config.upnpEnabled, "upnpExternalIp": self._upnpExternalIp,
+                "upnp": deepcopy(self._upnp_status),
                 "amino": deepcopy(self._amino), "publication": deepcopy(self._publication),
                 "publicPubsub": deepcopy(self._public_status)}
 
@@ -317,7 +331,8 @@ class Libp2pNode:
 
     def _run(self) -> None:
         try:
-            trio.run(self._serve)
+            with connection_diagnostics():
+                trio.run(self._serve)
         except BaseException as error:
             self._error = error
             self._amino_status(state="failed", lastError=type(error).__name__)
@@ -327,13 +342,14 @@ class Libp2pNode:
                 self._record = None
                 self._public_status.update(running=False, groups=[])
             self._public = self._public_slots = None
+            self._upnp = None
             self._host = self._dht = self._token = self._startup_scope = None
             self._ready.set()
 
     def _public_addresses(self, host):
         candidates = list(host.get_addrs())
-        if not self.config.announceAddresses and host.upnp is not None:
-            external = host.upnp.get_external_ip()
+        if not self.config.announceAddresses and self._upnp is not None:
+            external = self._upnp.get_external_ip()
             # Announce only successful mappings of actual IPv4 listeners.
             v4_ports = set()
             for addr in host.get_transport_addrs():
@@ -361,20 +377,19 @@ class Libp2pNode:
             addresses = [multiaddr.Multiaddr(value) for value in self.config.listenAddresses]
             key_pair = create_new_key_pair()
             host = new_host(key_pair=key_pair, bootstrap=[],
-                enable_upnp=self.config.upnpEnabled,
+                # Syn owns discovery/mapping in a background task. Upstream's
+                # one-shot discovery blocks host startup and assumes every TCP
+                # listener (including IPv6-only ones) is an IPv4 NAT target.
+                enable_upnp=False,
                 announce_addrs=([multiaddr.Multiaddr(a) for a in self.config.announceAddresses]
                                 if self.config.announceAddresses else None),
                 sec_opt={NOISE_PROTOCOL: NoiseTransport(key_pair, noise_key_pair().private_key)},
                 muxer_opt={YAMUX_PROTOCOL: Yamux})
             self._host = host
-            if host.upnp is not None:
-                original_mapping = host.upnp.add_port_mapping
-                async def tracked_mapping(port, protocol="TCP"):
-                    result = await original_mapping(port, protocol)
-                    if result and protocol == "TCP":
-                        self._mapped_ports.add(int(port))
-                    return result
-                host.upnp.add_port_mapping = tracked_mapping
+            if self.config.upnpEnabled:
+                self._upnp = SynUpnpManager(
+                    multicast_interface=self.config.upnpMulticastInterface,
+                    discover_delay_ms=self.config.upnpDiscoveryDelayMilliseconds)
             if self.config.aminoEnabled:
                 self._dht = AminoDHTClient(host, self.config.bootstrapPeers,
                     timeout=self.config.requestTimeoutSeconds,
@@ -398,7 +413,6 @@ class Libp2pNode:
                 with self._lock:
                     self._peerId = str(host.get_id())
                     self._addresses = tuple(str(value) for value in host.get_transport_addrs())
-                    self._upnpExternalIp = host.upnp.get_external_ip() if host.upnp is not None else None
                 async with trio.open_nursery() as nursery:
                     if self.config.publicPubsubEnabled and not self._stop.is_set():
                         self._public = PublicPubsubService(host, self._dht, self.config,
@@ -406,6 +420,8 @@ class Libp2pNode:
                         await nursery.start(self._public.run)
                         self._update_public_status()
                     self._ready.set()
+                    if self._upnp is not None and not self._stop.is_set():
+                        nursery.start_soon(self._upnp_loop, host)
                     if self._dht is not None:
                         nursery.start_soon(self._bootstrap_loop)
                     else:
@@ -423,6 +439,109 @@ class Libp2pNode:
                         await trio.sleep(0.1)
                     nursery.cancel_scope.cancel()
             self._amino_status(state="stopped")
+
+    def _update_upnp_status(self, **updates):
+        if self._upnp is not None:
+            state = self._upnp.status()
+            state.update(updates)
+            with self._lock:
+                self._upnp_status = deepcopy(state)
+                self._upnpExternalIp = state.get("externalIp")
+
+    @staticmethod
+    def _ipv4_mapping_ports(host, lan_address):
+        """A gateway mapping must reach a real IPv4 listener on this host."""
+        ports = set()
+        for address in host.get_transport_addrs():
+            try:
+                names = [item.name for item in address.protocols()]
+                if names != ["ip4", "tcp"]:
+                    continue
+                bound = ipaddress.ip_address(address.value_for_protocol("ip4"))
+                port = int(address.value_for_protocol("tcp"))
+                if (1 <= port <= 65535 and not bound.is_loopback
+                        and (bound.is_unspecified or str(bound) == lan_address)):
+                    ports.add(port)
+            except (ValueError, TypeError, KeyError):
+                continue
+        return ports
+
+    async def _upnp_loop(self, host):
+        manager = self._upnp
+        retry = 30.0
+        previous = None
+        try:
+            while not self._stop.is_set():
+                mapped = set()
+                self._mapped_ports.clear()
+                try:
+                    updates = {}
+                    discovered = await manager.discover()
+                    if discovered:
+                        ports = self._ipv4_mapping_ports(host, manager.status().get("lanAddress"))
+                        failures = []
+                        cleanup_failures = []
+                        for mapping in manager.status().get("mappings", []):
+                            if mapping["protocol"] == "TCP" and mapping["port"] in ports:
+                                continue
+                            removed = await manager.remove_port_mapping(mapping["port"], mapping["protocol"])
+                            if not removed and any(
+                                    entry["port"] == mapping["port"] and entry["protocol"] == mapping["protocol"]
+                                    for entry in manager.status().get("mappings", [])):
+                                cleanup_failures.append(manager.status().get("reason"))
+                        for port in sorted(ports):
+                            if await manager.add_port_mapping(port, "TCP"):
+                                mapped.add(port)
+                            else:
+                                failures.append(manager.status().get("reason"))
+                        if cleanup_failures:
+                            updates = {"state": "cleanup-failed", "reason": next(
+                                (reason for reason in cleanup_failures if reason),
+                                "An earlier UPnP mapping no longer matches a listener; cleanup is unconfirmed.")}
+                        elif not ports:
+                            updates = {"state": "no-ipv4-listener", "reason":
+                                "No LAN-accessible IPv4 TCP listener is available to map."}
+                        elif mapped and failures:
+                            updates = {"state": "partially-mapped", "reason": next(
+                                (reason for reason in failures if reason),
+                                "Some IPv4 TCP listeners could not be mapped.")}
+                    self._mapped_ports = mapped
+                    complete = bool(mapped) and not updates
+                    delay = 600.0 if complete else retry
+                    leases = [entry["leaseSeconds"] for entry in manager.status().get("mappings", [])
+                              if entry.get("verified") and entry.get("leaseSeconds", 0) > 0]
+                    if leases:
+                        delay = min(delay, max(0.5, min(leases) / 2))
+                    retry = 30.0 if complete else min(300.0, retry * 2)
+                    self._update_upnp_status(**updates)
+                    state = self._upnp_status
+                    transition = (state.get("state"), state.get("reason"), tuple(sorted(mapped)))
+                    if transition != previous:
+                        logger.info("UPnP %s: %s", state.get("state"), state.get("reason") or
+                                    ("TCP mappings verified" if mapped else "No usable TCP mapping"))
+                        previous = transition
+                except Exception as error:
+                    self._mapped_ports.clear()
+                    delay, retry = retry, min(300.0, retry * 2)
+                    self._update_upnp_status(state="unavailable", externalIp=None,
+                        reason="UPnP maintenance failed: " + type(error).__name__)
+                    if previous != type(error).__name__:
+                        logger.warning("UPnP maintenance failed: %s; retrying in %.0fs",
+                                       type(error).__name__, delay)
+                        previous = type(error).__name__
+                await trio.sleep(delay)
+        finally:
+            # The manager verifies its per-run ownership before removal. A
+            # successful router response is not proof of Internet reachability.
+            with trio.CancelScope(shield=True):
+                try:
+                    for mapping in manager.status().get("mappings", []):
+                        await manager.remove_port_mapping(mapping["port"], mapping["protocol"])
+                finally:
+                    self._mapped_ports.clear()
+                    state = manager.status()
+                    self._update_upnp_status(externalIp=None,
+                        state="cleanup-failed" if state.get("mappings") else "stopped")
 
     async def _bootstrap_loop(self):
         retry = 5.0
@@ -467,6 +586,15 @@ class Libp2pNode:
                         partial(signer.issue, transport_public, addresses), abandon_on_cancel=True)
                     if self._stop.is_set():
                         return
+                    # Native approval can outlast a router refresh or lease.
+                    # Recheck the actual current endpoints before serving or
+                    # announcing the result of a delayed signing request.
+                    if addresses != sorted(str(addr) for addr in self._public_addresses(host)):
+                        with self._lock:
+                            self._record = None
+                        current_addresses = None
+                        self._publication_status(state="waiting-addresses", addresses=[], expiresAt=None)
+                        continue
                     with self._lock:
                         self._record = packet
                     self._publication_status(state=("announced" if not changed and self._publication["lastAnnouncedAt"]

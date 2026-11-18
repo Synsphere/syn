@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .config import CardanoConfig, peer_address
 from .protocol import (
     CardanoClient, CardanoProtocolError, Point, RollBackward, RollForward,
-    UnsupportedEra,
+    UnsupportedEra, _protocol_error,
 )
 
 
@@ -20,6 +20,22 @@ logger = logging.getLogger(__name__)
 
 def _point(point: Point) -> dict | None:
     return None if point.slot is None else {"slot": point.slot, "hash": point.hash}
+
+
+def _error_details(error, operation):
+    """Public status/logs contain bounded causes, never SQL or peer wire text."""
+    stage = getattr(error, "stage", None)
+    if stage not in {"connect", "handshake", "mux", "keepalive", "chain-sync", "block-fetch"}:
+        stage = operation
+    if isinstance(error, SQLAlchemyError):
+        detail = "Database operation failed"
+    elif isinstance(error, (CardanoProtocolError, OSError, TimeoutError)):
+        detail = str(_protocol_error(error, stage))
+    else:
+        detail = "Stored observation integrity check failed"
+    detail = " ".join("".join(char if 32 <= ord(char) < 127 else " "
+                              for char in detail[:512]).split())[:240]
+    return stage, f"{type(error).__name__}: {detail}"
 
 
 class CardanoRuntime:
@@ -53,7 +69,9 @@ class CardanoRuntime:
         self._persisted = {"peers": []}
         self._peers = {peer: {"peer": peer, "state": "stopped" if self.config.enabled else "disabled",
                              "connected": False, "attempts": 0, "blocks_received": 0,
-                             "rollbacks_received": 0, "last_error": None, "tip": None}
+                             "rollbacks_received": 0, "last_error": None, "tip": None,
+                             "last_error_stage": None, "retry_delay_seconds": 0,
+                             "protocol_version": None}
                        for peer in self.config.peers}
 
     async def _db(self, method, *args):
@@ -100,7 +118,8 @@ class CardanoRuntime:
             self._tasks.clear()
             self._running = False
             for peer in self._peers.values():
-                peer.update(state="stopped" if self.config.enabled else "disabled", connected=False)
+                peer.update(state="stopped" if self.config.enabled else "disabled", connected=False,
+                            retry_delay_seconds=0)
 
     def check(self):
         if self.fault is not None:
@@ -143,41 +162,57 @@ class CardanoRuntime:
         delay = self.config.reconnectDelaySeconds
         while not self._stop.is_set():
             client = None
+            operation = "connect"
             try:
-                state.update(state="connecting", connected=False, attempts=state["attempts"] + 1)
+                state.update(state="connecting", connected=False, attempts=state["attempts"] + 1,
+                             retry_delay_seconds=0, protocol_version=None)
                 host, port = peer_address(peer)
                 client = await self._connect(host, port, self.config.networkMagic,
                     timeout=self.config.timeoutSeconds,
                     keepalive_interval=self.config.keepaliveIntervalSeconds)
-                state.update(state="intersecting", connected=True)
+                state.update(state="intersecting", connected=True,
+                             protocol_version=getattr(client, "version", None))
+                operation = "intersection"
                 await self._intersect(client, peer)
-                state.update(state="following", last_error=None)
+                if state["last_error"] is not None:
+                    logger.info("Cardano observation resumed for %s", peer)
+                state.update(state="following", last_error=None, last_error_stage=None)
                 while not self._stop.is_set():
+                    operation = "chain-sync"
                     update = await client.next_update()
                     if isinstance(update, RollForward):
+                        operation = "block-fetch"
                         raw = await client.fetch_block(update.header)
+                        operation = "record-block"
                         receipt = await self._db(self.store.apply, self.node_ref,
                             self.config.networkMagic, peer, asdict(update.header), raw)
                         state["blocks_received"] += 1
                         state["last_event_ref"] = receipt["event_ref"]
                     elif isinstance(update, RollBackward):
+                        operation = "record-rollback"
                         await self._db(self.store.rollback, self.node_ref,
                             self.config.networkMagic, peer, _point(update.point))
                         state["rollbacks_received"] += 1
                     else:
                         raise CardanoProtocolError("Unexpected chain update")
                     state["tip"] = asdict(update.tip)
+                    operation = "database-status"
                     await self._refresh()
                     delay = self.config.reconnectDelaySeconds
             except asyncio.CancelledError:
                 raise
             except (UnsupportedEra, CardanoStoreError) as error:
-                state.update(state="blocked", last_error=f"{type(error).__name__}: {str(error)[:240]}")
-                logger.warning("Cardano observation blocked for %s: %s", peer, state["last_error"])
+                stage, detail = _error_details(error, operation)
+                state.update(state="blocked", last_error=detail, last_error_stage=stage,
+                             retry_delay_seconds=0)
+                logger.warning("Cardano observation blocked for %s during %s: %s", peer, stage, detail)
                 return
             except (CardanoProtocolError, OSError, TimeoutError, SQLAlchemyError) as error:
-                state.update(state="retrying", last_error=f"{type(error).__name__}: {str(error)[:240]}")
-                logger.warning("Cardano observation will reconnect to %s (%s)", peer, type(error).__name__)
+                stage, detail = _error_details(error, operation)
+                state.update(state="retrying", last_error=detail, last_error_stage=stage,
+                             retry_delay_seconds=delay)
+                logger.warning("Cardano observation for %s failed during %s: %s; reconnecting in %.1fs",
+                               peer, stage, detail, delay)
             except Exception as error:
                 self.fault = error
                 state.update(state="failed", last_error=type(error).__name__)

@@ -101,6 +101,48 @@ def test_pending_native_approval_does_not_block_ready_or_stop_or_publish_late():
     asyncio.run(exercise())
 
 
+def test_mapping_lost_during_native_approval_does_not_publish_the_old_endpoint():
+    entered, release = Event(), Event()
+    signer = Signer()
+    endpoints = [multiaddr.Multiaddr("/ip4/8.8.8.8/tcp/4001")]
+    announcements = []
+
+    def sign_peer_record(body):
+        entered.set()
+        if not release.wait(5):
+            raise RuntimeError("Test approval was not released")
+        return signer.sign(peer_record.DOMAIN + peer_record.canonical(body))
+
+    signer.sign_peer_record = sign_peer_record
+
+    async def provide(key, addresses):
+        announcements.append(list(addresses))
+        return 1
+
+    async def exercise():
+        node = Libp2pNode(config(), operator(signer))
+        node._public_addresses = lambda _host: list(endpoints)
+        node._dht = SimpleNamespace(status=lambda: {"routingPeers": 1}, provide=provide)
+        transport = create_new_key_pair()
+        try:
+            async with trio.open_nursery() as nursery:
+                nursery.start_soon(node._publication_loop, object(), transport.public_key.to_bytes())
+                assert await trio.to_thread.run_sync(entered.wait, 3)
+                endpoints.clear()  # Mapping disappears while the native dialog is open.
+                release.set()
+                with trio.fail_after(3):
+                    while node.status()["publication"]["state"] == "signing":
+                        await trio.sleep(0.01)
+                assert node.status()["publication"]["state"] == "waiting-addresses"
+                assert node.public_record() is None
+                assert announcements == []
+                nursery.cancel_scope.cancel()
+        finally:
+            release.set()
+
+    trio.run(exercise)
+
+
 def test_native_publication_failure_stops_transport_and_fences_check():
     signer = Signer()
     def unavailable(body):

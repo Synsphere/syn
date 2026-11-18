@@ -151,6 +151,9 @@ def test_wire_messages_are_signed_scoped_and_application_duplicates_are_bounded(
             first, second = services
             group = await first.join("syn://type/public-wire")
             await second.join(group["url"])
+            # Wire validation starts from a discovered provider; a generic
+            # connection alone intentionally does not negotiate pubsub.
+            first._groups[group["group_hash"]].providers[hosts[1].get_id()] = trio.current_time() + 60
             await hosts[0].connect(info_from_p2p_addr(hosts[1].get_addrs()[0]))
             await eventually(lambda: all(service.status()["groups"][0]["mesh_peer_count"] for service in services))
             stream = await hosts[0].new_stream(hosts[1].get_id(), [PROTOCOL_ID_V11])
@@ -373,13 +376,17 @@ def test_pending_stream_negotiations_reserve_the_public_peer_capacity(monkeypatc
     monkeypatch.setattr(public, "MAX_PUBLIC_PEERS", 2)
     async def exercise():
         async with running() as (_, services):
-            pubsub = services[0].pubsub
+            service = services[0]
+            group = await service.join("syn://type/pending-provider-streams")
+            pubsub = service.pubsub
             opened = []
             async def hanging(self, peer):
                 opened.append(peer)
                 await trio.sleep_forever()
             monkeypatch.setattr(Pubsub, "_handle_new_peer", hanging)
             peers = [secure_host().get_id() for _ in range(5)]
+            service._groups[group["group_hash"]].providers = {
+                peer: trio.current_time() + 60 for peer in peers}
             async with trio.open_nursery() as nursery:
                 for peer in peers:
                     nursery.start_soon(pubsub._handle_new_peer_safe, peer)

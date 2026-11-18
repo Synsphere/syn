@@ -39,6 +39,8 @@ MAX_DNS_DEPTH = 4
 MAX_DNS_RESULTS = 32
 MAX_DNS_QUERIES = 16
 ADDRESS_TTL_SECONDS = 600
+RETRY_INITIAL_SECONDS = 5
+RETRY_MAX_SECONDS = 300
 
 
 def _varint(value: int) -> bytes:
@@ -199,6 +201,11 @@ class AminoDHTClient:
         self.allow_private = allow_private
         self._known: OrderedDict[bytes, PeerInfo] = OrderedDict()
         self._servers: set[bytes] = set()
+        # A failed peer can recur across bootstrap, publication and group
+        # lookups. Keep a bounded cooldown shared by those operations, rather
+        # than redialing it for every key. Cancellation is never a peer fault.
+        self._retries: OrderedDict[bytes, tuple[int, float]] = OrderedDict()
+        self._retry_skips = 0
         self._operation = trio.Lock()
         self._bootstrap_attempts = 0
         self._bootstrap_status = "pending"
@@ -222,6 +229,7 @@ class AminoDHTClient:
             "announcementsSent": self._announcements,
             "lastAnnouncementsSent": self._last_announcements,
             "queryFailures": self._query_failures,
+            "retryDeferred": self._retry_skips,
             "lastLookupStatus": self._lookup_status,
             "lastLookupPeers": self._lookup_peers,
             "lastLookupProviders": self._lookup_providers,
@@ -238,6 +246,21 @@ class AminoDHTClient:
         while len(self._known) > MAX_KNOWN_PEERS:
             expired, _ = self._known.popitem(last=False)
             self._servers.discard(expired)
+
+    def _deferred(self, info: PeerInfo) -> bool:
+        retry = self._retries.get(info.peer_id.to_bytes())
+        return retry is not None and trio.current_time() < retry[1]
+
+    def _failed(self, info: PeerInfo) -> None:
+        raw = info.peer_id.to_bytes()
+        failures = min(self._retries.get(raw, (0, 0))[0] + 1, 7)
+        delay = min(RETRY_MAX_SECONDS, RETRY_INITIAL_SECONDS * 2 ** (failures - 1))
+        self._retries[raw] = (failures, trio.current_time() + delay)
+        self._retries.move_to_end(raw)
+        while len(self._retries) > MAX_KNOWN_PEERS:
+            self._retries.popitem(last=False)
+        self._query_failures += 1
+        self._servers.discard(raw)
 
     async def _dns_records(self, hostname: str, kind: str):
         answer = await dns.asyncresolver.resolve(hostname, kind, lifetime=self.timeout)
@@ -364,12 +387,16 @@ class AminoDHTClient:
                             pass
 
     async def _query(self, info: PeerInfo, kind: int, key: bytes) -> Message | None:
-        try:
-            return await self._request(info, Message(type=kind, key=key))
-        except Exception:
-            self._query_failures += 1
-            self._servers.discard(info.peer_id.to_bytes())
+        if self._deferred(info):
+            self._retry_skips += 1
             return None
+        try:
+            reply = await self._request(info, Message(type=kind, key=key))
+        except Exception:
+            self._failed(info)
+            return None
+        self._retries.pop(info.peer_id.to_bytes(), None)
+        return reply
 
     @staticmethod
     def _distance(info: PeerInfo, target: int) -> int:
@@ -381,10 +408,15 @@ class AminoDHTClient:
         candidates = {p.peer_id.to_bytes(): p for p in seeds}
         queried: set[bytes] = set()
         failed: set[bytes] = set()
+        deferred: set[bytes] = set()
         successful: dict[bytes, PeerInfo] = {}
         providers: dict[bytes, PeerInfo] = {}
         while len(queried) < MAX_QUERIES:
-            nearest = sorted((info for raw, info in candidates.items() if raw not in failed),
+            cooling = {raw for raw, info in candidates.items() if self._deferred(info)}
+            self._retry_skips += len(cooling - deferred)
+            deferred.update(cooling)
+            nearest = sorted((info for raw, info in candidates.items()
+                              if raw not in failed and raw not in cooling),
                              key=lambda info: self._distance(info, target))[:K]
             pending = [info for info in nearest if info.peer_id.to_bytes() not in queried]
             batch = pending[:min(ALPHA, MAX_QUERIES - len(queried))]
@@ -473,12 +505,14 @@ class AminoDHTClient:
             provider.addrs.extend(address.to_bytes() for address in addresses)
 
             async def announce(info):
+                if self._deferred(info):
+                    self._retry_skips += 1
+                    return
                 try:
                     await self._request(info, message, response=False)
                     self._last_announcements += 1
                 except Exception:
-                    self._query_failures += 1
-                    self._servers.discard(info.peer_id.to_bytes())
+                    self._failed(info)
 
             for start in range(0, len(closest), ALPHA):
                 async with trio.open_nursery() as nursery:

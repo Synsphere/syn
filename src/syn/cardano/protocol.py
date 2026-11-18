@@ -18,6 +18,7 @@ from hashlib import blake2b
 import math
 import re
 import secrets
+import socket
 import struct
 import time
 
@@ -38,9 +39,60 @@ _LIMITS = {0: 16 * 1024, 2: MAX_HEADER_BYTES + 4096,
 class CardanoProtocolError(RuntimeError):
     """Connection, agency, encoding or block-identity failure."""
 
+    def __init__(self, message, *, stage=None):
+        super().__init__(message)
+        self.stage = stage
+
 
 class UnsupportedEra(CardanoProtocolError):
     """An era whose header format this small follower does not implement."""
+
+
+def _protocol_error(error, stage):
+    """Keep actionable local causes without reflecting socket/peer payload text."""
+    if isinstance(error, CardanoProtocolError):
+        if error.stage is None:
+            error.stage = stage
+        return error
+    if isinstance(error, socket.gaierror):
+        reason = "DNS lookup failed"
+    elif isinstance(error, TimeoutError):
+        reason = "Timed out waiting for the peer"
+    elif isinstance(error, ConnectionRefusedError):
+        reason = "TCP connection refused"
+    elif isinstance(error, (ConnectionResetError, BrokenPipeError)):
+        reason = "Peer reset the connection"
+    elif isinstance(error, asyncio.IncompleteReadError):
+        reason = "Peer closed the connection before its response completed"
+    elif isinstance(error, OSError):
+        reason = "Network I/O failed"
+    else:
+        reason = "Cardano peer operation failed"
+    result = CardanoProtocolError(reason, stage=stage)
+    result.__cause__ = error
+    return result
+
+
+def _handshake_refusal(message):
+    """Decode the refusal category, never a peer-supplied free-form error string."""
+    _, reason = _array(message, 2)
+    if type(reason) is not list or not reason or type(reason[0]) is not int:
+        raise CardanoProtocolError("Malformed handshake refusal")
+    if reason[0] == 0:
+        _, versions = _array(reason, 2)
+        if (type(versions) is not list or len(versions) > 32
+                or any(type(version) is not int or not 0 <= version <= 65535 for version in versions)):
+            raise CardanoProtocolError("Malformed handshake version list")
+        offered = ", ".join(str(version) for version in sorted(set(versions))) or "none"
+        return CardanoProtocolError("No common protocol version; peer supports " + offered)
+    if reason[0] in (1, 2):
+        _, version, detail = _array(reason, 3)
+        _uint(version, 65535)
+        if type(detail) is not str:
+            raise CardanoProtocolError("Malformed handshake refusal detail")
+        label = "Peer could not decode the offered parameters" if reason[0] == 1 else "Peer refused the offered parameters"
+        return CardanoProtocolError(f"{label} for version {version}")
+    return CardanoProtocolError("Cardano node refused the handshake")
 
 
 def _uint(value, maximum=(1 << 64) - 1):
@@ -286,30 +338,44 @@ class CardanoClient:
                 raise ValueError("Expected a finite positive protocol interval at most 300 seconds")
         try:
             async with asyncio.timeout(timeout):
-                reader, writer = await asyncio.open_connection(host, port, limit=65536)
+                # Race address families so an unusable IPv6 route does not
+                # consume the whole timeout before a working IPv4 is attempted.
+                reader, writer = await asyncio.open_connection(
+                    host, port, limit=65536, happy_eyeballs_delay=.25, interleave=1)
         except (OSError, TimeoutError) as error:
-            raise CardanoProtocolError("Could not connect to trusted Cardano node") from error
+            raise _protocol_error(error, "connect") from error
         client = cls(reader, writer, timeout, keepalive_interval)
         client._reader_task = asyncio.create_task(client._read_loop())
         try:
             async with asyncio.timeout(timeout):
                 await client._send(0, [0, {v: [network_magic, True, 0, False] for v in VERSIONS}])
                 message = await client._receive(0)
-                if type(message) is list and message and message[0] == 2:
-                    raise CardanoProtocolError("Cardano node refused the handshake")
+                if type(message) is list and message and type(message[0]) is int and message[0] == 2:
+                    raise _handshake_refusal(message)
                 code, version, data = _array(message, 3)
                 if type(code) is not int or code != 1 or type(version) is not int or version not in VERSIONS:
                     raise CardanoProtocolError("Invalid accepted protocol version")
                 magic, initiator_only, peer_sharing, query = _array(data, 4)
-                if (_uint(magic, (1 << 32) - 1) != network_magic or initiator_only is not True
-                        or type(peer_sharing) is not int or peer_sharing != 0 or query is not False):
+                # The client applies acceptableVersion to the returned data,
+                # as Ouroboros' Handshake.Client does. A remote duplex/peer-
+                # sharing capability cannot turn our initiator-only connection
+                # into a responder or enable peer discovery. Both booleans and
+                # the peer-sharing enum still require their exact wire types.
+                if (_uint(magic, (1 << 32) - 1) != network_magic or type(initiator_only) is not bool
+                        or type(peer_sharing) is not int or peer_sharing not in (0, 1) or query is not False):
                     raise CardanoProtocolError("Incompatible negotiated network or diffusion mode")
                 client.version = version
             client._keepalive_task = asyncio.create_task(client._keep_alive())
             return client
-        except BaseException:
+        except asyncio.CancelledError:
             await client.close()
             raise
+        except Exception as error:
+            await client.close()
+            failure = _protocol_error(error, "handshake")
+            if failure is error:
+                raise
+            raise failure from error
 
     async def __aenter__(self):
         return self
@@ -317,9 +383,8 @@ class CardanoClient:
     async def __aexit__(self, *_):
         await self.close()
 
-    def _fail(self, error):
-        if not isinstance(error, CardanoProtocolError):
-            error = CardanoProtocolError("Cardano peer connection failed")
+    def _fail(self, error, stage=None):
+        error = _protocol_error(error, stage)
         if not self._failure.done():
             self._failure.set_result(error)
         self.writer.close()
@@ -362,7 +427,7 @@ class CardanoClient:
         except asyncio.CancelledError:
             raise
         except Exception as error:
-            self._fail(error)
+            self._fail(error, "handshake" if self.version is None else "mux")
 
     async def _send(self, protocol, value):
         if self._failure.done():
@@ -400,7 +465,7 @@ class CardanoClient:
         except asyncio.CancelledError:
             raise
         except Exception as error:
-            self._fail(error)
+            self._fail(error, "keepalive")
 
     async def find_intersect(self, points: list[Point]) -> Intersect:
         if type(points) is not list or len(points) > 256 or any(type(p) is not Point for p in points):
@@ -422,14 +487,19 @@ class CardanoClient:
                             return Intersect(None, _tip(tip))
                     raise CardanoProtocolError("Invalid intersection response")
             except BaseException as error:
-                self._fail(error)
-                raise
+                self._fail(error, "chain-sync")
+                if not isinstance(error, Exception):
+                    raise
+                failure = self._failure.result()
+                if failure is error:
+                    raise
+                raise failure from error
 
     async def intersect_tip(self) -> Intersect:
         tip = (await self.find_intersect([])).tip
         result = await self.find_intersect([tip.point])
         if result.point is None:
-            self._fail(CardanoProtocolError("Chain tip changed during intersection"))
+            self._fail(CardanoProtocolError("Chain tip changed during intersection"), "chain-sync")
             raise self._failure.result()
         return result
 
@@ -456,8 +526,13 @@ class CardanoClient:
                     return RollBackward(_point(content), tip)
                 raise CardanoProtocolError("Invalid chain-sync response")
             except BaseException as error:
-                self._fail(error)
-                raise
+                self._fail(error, "chain-sync")
+                if not isinstance(error, Exception):
+                    raise
+                failure = self._failure.result()
+                if failure is error:
+                    raise
+                raise failure from error
 
     async def fetch_block(self, header: Header) -> bytes:
         async with self._block_lock:
@@ -478,5 +553,10 @@ class CardanoClient:
                         raise CardanoProtocolError("Fetched block does not match announced header")
                     return raw
             except BaseException as error:
-                self._fail(error)
-                raise
+                self._fail(error, "block-fetch")
+                if not isinstance(error, Exception):
+                    raise
+                failure = self._failure.result()
+                if failure is error:
+                    raise
+                raise failure from error

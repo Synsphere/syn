@@ -22,6 +22,10 @@ def project(tmp_path):
     for name, script in {
         "id": 'case "$1" in -u) echo 1000 ;; -un) echo syn ;; *) /usr/bin/id "$@" ;; esac\n',
         "dpkg-query": "echo 'install ok installed'\n",
+        "dbus-send": "exit 0\n",
+        "service": "echo 'Unexpected service action in bootstrap test' >&2; exit 97\n",
+        "systemctl": "echo 'Unexpected systemctl action in bootstrap test' >&2; exit 97\n",
+        "sudo": "exit 98\n",
     }.items():
         tool = home / ".local" / "bin" / name
         tool.write_text("#!/bin/sh\n" + script)
@@ -105,3 +109,75 @@ def test_missing_uv_installs_using_official_versioned_url(project):
     assert "https://astral.sh/uv/0.13.8/install.sh" in args
     assert (home / ".local/bin/uv").exists()
     assert "--api-only" in (home / "uv-args").read_text().splitlines()
+
+
+def write_tool(project, name, body):
+    _, home = project
+    path = home / ".local/bin" / name
+    path.write_text("#!/bin/sh\n" + body)
+    path.chmod(0o700)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Linux shell harness")
+def test_host_custody_still_provisions_system_dbus_without_linux_keyring(project):
+    fake_uv(project)
+    write_tool(project, "dpkg-query", 'printf "%s\\n" "$*" >> "$HOME/packages"\necho "install ok installed"\n')
+    result = run(project, "--api-only", offline=True,
+                 extra_env={"SYN_HOST_CUSTODY_PIPE": "SynHostCustody-test"})
+    assert result.returncode == 0, result.stderr
+    _, home = project
+    packages = (home / "packages").read_text().splitlines()
+    assert any(line.endswith(" dbus") for line in packages)
+    assert any(line.endswith(" bluez") for line in packages)
+    assert not any(line.endswith(" gnome-keyring") or line.endswith(" dbus-user-session")
+                   for line in packages)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Linux shell harness")
+def test_bootstrap_starts_missing_system_bus_then_bluez_once(project):
+    fake_uv(project)
+    write_tool(project, "dbus-send", '''
+case "$*" in
+ *string:org.bluez) test -f "$HOME/bluetooth-ready" ;;
+ *) test -f "$HOME/dbus-ready" ;;
+esac
+''')
+    # Match either service manager route without invoking host services.
+    service = '''
+printf '%s\\n' "$*" >> "$HOME/service-actions"
+case "$*" in
+ 'dbus start'|'start dbus') touch "$HOME/dbus-ready" ;;
+ 'bluetooth start'|'start bluetooth') touch "$HOME/bluetooth-ready" ;;
+ *) exit 96 ;;
+esac
+'''
+    write_tool(project, "service", service)
+    write_tool(project, "systemctl", service)
+    write_tool(project, "sudo", '[ "$1" = -n ] || exit 95\nshift\nexec "$@"\n')
+    result = run(project, offline=True)
+    assert result.returncode == 0, result.stderr
+    _, home = project
+    actions = (home / "service-actions").read_text().splitlines()
+    assert actions in (["dbus start", "bluetooth start"], ["start dbus", "start bluetooth"])
+    assert (home / "uv-args").exists()
+    # Re-running an already provisioned node leaves both live services alone.
+    again = run(project, offline=True)
+    assert again.returncode == 0, again.stderr
+    assert (home / "service-actions").read_text().splitlines() == actions
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Linux shell harness")
+def test_missing_bus_without_privilege_is_actionable_and_does_not_block_syn(project):
+    fake_uv(project)
+    write_tool(project, "dbus-send", 'exit 1\n')
+    write_tool(project, "sudo", 'printf "%s\\n" "$*" >> "$HOME/sudo-attempts"\nexit 1\n')
+    result = run(project, offline=True)
+    assert result.returncode == 0, result.stderr
+    _, home = project
+    assert (home / "uv-args").exists()
+    assert "System D-Bus is unavailable" in result.stdout
+    assert "sudo service dbus start" in result.stdout
+    assert "Bluetooth will retry; Syn can continue" in result.stdout
+    attempts = (home / "sudo-attempts").read_text().splitlines()
+    assert len(attempts) == 1 and attempts[0].startswith("-n ")
+    assert "bluetooth" not in attempts[0]

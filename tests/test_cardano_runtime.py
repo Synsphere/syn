@@ -5,6 +5,7 @@ import asyncio
 from copy import deepcopy
 from dataclasses import asdict
 import threading
+import logging
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
@@ -219,6 +220,72 @@ def test_database_failure_reconnects_from_last_committed_point():
             assert runtime.status()["peers"][0]["blocks_received"] == 1
         finally:
             await runtime.stop()
+    asyncio.run(run())
+
+
+def test_retry_logs_and_status_include_stage_cause_and_delay(caplog):
+    async def unavailable(*args, **kwargs):
+        raise CardanoProtocolError("DNS lookup failed", stage="connect")
+    async def run():
+        runtime = CardanoRuntime(None, NODE, config(), store=Store(), connect=unavailable)
+        with caplog.at_level(logging.WARNING, logger="syn.cardano.runtime"):
+            await runtime.start()
+            try:
+                await eventually(lambda: runtime.status()["peers"][0]["state"] == "retrying")
+                state = runtime.status()["peers"][0]
+                assert state["last_error_stage"] == "connect"
+                assert state["last_error"] == "CardanoProtocolError: DNS lookup failed"
+                assert state["retry_delay_seconds"] == .1
+                assert not state["connected"]
+                assert "during connect: CardanoProtocolError: DNS lookup failed" in caplog.text
+                assert "reconnecting in 0.1s" in caplog.text
+            finally:
+                await runtime.stop()
+        assert runtime.status()["peers"][0]["retry_delay_seconds"] == 0
+    asyncio.run(run())
+
+
+def test_database_error_does_not_publish_sql_or_credentials(caplog):
+    async def run():
+        client = Client([RollForward(HEAD, TIP)])
+        store = Store(fail_apply=SQLAlchemyError("password=secret SELECT private_payload"))
+        runtime = CardanoRuntime(None, NODE, config(), store=store,
+                                connect=Connections({PEER: [client]}))
+        with caplog.at_level(logging.WARNING, logger="syn.cardano.runtime"):
+            await runtime.start()
+            try:
+                await eventually(lambda: runtime.status()["peers"][0]["state"] == "retrying")
+                state = runtime.status()["peers"][0]
+                assert state["last_error_stage"] == "record-block"
+                assert state["last_error"] == "SQLAlchemyError: Database operation failed"
+                assert "secret" not in caplog.text and "private_payload" not in caplog.text
+                assert "during record-block" in caplog.text
+            finally:
+                await runtime.stop()
+    asyncio.run(run())
+
+
+def test_protocol_diagnostics_are_one_line_bounded_and_clear_after_recovery(caplog):
+    async def run():
+        first = Client([CardanoProtocolError("bad\n\x1b[31m" + "x" * 900, stage="chain-sync")])
+        second = Client()
+        runtime = CardanoRuntime(None, NODE, config(), store=Store(),
+                                connect=Connections({PEER: [first, second]}))
+        with caplog.at_level(logging.INFO, logger="syn.cardano.runtime"):
+            await runtime.start()
+            try:
+                await eventually(lambda: runtime.status()["peers"][0]["state"] == "retrying")
+                state = runtime.status()["peers"][0]
+                assert len(state["last_error"]) <= 262
+                assert "\n" not in state["last_error"] and "\x1b" not in state["last_error"]
+                await asyncio.wait_for(second.waiting.wait(), 1)
+                state = runtime.status()["peers"][0]
+                assert state["state"] == "following"
+                assert state["last_error"] is None and state["last_error_stage"] is None
+                assert state["retry_delay_seconds"] == 0
+                assert "Cardano observation resumed" in caplog.text
+            finally:
+                await runtime.stop()
     asyncio.run(run())
 
 

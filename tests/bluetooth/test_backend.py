@@ -112,6 +112,74 @@ def bluez():
     return BlueZBackend(api=api, bus_factory=lambda **kw: bus, timeout=0.05), bus, api
 
 
+@pytest.mark.parametrize("failure,expected", [
+    (FileNotFoundError(2, "No such file or directory"), "Linux system D-Bus is unavailable"),
+    (ConnectionRefusedError(111, "Connection refused"), "Linux system D-Bus is unavailable"),
+    (PermissionError(13, "Permission denied"), "system D-Bus access was denied"),
+])
+def test_bluez_missing_system_bus_has_actionable_diagnostic_and_closes(failure, expected):
+    async def run():
+        backend, bus, _ = bluez()
+
+        async def connect():
+            raise failure
+
+        bus.connect = connect
+        with pytest.raises(BackendUnavailable, match=expected):
+            await backend.start()
+        assert bus.disconnected.is_set()
+        assert backend._bus is backend._closing_bus is None
+        assert not bus.exports
+        await backend.close()
+    asyncio.run(run())
+
+
+def test_bluez_activates_service_before_asking_for_its_owner():
+    async def run():
+        backend, bus, _ = bluez()
+        await backend.start()
+        methods = [message.member for message in bus.calls]
+        assert methods.index("GetManagedObjects") < methods.index("GetNameOwner")
+        assert len(await backend.adapters()) == 1
+        await backend.close()
+    asyncio.run(run())
+
+
+def test_bluez_missing_bus_during_native_construction_leaves_no_owned_handle():
+    async def run():
+        backend, _, _ = bluez()
+
+        def absent_bus(**kwargs):
+            raise FileNotFoundError(2, "No such file or directory")
+
+        backend._bus_factory = absent_bus
+        with pytest.raises(BackendUnavailable, match="Linux system D-Bus is unavailable"):
+            await backend.start()
+        assert backend._bus is backend._closing_bus is None
+        assert backend._disconnect_waiter is None
+        await backend.close()
+    asyncio.run(run())
+
+
+def test_bluez_missing_daemon_is_distinct_from_missing_system_bus():
+    async def run():
+        backend, bus, api = bluez()
+        original = bus.call
+
+        async def call(message):
+            if message.member == "GetManagedObjects":
+                return SimpleNamespace(message_type=api.MessageType.ERROR,
+                    error_name="org.freedesktop.DBus.Error.ServiceUnknown", body=[])
+            return await original(message)
+
+        bus.call = call
+        with pytest.raises(BackendUnavailable, match="BlueZ is not available on the Linux system bus"):
+            await backend.start()
+        assert bus.disconnected.is_set()
+        assert backend._bus is backend._closing_bus is None
+    asyncio.run(run())
+
+
 def test_bluez_fresh_unfiltered_reports_and_owned_scan_cleanup():
     async def run():
         backend, bus, api = bluez()

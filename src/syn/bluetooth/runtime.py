@@ -10,6 +10,7 @@ from hashlib import sha256
 import json
 import logging
 import random
+import time
 from uuid import uuid4
 
 from .backend import BackendError, default_backend, validate_frame
@@ -80,6 +81,9 @@ class BluetoothRuntime:
         self._running = False
         self._state = "stopped" if self.config.enabled else "disabled"
         self._last_error = None
+        self._backend_error = None
+        self._availability_note = None
+        self._retry_at = None
         self._last_event_ref = None
         self._metadata = {}
         self.fault = None
@@ -174,6 +178,7 @@ class BluetoothRuntime:
             await asyncio.gather(self._writer, return_exceptions=True)
             self._writer = None
         self._running = False
+        self._retry_at = None
         if self.fault is None:
             self._state = "stopped" if self.config.enabled else "disabled"
 
@@ -192,7 +197,10 @@ class BluetoothRuntime:
             "pending_observations": len(self._pending),
             "pending_loss_reports": sum(self._loss_pending.values()),
             "counts": dict(self._counts), "last_event_ref": self._last_event_ref,
-            "last_error": self._last_error})
+            "last_error": self._last_error,
+            "availability_note": self._availability_note,
+            "retry_in_seconds": None if self._retry_at is None else
+                round(max(0.0, self._retry_at - time.monotonic()), 1)})
 
     async def _pause(self, seconds):
         if seconds <= 0:
@@ -204,23 +212,46 @@ class BluetoothRuntime:
             return False
 
     async def _manage(self):
+        retry_delay = self.config.retrySeconds
         try:
             while not self._stop.is_set():
                 backend = self._provided_backend or default_backend(timeout=self.config.backendTimeoutSeconds)
                 self._backend = backend
                 try:
                     await backend.start()
-                    self._last_error = None
                     while not self._stop.is_set():
                         adapters = await backend.adapters()
                         self._account_native_losses(backend)
                         await self._reconcile(backend, adapters)
-                        self._state = "active" if self._workers else "waiting-for-adapter"
+                        if self._backend_error is not None:
+                            logger.info("Bluetooth backend recovered")
+                        self._backend_error = self._last_error = None
+                        self._retry_at = None
+                        retry_delay = self.config.retrySeconds
+                        usable = any(adapter.can_scan or self._adapters[key]["active_formats"]
+                                     for key, (adapter, _) in self._workers.items())
+                        self._state = "active" if usable else "waiting-for-adapter"
+                        note = None if usable else (
+                            "No Bluetooth adapter is visible to this OS. WSL needs a Linux-visible controller; "
+                            "Windows Bluetooth is not bridged." if not adapters else
+                            "No adapter currently supports scanning or Syn advertising. Check adapter power, "
+                            "rfkill and permissions in the OS running Syn.")
+                        if note != self._availability_note:
+                            if note is not None:
+                                logger.info("Bluetooth waiting: %s", note)
+                            else:
+                                logger.info("Bluetooth adapter available")
+                        self._availability_note = note
                         await self._pause(self.config.inventoryRefreshSeconds)
                 except (BackendError, OSError, TimeoutError) as error:
                     self._state = "unavailable"
-                    self._last_error = f"{type(error).__name__}: {str(error)[:240]}"
-                    logger.info("Bluetooth backend unavailable: %s", self._last_error)
+                    self._availability_note = None
+                    self._last_error = f"{type(error).__name__}: {' '.join(str(error).split())[:240]}"
+                    self._counts["backend_failures"] += 1
+                    if self._last_error != self._backend_error:
+                        logger.info("Bluetooth backend unavailable: %s; retrying with backoff up to 300 seconds",
+                                    self._last_error)
+                    self._backend_error = self._last_error
                 finally:
                     # stop() can arrive while a ledger failure is already
                     # releasing workers. A second cancellation must not skip
@@ -239,7 +270,10 @@ class BluetoothRuntime:
                         if not cleanup.cancelled() and cleanup.exception() is not None:
                             self._fail(cleanup.exception())
                         raise
-                await self._pause(self.config.retrySeconds)
+                self._retry_at = time.monotonic() + retry_delay
+                await self._pause(retry_delay)
+                self._retry_at = None
+                retry_delay = min(300, retry_delay * 2)
         except asyncio.CancelledError:
             raise
         except Exception as error:

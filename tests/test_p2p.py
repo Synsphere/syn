@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
 import socket
+from threading import Event
 from unittest.mock import MagicMock, patch
 
 import multiaddr
+import pytest
 import trio
+from trio.testing import wait_all_tasks_blocked
+from libp2p import new_host
 
 from syn import P2PConfig
 from syn.p2p import Libp2pNode
@@ -60,7 +63,7 @@ def test_disabled_libp2p_node_does_not_start() -> None:
         node = Libp2pNode(P2PConfig(enabled=False, bootstrapPeers=()))
         await node.start()
         status = node.status()
-        assert {key: value for key, value in status.items() if key not in {"amino", "publication"}} == {
+        assert {key: value for key, value in status.items() if key not in {"amino", "publication", "upnp"}} == {
             "enabled": False,
             "running": False,
             "peerId": None,
@@ -73,6 +76,8 @@ def test_disabled_libp2p_node_does_not_start() -> None:
             "publicPubsub": {"enabled": False, "running": False,
                              "default_network_id": "syn", "groups": []},
         }
+        assert status["upnp"]["state"] == "disabled"
+        assert status["upnp"]["enabled"] is False
         assert status["publication"]["state"] == "no-operator"
 
     asyncio.run(exercise())
@@ -122,33 +127,130 @@ def _freeTcpPort() -> int:
         return int(listener.getsockname()[1])
 
 
-def test_upnp_is_enabled_on_the_libp2p_host() -> None:
-    node = Libp2pNode(P2PConfig(
-        mdnsEnabled=False,
-        listenAddresses=("/ip4/0.0.0.0/tcp/4001",),
-        upnpEnabled=True,
-        aminoEnabled=False,
-        bootstrapPeers=(),
-    ))
-    node._stop.set()
+@pytest.mark.parametrize("accepted", [True, False])
+def test_upnp_maps_only_ipv4_after_readiness_and_cleans_up(accepted) -> None:
+    class Manager:
+        def __init__(self):
+            self.entered, self.release = Event(), Event()
+            self.attempts, self.removals, self.mappings = [], [], []
+            self.external = None
+
+        async def discover(self):
+            self.entered.set()
+            while not self.release.is_set():
+                await trio.sleep(0.01)
+            self.external = "8.8.8.8"
+            return True
+
+        async def add_port_mapping(self, port, protocol):
+            self.attempts.append((port, protocol))
+            if accepted:
+                self.mappings.append({"port": port, "protocol": protocol,
+                                      "owned": True, "verified": True, "leaseSeconds": 3600})
+            return accepted
+
+        async def remove_port_mapping(self, port, protocol):
+            self.removals.append((port, protocol))
+            self.mappings = [entry for entry in self.mappings if entry["port"] != port]
+            return True
+
+        def get_external_ip(self):
+            return self.external
+
+        def status(self):
+            return {"enabled": True, "state": "mapped" if self.mappings else "waiting",
+                    "reason": None, "devices": 1, "lanAddress": "192.168.1.50",
+                    "externalIp": self.external, "mappings": list(self.mappings)}
+
+    async def exercise():
+        manager = Manager()
+        node = Libp2pNode(P2PConfig(mdnsEnabled=False, aminoEnabled=False,
+            upnpEnabled=True, bootstrapPeers=(), startupTimeoutSeconds=10))
+        with patch("syn.p2p.SynUpnpManager", return_value=manager), \
+                patch("syn.p2p.new_host", wraps=new_host) as create_host:
+            await node.start()
+            try:
+                # The listener is ready while SSDP discovery is still pending.
+                assert await asyncio.to_thread(manager.entered.wait, 2)
+                assert node.status()["running"] and not manager.release.is_set()
+                assert not node._public_addresses(node._host)
+                manager.release.set()
+                for _ in range(100):
+                    if node.status()["upnpExternalIp"]:
+                        break
+                    await asyncio.sleep(0.01)
+                v4 = next(int(multiaddr.Multiaddr(address).value_for_protocol("tcp"))
+                          for address in node.status()["listenAddresses"] if address.startswith("/ip4/"))
+                assert manager.attempts == [(v4, "TCP")]
+                announced = [str(value) for value in node._public_addresses(node._host)]
+                assert announced == ([f"/ip4/8.8.8.8/tcp/{v4}"] if accepted else [])
+                options = create_host.call_args.kwargs
+                assert options["enable_upnp"] is False
+                assert set(options["sec_opt"]) == {"/noise"}
+                assert set(options["muxer_opt"]) == {"/yamux/1.0.0"}
+            finally:
+                await node.stop()
+        assert manager.removals == (manager.attempts if accepted else [])
+        assert node.status()["upnp"]["state"] == "stopped"
+        assert node.status()["upnpExternalIp"] is None
+
+    asyncio.run(exercise())
+
+
+def test_upnp_excludes_loopback_ipv6_and_unrelated_bound_interfaces():
     host = MagicMock()
-    host.get_id.return_value = "local-peer"
-    host.get_addrs.return_value = [multiaddr.Multiaddr("/ip4/0.0.0.0/tcp/4001")]
-    host.get_transport_addrs.return_value = host.get_addrs.return_value
-    host.get_peerstore.return_value.valid_peer_ids.return_value = []
-    host.upnp.get_external_ip.return_value = "203.0.113.20"
+    host.get_transport_addrs.return_value = [multiaddr.Multiaddr(value) for value in (
+        "/ip4/0.0.0.0/tcp/4001", "/ip4/192.168.1.50/tcp/4002",
+        "/ip4/127.0.0.1/tcp/4003", "/ip6/::/tcp/4004",
+        "/ip4/192.168.2.50/tcp/4005", "/ip4/0.0.0.0/udp/4006",
+        "/ip4/0.0.0.0/tcp/0")]
+    assert Libp2pNode._ipv4_mapping_ports(host, "192.168.1.50") == {4001, 4002}
 
-    @asynccontextmanager
-    async def runningHost():
-        yield
 
-    host.run.return_value = runningHost()
-    with patch("syn.p2p.new_host", return_value=host) as createHost:
-        trio.run(node._serve)
+@pytest.mark.parametrize("cleanup_succeeds", [True, False])
+def test_upnp_maintenance_cleans_mappings_for_disappeared_listeners(cleanup_succeeds):
+    class Manager:
+        def __init__(self):
+            self.mappings = {4001: {"port": 4001, "protocol": "TCP", "verified": False,
+                                    "owned": True, "leaseSeconds": 0}}
+            self.removals = []
 
-    options = createHost.call_args.kwargs
-    assert options["bootstrap"] == []
-    assert options["enable_upnp"] is True
-    assert set(options["sec_opt"]) == {"/noise"}
-    assert set(options["muxer_opt"]) == {"/yamux/1.0.0"}
-    assert node.status()["upnpExternalIp"] == "203.0.113.20"
+        async def discover(self):
+            return True
+
+        async def add_port_mapping(self, port, protocol):
+            self.mappings[port] = {"port": port, "protocol": protocol, "verified": True,
+                                   "owned": True, "leaseSeconds": 3600}
+            return True
+
+        async def remove_port_mapping(self, port, protocol):
+            self.removals.append((port, protocol))
+            if port == 4001 and not cleanup_succeeds:
+                return False
+            self.mappings.pop(port, None)
+            return True
+
+        def status(self):
+            return {"enabled": True, "state": "mapped", "reason": None,
+                    "lanAddress": "192.168.1.50", "externalIp": "8.8.8.8",
+                    "mappings": list(self.mappings.values())}
+
+    async def exercise():
+        manager = Manager()
+        node = Libp2pNode(P2PConfig(mdnsEnabled=False, aminoEnabled=False, bootstrapPeers=()))
+        node._upnp = manager
+        host = MagicMock()
+        host.get_transport_addrs.return_value = [multiaddr.Multiaddr("/ip4/0.0.0.0/tcp/4002")]
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(node._upnp_loop, host)
+            await wait_all_tasks_blocked()
+            assert manager.removals == [(4001, "TCP")]
+            assert node._mapped_ports == {4002}
+            assert node.status()["upnp"]["state"] == ("mapped" if cleanup_succeeds else "cleanup-failed")
+            assert (4001 in manager.mappings) is not cleanup_succeeds
+            nursery.cancel_scope.cancel()
+        assert (4002, "TCP") in manager.removals
+        assert node._mapped_ports == set()
+        assert node.status()["upnp"]["state"] == ("stopped" if cleanup_succeeds else "cleanup-failed")
+
+    trio.run(exercise)

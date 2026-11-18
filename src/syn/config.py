@@ -27,6 +27,8 @@ class P2PConfig:
     enabled: bool = True
     mdnsEnabled: bool = True
     upnpEnabled: bool = True
+    upnpMulticastInterface: str | None = None
+    upnpDiscoveryDelayMilliseconds: int = 2000
     listenAddresses: tuple[str, ...] = (
         "/ip4/0.0.0.0/tcp/0",
         "/ip6/::/tcp/0",
@@ -53,6 +55,18 @@ class P2PConfig:
                      "publishOperatorRecord", "allowPrivateAddresses", "publicPubsubEnabled"):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"p2p.{name} must be true or false")
+        if self.upnpMulticastInterface is not None:
+            try:
+                address = ipaddress.ip_address(self.upnpMulticastInterface)
+                if (type(self.upnpMulticastInterface) is not str or address.version != 4
+                        or str(address) != self.upnpMulticastInterface or address.is_unspecified
+                        or address.is_multicast or address.is_loopback or address.is_reserved):
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise ValueError("p2p.upnpMulticastInterface must be a local unicast IPv4 address") from None
+        if (type(self.upnpDiscoveryDelayMilliseconds) is not int
+                or not 100 <= self.upnpDiscoveryDelayMilliseconds <= 10000):
+            raise ValueError("p2p.upnpDiscoveryDelayMilliseconds must be an integer from 100 to 10000")
         for name, limit, empty in (("listenAddresses", 16, False),
                                    ("bootstrapPeers", 32, True),
                                    ("announceAddresses", 16, True)):
@@ -178,6 +192,8 @@ def loadConfig(path: str | Path = "config.toml") -> SynConfig:
             enabled=enabled,
             mdnsEnabled=mdnsEnabled,
             upnpEnabled=upnpEnabled,
+            upnpMulticastInterface=p2p.get("upnpMulticastInterface"),
+            upnpDiscoveryDelayMilliseconds=p2p.get("upnpDiscoveryDelayMilliseconds", 2000),
             listenAddresses=tuple(listenAddresses),
             bootstrapPeers=tuple(bootstrapPeers),
             startupTimeoutSeconds=float(startupTimeoutSeconds),

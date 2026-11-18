@@ -366,6 +366,11 @@ successful mapping with a public external IP is considered for publication.
 and publication state. `announced` means provider messages were sent; it does
 not establish remote storage, public visibility or inbound reachability.
 
+UPnP discovery and mapping maintenance run after listener readiness. The
+`upnp` status object distinguishes discovery failure, verified mappings and
+WSL networking limitations. See [runtime network recovery](docs/development/runtime-network-recovery.md)
+for DrayTek/WSL setup, interface selection and the Windows mirrored-networking helper.
+
 
 ### Cardano block observations
 

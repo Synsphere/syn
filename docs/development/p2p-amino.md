@@ -133,7 +133,9 @@ The [example configuration](../../config.example.toml) contains these settings:
 | `announceAddresses` | `[]` | Optional public IP/TCP endpoints; empty uses public listeners, confirmed Identify observations and successful public UPnP mappings |
 | `allowPrivateAddresses` | `false` | Permit private addresses only for explicitly configured, isolated test swarms |
 | `mdnsEnabled` | `true` | Advertise and discover peers on the LAN |
-| `upnpEnabled` | `true` | Attempt router TCP mappings and remove them during orderly shutdown |
+| `upnpEnabled` | `true` | Discover and maintain verified, owned IPv4 TCP router mappings after listener readiness; remove them during orderly shutdown |
+| `upnpMulticastInterface` | unset | Optional local LAN IPv4 address for SSDP discovery when VPN/virtual adapters interfere |
+| `upnpDiscoveryDelayMilliseconds` | `2000` | SSDP discovery wait, between 100 and 10000 ms |
 | `startupTimeoutSeconds` | `15` | Bound local host startup/shutdown waits |
 | `requestTimeoutSeconds` | `10` | Bound individual DHT/public-stream requests |
 | `lookupTimeoutSeconds` | `45` | Bound a complete lookup or maintenance operation |
@@ -153,6 +155,11 @@ port in `announceAddresses`. A reported UPnP external IP alone is insufficient:
 automatic announcements require a successful mapping for an active IPv4 TCP
 listener. IPv6 can use a directly reachable public listener. This milestone
 does not supply a relay or hole-punching fallback.
+
+The `upnp` object in `GET /p2p/status` reports the discovery/mapping stage,
+selected LAN address, mapping readback and WSL networking mode. See
+[runtime network recovery](runtime-network-recovery.md) for the Windows/WSL
+helper and DrayTek troubleshooting.
 
 The private-address option requires explicitly selected isolated bootstrap
 peers; configuration rejects its combination with the official bootstrap

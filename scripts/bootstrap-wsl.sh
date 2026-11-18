@@ -70,9 +70,11 @@ install_system_packages() {
     command -v apt-get >/dev/null 2>&1 ||
         fail 'Automatic OS dependency installation currently supports Debian/Ubuntu WSL (apt). Other distributions need an explicit provider.'
     command -v dpkg-query >/dev/null 2>&1 || fail 'Cannot check installed Debian packages.'
-    packages='ca-certificates curl python3 sudo passwd util-linux iw bluez libusb-1.0-0 usbutils'
+    # BlueZ needs the system bus even when root custody stays on Windows.
+    # The private session bus/keyring packages remain Linux-custody-only.
+    packages='ca-certificates curl python3 sudo passwd util-linux iw dbus bluez libusb-1.0-0 usbutils'
     if [ -z "${SYN_HOST_CUSTODY_PIPE:-}" ]; then
-        packages="$packages dbus dbus-user-session gnome-keyring libsecret-tools"
+        packages="$packages dbus-user-session gnome-keyring libsecret-tools"
     fi
     if [ "$need_local_db" = 1 ]; then
         packages="$packages postgresql postgresql-client"
@@ -90,6 +92,54 @@ install_system_packages() {
     as_root apt-get update
     # All names come from the fixed, reviewed package manifest above.
     as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $missing
+}
+
+system_bus_owns() {
+    command -v dbus-send >/dev/null 2>&1 || return 1
+    command -v timeout >/dev/null 2>&1 || return 1
+    timeout --kill-after=1 4 dbus-send --system --type=method_call --print-reply --reply-timeout=2000 \
+        --dest=org.freedesktop.DBus /org/freedesktop/DBus \
+        org.freedesktop.DBus.GetNameOwner "string:$1" >/dev/null 2>&1
+}
+
+start_bluetooth_prerequisite() {
+    # Names come only from ensure_bluetooth_services below. Do not restart a
+    # live bus, change boot settings, or launch an unmanaged privileged daemon.
+    if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+        set -- systemctl start "$1"
+    elif command -v service >/dev/null 2>&1; then
+        set -- service "$1" start
+    else
+        return 1
+    fi
+    command -v timeout >/dev/null 2>&1 || return 1
+    if [ "$(id -u)" = 0 ]; then
+        timeout --kill-after=2 15 "$@" >/dev/null 2>&1
+    elif command -v sudo >/dev/null 2>&1; then
+        # Existing package provisioning may have supplied sudo credentials.
+        # An optional radio service must not block an unattended node on input.
+        timeout --kill-after=2 15 sudo -n "$@" >/dev/null 2>&1
+    else
+        return 1
+    fi
+}
+
+ensure_bluetooth_services() {
+    [ "$api_only" = 0 ] || return 0
+    if ! system_bus_owns org.freedesktop.DBus; then
+        notice 'Starting the Linux system D-Bus needed by Bluetooth.'
+        if ! start_bluetooth_prerequisite dbus || ! system_bus_owns org.freedesktop.DBus; then
+            notice 'System D-Bus is unavailable. In WSL run sudo systemctl start dbus (or sudo service dbus start). Bluetooth will retry; Syn can continue.'
+            return 0
+        fi
+    fi
+    if ! system_bus_owns org.bluez; then
+        notice 'Starting the Linux Bluetooth service.'
+        if ! start_bluetooth_prerequisite bluetooth || ! system_bus_owns org.bluez; then
+            notice 'BlueZ is unavailable. In WSL check sudo systemctl start bluetooth (or sudo service bluetooth start), and a Linux-visible Bluetooth controller. Windows adapters are not automatically shared with WSL.'
+        fi
+    fi
+    return 0
 }
 
 valid_account() {
@@ -185,6 +235,7 @@ ensure_local_database() {
 # Secret Service in a real non-root user's home. Do not alter WSL's default user.
 if [ "$(id -u)" = 0 ]; then
     install_system_packages
+    ensure_bluetooth_services
     target_user=$(select_nonroot_account)
     if [ "$need_local_db" = 1 ]; then
         ensure_local_database "$target_user"
@@ -198,6 +249,7 @@ if [ "$(id -u)" = 0 ]; then
 fi
 
 install_system_packages
+ensure_bluetooth_services
 if [ "$need_local_db" = 1 ]; then
     ensure_local_database "$(id -un)"
     # The default fresh-install config lives in the Linux home directory,

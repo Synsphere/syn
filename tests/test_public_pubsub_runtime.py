@@ -9,6 +9,7 @@ import threading
 
 from libp2p.kad_dht.pb.kademlia_pb2 import Message
 from libp2p.peer.id import ID
+from libp2p.pubsub.gossipsub import PROTOCOL_ID_V11
 from multiaddr import Multiaddr
 import pytest
 import trio
@@ -118,6 +119,16 @@ def test_open_url_groups_discover_independent_peers_and_preserve_namespace_isola
         return valid
 
     monkeypatch.setattr(pubsub_module, "signature_validator", record_signature)
+    host_type = type(secure_host())
+    new_stream = host_type.new_stream
+    pubsub_opens = []
+
+    async def record_pubsub_open(host, peer, protocols, *args, **kwargs):
+        if PROTOCOL_ID_V11 in protocols:
+            pubsub_opens.append((str(host.get_id()), str(peer)))
+        return await new_stream(host, peer, protocols, *args, **kwargs)
+
+    monkeypatch.setattr(host_type, "new_stream", record_pubsub_open)
     groups = [("syn", f"syn://{kind}/public-room") for kind in ("type", "cog", "ember", "event")]
     groups.append(("syn-other", "syn://type/public-room"))
     expected = {entry: expected_group(*entry) for entry in groups}
@@ -239,6 +250,10 @@ def test_open_url_groups_discover_independent_peers_and_preserve_namespace_isola
         assert {key for key, _ in dht.announcements} == keys
         assert {key for key, _ in dht.lookups} == keys
         assert len(dht.records[expected[groups[0]][1]]) == 3
+        # This real DHT host never advertises a group or accepts GossipSub.
+        # Successful provider discovery must not probe it for pubsub anyway.
+        assert pubsub_opens
+        assert all(target != str(bootstrap.get_id()) for _, target in pubsub_opens)
 
     trio.run(exercise)
 

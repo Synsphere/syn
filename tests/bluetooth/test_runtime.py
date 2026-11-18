@@ -220,6 +220,93 @@ def test_backend_unavailable_recovers_without_fabricated_success():
     asyncio.run(run())
 
 
+def test_unchanged_backend_outage_is_coalesced_with_bounded_backoff(caplog):
+    async def run():
+        backend = Backend()
+        backend.start_failures = 20
+        runtime = BluetoothRuntime(None, NODE, settings(retrySeconds=5), store=Store(), backend=backend)
+        delays = []
+
+        async def pause(seconds):
+            delays.append(seconds)
+            assert runtime.status()["retry_in_seconds"] is not None
+            if len(delays) == 8:
+                runtime._stop.set()
+            await asyncio.sleep(0)
+            return runtime._stop.is_set()
+
+        runtime._pause = pause
+        with caplog.at_level("INFO", logger="syn.bluetooth.runtime"):
+            await runtime._manage()
+        assert delays == [5, 10, 20, 40, 80, 160, 300, 300]
+        assert backend.starts == backend.closed == 8
+        assert runtime.status()["counts"]["backend_failures"] == 8
+        assert runtime.fault is None
+        messages = [record.getMessage() for record in caplog.records]
+        assert sum("Bluetooth backend unavailable:" in message for message in messages) == 1
+    asyncio.run(run())
+
+
+def test_backend_recovery_resets_backoff_only_after_inventory_succeeds(caplog):
+    async def run():
+        backend = Backend(())
+        runtime = BluetoothRuntime(None, NODE, settings(retrySeconds=5), store=Store(), backend=backend)
+        calls = 0
+        delays = []
+
+        async def inventory():
+            nonlocal calls
+            calls += 1
+            if calls in (1, 2, 4):
+                raise BackendUnavailable("Inventory is temporarily unavailable")
+            return []
+
+        async def pause(seconds):
+            delays.append(seconds)
+            if len(delays) == 4:
+                runtime._stop.set()
+            await asyncio.sleep(0)
+            return runtime._stop.is_set()
+
+        backend.adapters = inventory
+        runtime._pause = pause
+        with caplog.at_level("INFO", logger="syn.bluetooth.runtime"):
+            await runtime._manage()
+        assert delays == [5, 10, runtime.config.inventoryRefreshSeconds, 5]
+        assert runtime.fault is None
+        messages = [record.getMessage() for record in caplog.records]
+        assert messages.count("Bluetooth backend recovered") == 1
+        assert sum("Bluetooth backend unavailable:" in message for message in messages) == 2
+    asyncio.run(run())
+
+
+def test_missing_or_powered_off_adapter_is_waiting_not_active(caplog):
+    async def run():
+        backend = Backend(())
+        runtime = BluetoothRuntime(None, NODE, settings(), store=Store(), backend=backend)
+        with caplog.at_level("INFO", logger="syn.bluetooth.runtime"):
+            await runtime.start()
+            try:
+                await eventually(lambda: runtime.status()["state"] == "waiting-for-adapter")
+                assert "No Bluetooth adapter is visible" in runtime.status()["availability_note"]
+                await asyncio.sleep(.22)
+                backend.inventory = [replace(ADAPTER, can_advertise=False, can_scan=False)]
+                await eventually(lambda: "adapter power" in (runtime.status()["availability_note"] or ""))
+                assert runtime.status()["state"] == "waiting-for-adapter"
+                assert not backend.calls
+                backend.inventory = [replace(ADAPTER, connection_epoch="epoch-2", can_advertise=False)]
+                await eventually(lambda: backend.scans)
+                assert runtime.status()["state"] == "active"
+                assert runtime.status()["availability_note"] is None
+                assert runtime.status()["last_error"] is None
+            finally:
+                await runtime.stop()
+        messages = [record.getMessage() for record in caplog.records]
+        assert sum("No Bluetooth adapter is visible" in message for message in messages) == 1
+        assert messages.count("Bluetooth adapter available") == 1
+    asyncio.run(run())
+
+
 def test_adapter_hotplug_releases_old_epoch_before_replacement_and_deduplicates():
     async def run():
         store, backend = Store(), Backend((ADAPTER, ADAPTER))

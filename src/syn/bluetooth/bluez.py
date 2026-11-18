@@ -24,6 +24,25 @@ MAX_BYTES = 1650
 MAX_ENTRIES = 64
 
 
+def _startup_problem(error, phase):
+    """Identify the missing OS prerequisite without replaying unbounded errors."""
+    if phase == "system-bus":
+        if isinstance(error, (FileNotFoundError, ConnectionRefusedError)):
+            return ("Linux system D-Bus is unavailable. Start the dbus service in the OS running Syn; "
+                    "Windows host custody does not replace Bluetooth's system bus.")
+        if isinstance(error, PermissionError):
+            return "Linux system D-Bus access was denied. Check this Linux account's system-bus permissions."
+        if isinstance(error, TimeoutError):
+            return "Linux system D-Bus connection timed out. Check the dbus service in the OS running Syn."
+    if phase == "bluez-service":
+        detail = str(error)
+        if any(name in detail for name in ("ServiceUnknown", "NameHasNoOwner", "Spawn.")):
+            return ("BlueZ is not available on the Linux system bus. Install/start the bluetooth service; "
+                    "WSL also needs a Linux-visible Bluetooth controller.")
+    detail = " ".join(str(error).split())[:140]
+    return f"BlueZ {phase} failed ({type(error).__name__}): {detail}"
+
+
 def _native_api():
     try:
         from dbus_next import BusType, Message, MessageType, Variant
@@ -158,6 +177,7 @@ class BlueZBackend:
             return
         self._api = self._api or _native_api()
         factory = self._bus_factory or self._api.MessageBus
+        phase = "system-bus"
         try:
             # Keep ownership even while connect/authentication is pending.
             self._bus = factory(bus_type=self._api.BusType.SYSTEM)
@@ -166,10 +186,17 @@ class BlueZBackend:
             self._bus.add_message_handler(self._signal)
             for rule in self._matches:
                 await self._call(DBUS, "/org/freedesktop/DBus", DBUS, "AddMatch", "s", [rule])
+            phase = "bluez-service"
+            # An ordinary method call permits the system bus's configured
+            # service activation. GetNameOwner alone cannot activate BlueZ.
+            # The subsequent owner/inventory checks still handle a service
+            # that vanishes during startup.
+            await self._call(BLUEZ, "/", OBJECT_MANAGER, "GetManagedObjects")
             owner = await self._call(DBUS, "/org/freedesktop/DBus", DBUS,
                                      "GetNameOwner", "s", [BLUEZ])
             self._owner = owner[0]
             self._started = True
+            phase = "adapter-inventory"
             await self.adapters()
             self._disconnect_task = asyncio.create_task(self._watch_disconnect(self._bus))
         except asyncio.CancelledError:
@@ -179,7 +206,7 @@ class BlueZBackend:
         except Exception as exc:
             self._disconnect()
             await finish_cleanup(self._confirm_disconnect())
-            raise BackendUnavailable(f"BlueZ system service is unavailable: {exc}") from exc
+            raise BackendUnavailable(_startup_problem(exc, phase)) from exc
 
     async def _watch_disconnect(self, bus):
         try:

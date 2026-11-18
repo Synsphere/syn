@@ -46,6 +46,7 @@ def test_load_config_reads_p2p_settings(tmp_path: Path) -> None:
         tmp_path,
         '[database]\nurl = "postgresql+psycopg://localhost/syn"\n'
         '[p2p]\nenabled = true\nmdnsEnabled = false\nupnpEnabled = false\n'
+        'upnpMulticastInterface = "192.168.1.50"\nupnpDiscoveryDelayMilliseconds = 3000\n'
         'listenAddresses = ["/ip4/0.0.0.0/tcp/4001"]\n'
         'bootstrapPeers = ["/ip4/127.0.0.1/tcp/4002/p2p/QmPeer"]\n'
         'startupTimeoutSeconds = 5\n',
@@ -55,6 +56,8 @@ def test_load_config_reads_p2p_settings(tmp_path: Path) -> None:
         enabled=True,
         mdnsEnabled=False,
         upnpEnabled=False,
+        upnpMulticastInterface="192.168.1.50",
+        upnpDiscoveryDelayMilliseconds=3000,
         listenAddresses=("/ip4/0.0.0.0/tcp/4001",),
         bootstrapPeers=("/ip4/127.0.0.1/tcp/4002/p2p/QmPeer",),
         startupTimeoutSeconds=5.0,
@@ -67,6 +70,16 @@ def test_load_config_reads_p2p_settings(tmp_path: Path) -> None:
         ("enabled", '"yes"', "p2p.enabled"),
         ("mdnsEnabled", '"yes"', "p2p.mdnsEnabled"),
         ("upnpEnabled", '"yes"', "p2p.upnpEnabled"),
+        ("upnpMulticastInterface", '"0.0.0.0"', "p2p.upnpMulticastInterface"),
+        ("upnpMulticastInterface", '"127.0.0.1"', "p2p.upnpMulticastInterface"),
+        ("upnpMulticastInterface", '"224.0.0.1"', "p2p.upnpMulticastInterface"),
+        ("upnpMulticastInterface", '"255.255.255.255"', "p2p.upnpMulticastInterface"),
+        ("upnpMulticastInterface", '"240.0.0.1"', "p2p.upnpMulticastInterface"),
+        ("upnpMulticastInterface", '"::1"', "p2p.upnpMulticastInterface"),
+        ("upnpMulticastInterface", "42", "p2p.upnpMulticastInterface"),
+        ("upnpDiscoveryDelayMilliseconds", "true", "p2p.upnpDiscoveryDelayMilliseconds"),
+        ("upnpDiscoveryDelayMilliseconds", "99", "p2p.upnpDiscoveryDelayMilliseconds"),
+        ("upnpDiscoveryDelayMilliseconds", "10001", "p2p.upnpDiscoveryDelayMilliseconds"),
         ("listenAddresses", "[]", "p2p.listenAddresses"),
         ("bootstrapPeers", '[1]', "p2p.bootstrapPeers"),
         ("startupTimeoutSeconds", "0", "p2p.startupTimeoutSeconds"),

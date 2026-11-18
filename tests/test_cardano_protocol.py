@@ -6,6 +6,7 @@ from contextlib import suppress
 from hashlib import blake2b
 import json
 from pathlib import Path
+import socket
 import struct
 
 import cbor2
@@ -203,8 +204,9 @@ def test_wire_tip_await_full_block_rollback_and_keepalive():
 
 @pytest.mark.parametrize("accepted", [
     [2, [0, [15]]], [1, 15, [MAGIC, True, 0, False]],
-    [1, 14, [1, True, 0, False]], [1, 14, [MAGIC, False, 0, False]],
-    [1, 14, [MAGIC, True, 1, False]], [1, 14, [MAGIC, True, 0, True]],
+    [1, 14, [1, True, 0, False]], [1, 14, [MAGIC, 0, 0, False]],
+    [1, 14, [MAGIC, True, True, False]], [1, 14, [MAGIC, True, 2, False]],
+    [1, 14, [MAGIC, True, 0, True]],
     [1, 14, [MAGIC, True]],
 ])
 def test_handshake_rejects_refusal_wrong_network_or_negotiation(accepted):
@@ -212,6 +214,73 @@ def test_handshake_rejects_refusal_wrong_network_or_negotiation(accepted):
         async with WirePeer(accepted=accepted) as peer:
             with pytest.raises(CardanoProtocolError):
                 await CardanoClient.connect("127.0.0.1", peer.port, MAGIC, timeout=1)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("diffusion,sharing", [(True, 0), (False, 0), (True, 1), (False, 1)])
+def test_server_capabilities_are_negotiated_without_enabling_responder_or_peer_sharing(diffusion, sharing):
+    # Ouroboros Handshake.Client applies acceptableVersion to the server's
+    # returned parameters. A duplex-capable peer is compatible with our
+    # initiator-only offer; these capability fields are not an equality check.
+    async def run():
+        async with WirePeer(accepted=[1, 14, [MAGIC, diffusion, sharing, False]]) as peer:
+            async with await CardanoClient.connect("127.0.0.1", peer.port, MAGIC, timeout=1) as client:
+                assert client.version == 14
+                result = await client.intersect_tip()
+                assert result.point == Point(EXPECTED["slot"], EXPECTED["block_hash"])
+                assert peer.requests[0] == (0, [0, {v: [MAGIC, True, 0, False] for v in (11, 12, 13, 14)}])
+                assert {protocol for protocol, _ in peer.requests} <= {0, 2, 8}
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("reason,detail", [
+    ([0, [16, 15]], "No common protocol version; peer supports 15, 16"),
+    ([1, 14, "secret\\nremote payload"], "Peer could not decode the offered parameters for version 14"),
+    ([2, 14, "secret\\x1b[31m"], "Peer refused the offered parameters for version 14"),
+])
+def test_handshake_refusal_reports_safe_reason_and_stage(reason, detail):
+    async def run():
+        async with WirePeer(accepted=[2, reason]) as peer:
+            with pytest.raises(CardanoProtocolError) as caught:
+                await CardanoClient.connect("127.0.0.1", peer.port, MAGIC, timeout=1)
+            assert caught.value.stage == "handshake"
+            assert str(caught.value) == detail
+            assert "secret" not in str(caught.value)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("error,detail", [
+    (socket.gaierror(socket.EAI_AGAIN, "private resolver detail"), "DNS lookup failed"),
+    (ConnectionRefusedError("private socket detail"), "TCP connection refused"),
+    (TimeoutError(), "Timed out waiting for the peer"),
+    (OSError("private socket detail"), "Network I/O failed"),
+])
+def test_connection_failures_report_actionable_bounded_cause(monkeypatch, error, detail):
+    async def fail(*args, **kwargs):
+        # A stalled IPv6 address must not postpone the IPv4 attempt until after
+        # our outer connect timeout. This option belongs to asyncio's native
+        # address-family race, not a second Syn reconnect loop.
+        assert kwargs["happy_eyeballs_delay"] == .25
+        assert kwargs["interleave"] == 1
+        raise error
+    monkeypatch.setattr(asyncio, "open_connection", fail)
+    async def run():
+        with pytest.raises(CardanoProtocolError) as caught:
+            await CardanoClient.connect("trusted.example", 3001, MAGIC, timeout=1)
+        assert caught.value.stage == "connect"
+        assert str(caught.value) == detail
+        assert caught.value.__cause__ is error
+    asyncio.run(run())
+
+
+def test_silent_handshake_is_reported_as_handshake_timeout_and_closes_connection():
+    async def run():
+        async with WirePeer(handshake_raw=b"") as peer:
+            with pytest.raises(CardanoProtocolError) as caught:
+                await CardanoClient.connect("127.0.0.1", peer.port, MAGIC, timeout=.1)
+            assert caught.value.stage == "handshake"
+            assert str(caught.value) == "Timed out waiting for the peer"
+            await asyncio.wait_for(peer.closed.wait(), 1)
     asyncio.run(run())
 
 
@@ -261,9 +330,11 @@ def test_keepalive_failure_wakes_chain_await():
         async with WirePeer(keepalive=False) as peer:
             async with await CardanoClient.connect("127.0.0.1", peer.port, MAGIC,
                                                    timeout=.1, keepalive_interval=.02) as client:
-                with pytest.raises(CardanoProtocolError):
+                with pytest.raises(CardanoProtocolError) as caught:
                     await asyncio.wait_for(client.next_update(), 1)
                 assert peer.awaiting.is_set()
+                assert caught.value.stage == "keepalive"
+                assert str(caught.value) == "Timed out waiting for the peer"
     asyncio.run(run())
 
 

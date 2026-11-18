@@ -15,7 +15,7 @@ import time
 
 from google.protobuf.message import DecodeError
 from libp2p.exceptions import ValidationError
-from libp2p.network.stream.exceptions import StreamError
+from libp2p.network.stream.exceptions import StreamError, StreamReset
 from libp2p.peer.id import ID
 from libp2p.pubsub.gossipsub import GossipSub, PROTOCOL_ID_V11
 from libp2p.pubsub.pb import rpc_pb2
@@ -75,6 +75,7 @@ class _Group:
     next_announcement: float = 0
     announce_retry: float = 1
     previous_addresses: tuple = ()
+    providers: dict = field(default_factory=dict)
     pending: bool = False
     discovery: dict = field(default_factory=lambda: {
         "state": "waiting", "publication": "waiting-addresses",
@@ -128,29 +129,118 @@ class _PublicRouter(GossipSub):
         await super().handle_rpc(selected, sender_peer_id)
 
 
+class _OpeningStream:
+    """Keep the selection valid across the initial subscription write as well."""
+
+    def __init__(self, pubsub, stream, peer, groups):
+        self._pubsub, self._stream = pubsub, stream
+        self._peer, self._groups = peer, groups
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+    def _check(self):
+        if (self._pubsub._opening.get(self._peer) is self._groups
+                and not self._pubsub.selected_groups(self._peer, self._groups)):
+            raise StreamReset("Public group selection changed during subscription hello")
+
+    async def write(self, data):
+        self._check()
+        await self._stream.write(data)
+        self._check()
+
+
+class _PublicHost:
+    """Guard only pubsub streams; the shared host remains available to the DHT."""
+
+    def __init__(self, pubsub, host):
+        self._pubsub, self._host = pubsub, host
+
+    def __getattr__(self, name):
+        return getattr(self._host, name)
+
+    async def new_stream(self, peer, protocols):
+        selected = self._pubsub._opening.get(peer, ())
+        if not self._pubsub.selected_groups(peer, selected):
+            raise StreamReset("Peer is not a provider or inbound participant of a joined public group")
+        stream = await self._host.new_stream(peer, protocols)
+        # Negotiation yields. A leave, replacement or expired provider record
+        # must take effect before upstream sends its subscription hello.
+        if not self._pubsub.selected_groups(peer, selected):
+            await _reset(stream)
+            raise StreamReset("Public group selection changed during negotiation")
+        stream = _OpeningStream(self._pubsub, stream, peer, selected)
+        self._pubsub._opening_streams[peer] = stream
+        return stream
+
+
 class _PublicPubsub(Pubsub):
     """Bound public RPCs and metadata without an identity admission list."""
 
     def __init__(self, host, router, owner):
         self.owner = owner
-        self._opening = set()
+        self._opening = {}
+        self._opening_scopes = {}
+        self._opening_streams = {}
+        self._retry = OrderedDict()
         self._inbound = {}
         self._inbound_count = 0
         self._incoming_epoch = {}
         self._message_slots = trio.Semaphore(32)
-        super().__init__(host, router, strict_signing=True,
+        super().__init__(_PublicHost(self, host), router, strict_signing=True,
                          validation_cache_size=1024, max_concurrent_validator_count=16)
 
+    def selected_groups(self, peer, groups=None):
+        """Public discovery evidence, never a private identity allowlist.
+
+        The shared host notifies Pubsub about DHT and bootstrap connections as
+        well. Those notifications alone supply no reason to negotiate pubsub.
+        Any inbound peer can instead announce a matching topic on its already
+        negotiated GossipSub stream, without local DHT discovery or credentials.
+        """
+        now = trio.current_time()
+        groups = self.owner._groups.values() if groups is None else groups
+        return tuple(group for group in groups if self.owner._current(group) and (
+            group.providers.get(peer, 0) > now or
+            (self._inbound.get(peer, 0) and peer in self.peer_topics.get(group.topic, ()))))
+
+    def can_attempt(self, peer):
+        retry = self._retry.get(peer)
+        return bool(self.selected_groups(peer)) and (retry is None or retry[0] <= trio.current_time())
+
+    def failed_attempt(self, peer):
+        _, previous, inbound_used = self._retry.get(peer, (0, 7.5, False))
+        delay = min(300, previous * 2)
+        self._retry[peer] = (trio.current_time() + delay, delay, inbound_used)
+        self._retry.move_to_end(peer)
+        while len(self._retry) > MAX_PUBLIC_PEERS * 2:
+            self._retry.popitem(last=False)
+
     async def _handle_new_peer(self, peer):
-        if peer in self._opening or (peer not in self.peers
-                                    and len(self.peers) + len(self._opening) >= MAX_PUBLIC_PEERS):
+        if (peer in self.peers or peer in self._opening or not self.can_attempt(peer)
+                or len(self.peers) + len(self._opening) >= MAX_PUBLIC_PEERS):
             return
-        self._opening.add(peer)
+        selected = self._opening[peer] = self.selected_groups(peer)
+        cancelled = False
         try:
-            with trio.move_on_after(5):
+            with trio.move_on_after(5) as scope:
+                self._opening_scopes[peer] = scope
                 await super()._handle_new_peer(peer)
+        except trio.Cancelled:
+            cancelled = True
+            raise
         finally:
-            self._opening.discard(peer)
+            stream = self._opening_streams.pop(peer, None)
+            self._opening_scopes.pop(peer, None)
+            self._opening.pop(peer, None)
+            if peer in self.peers and not self.selected_groups(peer, selected):
+                self._handle_dead_peer(peer)
+            if peer not in self.peers and stream is not None:
+                await _reset(stream)
+            if peer in self.peers:
+                self._retry.pop(peer, None)
+            elif not cancelled and self.selected_groups(peer):
+                self.failed_attempt(peer)
 
     def handle_subscription(self, peer, message):
         topic = message.topicid
@@ -162,7 +252,20 @@ class _PublicPubsub(Pubsub):
             peers = self.peer_topics.get(topic, ())
             if peer not in peers and len(peers) >= MAX_PUBLIC_PEERS:
                 return
+        known = peer in self.peer_topics.get(topic, ())
         super().handle_subscription(peer, message)
+        if (message.subscribe and not known and self._inbound.get(peer, 0)
+                and topic in self.owner._topics and self.manager.is_running):
+            # Actual inbound participation gets one immediate recovery attempt
+            # after a provider-only failure. Repeated subscribe/unsubscribe or
+            # stream replacement must not reset an unsuccessful peer's backoff.
+            retry = self._retry.get(peer, (0, 7.5, False))
+            if not retry[2]:
+                self._retry[peer] = (0, retry[1], True)
+                self._retry.move_to_end(peer)
+                while len(self._retry) > MAX_PUBLIC_PEERS * 2:
+                    self._retry.popitem(last=False)
+            self.manager.run_task(self._handle_new_peer_safe, peer)
         if not self.peer_topics.get(topic) and topic not in self.topic_ids:
             self.peer_topics.pop(topic, None)
 
@@ -329,6 +432,7 @@ class PublicPubsubService:
             self._buffer_order.clear()
             self._buffered_bytes = 0
             self._maintenance_count = 0
+            self.pubsub._retry.clear()
 
     async def join(self, url, network_id=None):
         self._available()
@@ -355,6 +459,11 @@ class PublicPubsubService:
             try:
                 subscription = await self.pubsub.subscribe(group.topic)
                 self._nursery.start_soon(self._reader, group, subscription)
+                # An inbound public participant may have announced this topic
+                # before we joined. It needs no identity admission or DHT hit.
+                for peer in tuple(self.pubsub.peer_topics.get(group.topic, ())):
+                    if self.pubsub._inbound.get(peer, 0):
+                        self.pubsub.manager.run_task(self.pubsub._handle_new_peer_safe, peer)
             except BaseException:
                 self._groups.pop(group.key, None)
                 self._topics.pop(group.topic, None)
@@ -389,7 +498,22 @@ class PublicPubsubService:
             while group.history:
                 self._drop_oldest(group)
             group.seen.clear()
+            group.providers.clear()
+            # Host notifications launch opens independently of discovery's
+            # cancel scope. Stop those tasks through the initial hello write;
+            # they do not enter pubsub.peers until that write has completed.
+            for peer, selected in tuple(self.pubsub._opening.items()):
+                if not self.pubsub.selected_groups(peer, selected):
+                    scope = self.pubsub._opening_scopes.get(peer)
+                    if scope is not None:
+                        scope.cancel()
             await self._unsubscribe(group)
+            # Release unused pubsub streams only. DHT connectivity on the same
+            # host is not stopped when a group is left.
+            for peer, stream in tuple(self.pubsub.peers.items()):
+                if not self.pubsub.selected_groups(peer):
+                    self.pubsub._handle_dead_peer(peer)
+                    await _reset(stream)
             return {"group_hash": key, "joined": False, "already_left": False}
 
     async def publish(self, key, data):
@@ -518,6 +642,10 @@ class PublicPubsubService:
                     if not self._current(group):
                         return
                     available = getattr(self.dht, "status", lambda: {})().get("lastLookupStatus") != "unavailable"
+                    if available:
+                        expires = trio.current_time() + max(30, self.config.publicPubsubDiscoveryIntervalSeconds * 3)
+                        group.providers = {candidate.peer_id: expires for candidate in candidates[:20]
+                                           if candidate.peer_id != self.host.get_id()}
                     group.discovery.update(state="ready" if available else "unavailable",
                         candidates=min(20, len(candidates)),
                         last_error=None if available else "No responding DHT servers")
@@ -535,12 +663,15 @@ class PublicPubsubService:
 
     async def _connect(self, group, candidate):
         peer = candidate.peer_id
-        if peer == self.host.get_id() or peer in self._dialing:
+        if (peer == self.host.get_id() or peer in self._dialing
+                or peer in self.pubsub.peers
+                or not self._current(group) or peer not in group.providers
+                or not self.pubsub.can_attempt(peer)):
             return
         self._dialing.add(peer)
         try:
             async with self._dial_slots:
-                if not self._current(group):
+                if not self._current(group) or not self.pubsub.can_attempt(peer):
                     return
                 with trio.move_on_after(self.config.requestTimeoutSeconds):
                     candidate = seed_dial_addresses(self.host, candidate,
@@ -551,7 +682,15 @@ class PublicPubsubService:
                     # An existing DHT connection may predate this Pubsub
                     # service or its peer's readiness; retry stream negotiation.
                     await self.pubsub._handle_new_peer_safe(peer)
+                # A transport timeout can occur before pubsub has had a chance
+                # to install its own retry delay. Avoid redialing that provider
+                # on every group-discovery tick as well.
+                if (peer not in self.pubsub.peers and peer not in self.pubsub._opening
+                        and self.pubsub.can_attempt(peer)):
+                    self.pubsub.failed_attempt(peer)
         except Exception:
+            if self._current(group) and self.pubsub.selected_groups(peer):
+                self.pubsub.failed_attempt(peer)
             return
         finally:
             self._dialing.discard(peer)
